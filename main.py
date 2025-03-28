@@ -15,6 +15,7 @@ BUTTON_COLOR = (88, 94, 149)
 BUTTON_HOVER_COLOR = (0, 100, 200)
 TEXT_COLOR = (255, 255, 255)
 
+
 class BomberManApp:
     def __init__(self):
         pygame.init()
@@ -71,7 +72,8 @@ class BomberManApp:
             self.running = False
 
         if self.singleplayer_button.is_clicked():
-            pygame.quit()  # Close menu
+            print("test")
+            self.running = False
             subprocess.run(["python", "Player.py"])
         if self.multiplayer_button.is_clicked():
             print("Button clicked: Multiplayer")
@@ -105,6 +107,7 @@ class Button:
         if self.rect.collidepoint(mouse_pos) and mouse_pressed[0]:
             return True
         return False
+
 
 if __name__ == '__main__':
     app = BomberManApp()
