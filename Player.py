@@ -29,14 +29,14 @@ class Player(pygame.sprite.Sprite):
         }
         for key in self.images:
             self.images[key] = pygame.transform.scale(self.images[key], (GRID_SIZE, GRID_SIZE))
-            
-            
+
         self.image = self.images["down"]  # Loading of picture player
         self.image = pygame.transform.scale(self.image, (GRID_SIZE, GRID_SIZE))  # Grid size
         self.rect = self.image.get_rect()
         self.rect.topleft = (0, 0)
-        self.move_timer = 0  
-        
+
+        self.move_timer = 0
+
     def move(self, dx, dy, direction):
         if pygame.time.get_ticks() - self.move_timer > MOVE_SPEED:
             self.rect.x += dx * GRID_SIZE
@@ -50,7 +50,6 @@ class Player(pygame.sprite.Sprite):
             self.image = self.images[direction]
 
             self.move_timer = pygame.time.get_ticks()
-    
 # Creation of player
 player = Player()
 
@@ -85,4 +84,5 @@ while running:
     clock.tick(120)  # FPS limit
 
 pygame.quit()
+
 sys.exit()
