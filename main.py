@@ -15,7 +15,6 @@ BUTTON_COLOR = (88, 94, 149)
 BUTTON_HOVER_COLOR = (0, 100, 200)
 TEXT_COLOR = (255, 255, 255)
 
-
 class BomberManApp:
     def __init__(self):
         pygame.init()
@@ -106,7 +105,6 @@ class Button:
         if self.rect.collidepoint(mouse_pos) and mouse_pressed[0]:
             return True
         return False
-
 
 if __name__ == '__main__':
     app = BomberManApp()

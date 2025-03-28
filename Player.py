@@ -17,7 +17,6 @@ pygame.init()
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("BomberMan - Singleplayer")
 
-
 # Load player sprite
 class Player(pygame.sprite.Sprite):
     def __init__(self):
@@ -35,6 +34,7 @@ class Player(pygame.sprite.Sprite):
         self.image = pygame.transform.scale(self.image, (GRID_SIZE, GRID_SIZE))  # Grid size
         self.rect = self.image.get_rect()
         self.rect.topleft = (0, 0)
+
         self.move_timer = 0
 
     def move(self, dx, dy, direction):
@@ -50,8 +50,6 @@ class Player(pygame.sprite.Sprite):
             self.image = self.images[direction]
 
             self.move_timer = pygame.time.get_ticks()
-
-
 # Creation of player
 player = Player()
 
@@ -86,4 +84,5 @@ while running:
     clock.tick(120)  # FPS limit
 
 pygame.quit()
+
 sys.exit()
