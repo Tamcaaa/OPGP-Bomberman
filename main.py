@@ -1,4 +1,5 @@
 import pygame
+import subprocess
 
 # Constants
 WIDTH, HEIGHT = 800, 400
@@ -71,7 +72,8 @@ class BomberManApp:
             self.running = False
 
         if self.singleplayer_button.is_clicked():
-            print("Button clicked: Singleplayer")
+            pygame.quit()  # Close menu
+            subprocess.run(["python", "Player.py"])
         if self.multiplayer_button.is_clicked():
             print("Button clicked: Multiplayer")
 
