@@ -17,6 +17,7 @@ pygame.init()
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("BomberMan - Singleplayer")
 
+
 # Load player sprite
 class Player(pygame.sprite.Sprite):
     def __init__(self):
@@ -50,6 +51,8 @@ class Player(pygame.sprite.Sprite):
             self.image = self.images[direction]
 
             self.move_timer = pygame.time.get_ticks()
+
+
 # Creation of player
 player = Player()
 
