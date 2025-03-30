@@ -2,6 +2,7 @@ import time, os, pygame, config
 from states.main_menu import MainMenu  # Import MainMenu state
 
 
+
 class BomberManApp:
     def __init__(self):
         pygame.init()  # Initialize Pygame
