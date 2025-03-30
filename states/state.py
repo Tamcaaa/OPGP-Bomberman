@@ -6,6 +6,9 @@ class State:
     def render(self, screen):
         pass
 
+    def handle_events(self):
+        pass
+
     def enter_state(self):
         if len(self.game.state_stack) > 1:
             self.prev_state = self.game.state_stack[-1]

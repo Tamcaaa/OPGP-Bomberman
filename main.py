@@ -1,78 +1,63 @@
-import pygame
-
-import main_menu
-from main_menu import MainMenu
-
-# Constants
-FONT_SIZE = 24  # Button text font size
-H1_SIZE = 54  # H1 title text size
-BUTTON_RADIUS = 4
-
-# Colors
-WHITE = (255, 255, 255)
-BLACK = (0, 0, 0)
-BUTTON_COLOR = (88, 94, 149)
-BUTTON_HOVER_COLOR = (0, 100, 200)
-TEXT_COLOR = (255, 255, 255)
+import time, os, pygame, config
+from states.main_menu import MainMenu  # Import MainMenu state
 
 
 class BomberManApp:
     def __init__(self):
-        pygame.init()
-
-        # Basic Game Settings
-        self.SCREEN_WIDTH, self.SCREEN_HEIGHT = 960, 540
-        self.game_canvas = pygame.Surface((self.SCREEN_WIDTH, self.SCREEN_HEIGHT))
-        self.screen = pygame.display.set_mode((self.SCREEN_WIDTH, self.SCREEN_HEIGHT))
-
-        self.font = pygame.font.Font(None, FONT_SIZE)
-        self.h1_font = pygame.font.Font(None, H1_SIZE)
-
+        pygame.init()  # Initialize Pygame
+        self.game_canvas = pygame.Surface((config.SCREEN_WIDTH, config.SCREEN_HEIGHT))
+        self.screen = pygame.display.set_mode((config.SCREEN_WIDTH, config.SCREEN_HEIGHT))
+        self.font = pygame.font.Font(None, config.FONT_SIZE)
+        self.h1_font = pygame.font.Font(None, config.H1_SIZE)
         self.state_stack = []
-
-        # When initialing the class
+        self.dt, self.prev_time = 0, 0
         self.running = False
-
-        self.load_states()
+        self.photos_dir = os.path.join("photos")
+        self.load_states()  # Load initial states
 
     def run(self):
+        clock = pygame.time.Clock()
         self.running = True
         while self.running:
-            self.get_events()
-            self.render()
+            self.get_events()  # Handle input events
+            self.render()  # Render current state
+            clock.tick(120)  # FPS limit
+
+    def get_dt(self):
+        """Calculate delta time."""
+        now = time.time()
+        self.dt = now - self.prev_time
+        self.prev_time = now
 
     def render(self):
-        # Fill screen with background image
+        """Render the game state."""
         self.state_stack[-1].render(self.game_canvas)
         self.screen.blit(self.game_canvas, (0, 0))
         pygame.display.flip()
 
     def load_states(self):
+        """Load the MainMenu state."""
         main_menu_screen = MainMenu(self)
         self.state_stack.append(main_menu_screen)
 
     def get_events(self):
+        """Handle events like window close or key presses."""
         for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                self.running = False
-            elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+            if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
                 self.running = False
 
-            if isinstance(self.state_stack[-1], main_menu.MainMenu):
-                if self.state_stack[-1].singleplayer_button.is_clicked():
-                    self.state_stack[-1].enter_single_player()
-                elif self.state_stack[-1].multiplayer_button.is_clicked():
-                    print("Multiplayer")
+            if self.state_stack:
+                self.state_stack[-1].handle_events()
 
     def draw_text(self, screen: pygame.Surface, text: str, color: pygame.Color | tuple, x: int, y: int):
+        """Render text on the screen."""
         text_surface = self.h1_font.render(text, True, color)
         text_rect = text_surface.get_rect()
         text_rect.center = (x, y)
         screen.blit(text_surface, text_rect)
 
 
-# Define Button class
-
+# Start the game
 if __name__ == '__main__':
     app = BomberManApp()
     app.run()
