@@ -14,10 +14,10 @@ class Player(pygame.sprite.Sprite):
         
         # Load and scale images for each direction
         self.images = {
-            "down": pygame.image.load("photos/p_1_down.png").convert_alpha(),
-            "up": pygame.image.load("photos/p_1_up.png").convert_alpha(),
-            "left": pygame.image.load("photos/p_1_left.png").convert_alpha(),
-            "right": pygame.image.load("photos/p_1_right.png").convert_alpha()
+            "down": pygame.image.load("photos/player_color/p_1_down.png").convert_alpha(),
+            "up": pygame.image.load("photos/player_color/p_1_up.png").convert_alpha(),
+            "left": pygame.image.load("photos/player_color/p_1_left.png").convert_alpha(),
+            "right": pygame.image.load("photos/player_color/p_1_right.png").convert_alpha()
         }
         
         for key in self.images:

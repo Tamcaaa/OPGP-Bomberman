@@ -34,9 +34,8 @@ class TestField(State):
         screen.blit(self.player.image, self.player.rect)
         
         self.bomb_group.draw(screen)
-        self.bomb_group.update(self.bomb_group)
+        self.bomb_group.update()
         self.bomb_group.draw(screen)
         
-
 
 

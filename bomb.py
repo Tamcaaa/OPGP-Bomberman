@@ -22,12 +22,12 @@ class Bomb(pygame.sprite.Sprite):
         # Add the bomb to the bomb group
         bomb_group.add(self)
     
-    def update(self, bomb_group):
+    def update(self):
         """Update method to check if the bomb should explode."""
         if time.time() >= self.fuse_time:
             self.explode()
     
-    def explode(self, bomb_group):
+    def explode(self):
         """Handles the bomb explosion and removes it from the game."""
         print("Bomb exploded!")  # Placeholder for explosion animation
         self.player.currentBomb += 1  # Allow the player to place another bomb
