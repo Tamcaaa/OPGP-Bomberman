@@ -1,10 +1,17 @@
 import pygame
 import config
+from bomb import Bomb
 
 
 class Player(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__()
+        global currentBomb  # Global variable access
+        self.currentBomb = 1  # Store in instance
+        self.maxBombs = 1
+        self.power = 1
+        
+        
         # Load and scale images for each direction
         self.images = {
             "down": pygame.image.load("photos/p_1_down.png").convert_alpha(),
@@ -12,6 +19,7 @@ class Player(pygame.sprite.Sprite):
             "left": pygame.image.load("photos/p_1_left.png").convert_alpha(),
             "right": pygame.image.load("photos/p_1_right.png").convert_alpha()
         }
+        
         for key in self.images:
             self.images[key] = pygame.transform.scale(self.images[key], (config.GRID_SIZE, config.GRID_SIZE))
 
@@ -19,6 +27,7 @@ class Player(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.topleft = (0, 0)  # Initial position
         self.move_timer = 0  # Timer for movement delay
+        self.rect.topleft = (0,0)
 
     def move(self, dx, dy, direction):
         """Move the player and update sprite based on direction."""
@@ -32,3 +41,11 @@ class Player(pygame.sprite.Sprite):
 
             self.image = self.images[direction]  # Update sprite direction
             self.move_timer = pygame.time.get_ticks()  # Reset move timer
+            
+            
+    def deployBomb(self, bomb_group):
+        if self.currentBomb > 0:
+            Bomb(self, bomb_group)  # Používame správnu triedu!
+            self.currentBomb -= 1  # Create bomb instance
+            
+        
