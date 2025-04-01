@@ -23,7 +23,7 @@ class TestField(State):
             self.player.move(0, -1, "up")
         if keys[pygame.K_s]:  # Move down
             self.player.move(0, 1, "down")
-        if keys[pygame.K_SPACE]:
+        if keys[pygame.K_SPACE]: # Place a bomb
             self.player.deployBomb(self.bomb_group)
 
 
