@@ -4,6 +4,7 @@ import config
 from states.state import State
 from player import Player
 from bomb import Bomb
+from bomb import Explosion
 
 
 class TestField(State):
@@ -12,6 +13,7 @@ class TestField(State):
         pygame.display.set_caption("BomberMan: TestField")
         self.player = Player()
         self.bomb_group = pygame.sprite.Group()
+        self.explosion_group = pygame.sprite.Group()
         
     def handle_events(self):
         keys = pygame.key.get_pressed()
@@ -24,7 +26,7 @@ class TestField(State):
         if keys[pygame.K_s]:  # Move down
             self.player.move(0, 1, "down")
         if keys[pygame.K_SPACE]: # Place a bomb
-            self.player.deployBomb(self.bomb_group)
+            self.player.deployBomb(self.bomb_group, self.explosion_group)
 
 
     def render(self, screen):
@@ -33,9 +35,12 @@ class TestField(State):
         pygame.draw.rect(screen, config.BLACK, (0, 0, config.SCREEN_WIDTH, config.SCREEN_HEIGHT), 1)
         screen.blit(self.player.image, self.player.rect)
         
-        self.bomb_group.draw(screen)
-        self.bomb_group.update()
-        self.bomb_group.draw(screen)
-        
+        # 🔥 Update explosions
+        self.bomb_group.update(self.explosion_group)
+        self.explosion_group.update()
 
+        # 🎨 Draw objects
+        self.bomb_group.draw(screen)
+        self.explosion_group.draw(screen)
+        
 

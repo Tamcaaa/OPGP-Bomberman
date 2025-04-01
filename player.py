@@ -43,9 +43,9 @@ class Player(pygame.sprite.Sprite):
             self.move_timer = pygame.time.get_ticks()  # Reset move timer
             
             
-    def deployBomb(self, bomb_group):
+    def deployBomb(self, bomb_group, explosion_group):
         if self.currentBomb > 0:
-            Bomb(self, bomb_group)  # Používame správnu triedu!
+            Bomb(self, bomb_group, explosion_group)  # Používame správnu triedu!
             self.currentBomb -= 1  # Create bomb instance
             
         
