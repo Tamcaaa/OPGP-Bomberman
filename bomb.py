@@ -40,15 +40,23 @@ class Explosion(pygame.sprite.Sprite):
         super().__init__()
         
         # Load explosion image
-        self.image = pygame.image.load("photos/explosion_a.png").convert_alpha()
-        self.image = pygame.transform.scale(self.image, (config.GRID_SIZE, config.GRID_SIZE))
-        
+        self.image_a = pygame.image.load("photos/explosion_a.png").convert_alpha()
+        self.image_c = pygame.image.load("photos/explosion_c.png").convert_alpha()
+
+        # Scale images
+        self.image_a = pygame.transform.scale(self.image_a, (config.GRID_SIZE, config.GRID_SIZE))
+        self.image_c = pygame.transform.scale(self.image_c, (config.GRID_SIZE, config.GRID_SIZE))
+
+        # Set initial image
+        self.image = self.image_a  # Corrected: Assign self.image properly
         self.rect = self.image.get_rect()
         self.rect.topleft = (x, y)
-        
+
+        # Timing for switching images
         self.start_time = time.time()
-        self.lifetime = 0.5  # Explosion lasts for 0.5 seconds
-        
+        self.switch_time = self.start_time + 0.25  # Switch to explosion_c after 0.25s
+        self.lifetime = 0.5  # Remove after 0.5s
+
         explosion_group.add(self)  # Add explosion to group
         
         self.create_explosions(x, y, explosion_group, explosion_range)
@@ -65,5 +73,11 @@ class Explosion(pygame.sprite.Sprite):
 
     def update(self):
         """Remove explosion after lifetime expires."""
-        if time.time() - self.start_time > self.lifetime:
-            self.kill()  # Remove explosion
+        current_time = time.time()
+        # Switch to explosion_c after 0.25s
+        if current_time >= self.switch_time and self.image != self.image_c:
+            self.image = self.image_c
+
+        # Remove explosion after lifetime expires
+        if current_time - self.start_time > self.lifetime:
+            self.kill()
