@@ -1,70 +1,98 @@
 import pygame
 import config
-import time
+import os
 from bomb import Bomb
-from config import *
-from states.game_over import GameOver  # Import the GameOver class
+
 
 class Player(pygame.sprite.Sprite):
-    def __init__(self,game):
+    def __init__(self, game, player_num=1):
         super().__init__()
         self.game = game
-        global currentBomb  # Global variable access
-        self.lives = PLAYER_LIVES
-        self.last_hit_time = 0
-        self.hit_cooldown = 1.0
-        self.currentBomb = 1  # Store in instance
-        self.maxBombs = 1
-        self.power = 1
+        self.player_num = player_num  # 1 or 2
+        self.photos_dir = os.path.join("photos", "player_color")
 
-        # Load and scale images for each direction
-        self.images = {
-            "down": pygame.image.load("photos/player_color/p_1_down.png").convert_alpha(),
-            "up": pygame.image.load("photos/player_color/p_1_up.png").convert_alpha(),
-            "left": pygame.image.load("photos/player_color/p_1_left.png").convert_alpha(),
-            "right": pygame.image.load("photos/player_color/p_1_right.png").convert_alpha()
+        # Load all directional sprites
+        self.sprites = {
+            "up": self.load_scaled_sprite(f"p_{player_num}_up.png"),
+            "down": self.load_scaled_sprite(f"p_{player_num}_down.png"),
+            "left": self.load_scaled_sprite(f"p_{player_num}_left.png"),
+            "right": self.load_scaled_sprite(f"p_{player_num}_right.png")
         }
 
-        for key in self.images:
-            self.images[key] = pygame.transform.scale(self.images[key], (config.GRID_SIZE, config.GRID_SIZE))
-
-        self.image = self.images["down"]  # Default direction image
+        # Set initial sprite and position
+        self.direction = "down"
+        self.image = self.sprites[self.direction]
         self.rect = self.image.get_rect()
-        self.rect.topleft = (0, 0)  # Initial position
-        self.move_timer = 0  # Timer for movement delay
-        self.rect.topleft = (0,0)
+
+        # Set initial position based on player number
+        if player_num == 1:
+            self.rect.topleft = (config.GRID_SIZE, config.GRID_SIZE)
+        else:
+            self.rect.topleft = (config.SCREEN_WIDTH - 2 * config.GRID_SIZE,
+                                 config.SCREEN_HEIGHT - 2 * config.GRID_SIZE)
+
+        # Player properties
+        self.speed = config.MOVE_SPEED
+        self.lives = config.PLAYER_LIVES
+        self.power = 2  # Bomb explosion range
+        self.maxBombs = 3
+        self.currentBomb = 0
+        self.last_move_time = 0
+        self.bomb_key_pressed = False
+
+    def load_scaled_sprite(self, filename):
+        """Load and scale a sprite image."""
+        image = pygame.image.load(os.path.join(self.photos_dir, filename)).convert_alpha()
+        return pygame.transform.scale(image, (config.GRID_SIZE, config.GRID_SIZE))
 
     def move(self, dx, dy, direction):
-        """Move the player and update sprite based on direction."""
-        if pygame.time.get_ticks() - self.move_timer > config.MOVE_SPEED:
-            self.rect.x += dx * config.GRID_SIZE
-            self.rect.y += dy * config.GRID_SIZE
+        """Move the player in the specified direction."""
+        current_time = pygame.time.get_ticks()
+        if current_time - self.last_move_time < 1000 / self.speed:
+            return
 
-            # Boundary correction
-            self.rect.x = max(0, min(self.rect.x, config.SCREEN_WIDTH - config.GRID_SIZE))
-            self.rect.y = max(0, min(self.rect.y, config.SCREEN_HEIGHT - config.GRID_SIZE))
+        # Update direction and sprite
+        if direction != self.direction:
+            self.direction = direction
+            self.image = self.sprites[self.direction]
 
-            self.image = self.images[direction]  # Update sprite direction
-            self.move_timer = pygame.time.get_ticks()  # Reset move timer
-            
+        # Calculate new position
+        new_x = self.rect.x + dx * config.GRID_SIZE
+        new_y = self.rect.y + dy * config.GRID_SIZE
+
+        # Boundary checking
+        if 0 <= new_x <= config.SCREEN_WIDTH - config.GRID_SIZE:
+            self.rect.x = new_x
+        if 0 <= new_y <= config.SCREEN_HEIGHT - config.GRID_SIZE:
+            self.rect.y = new_y
+
+        self.last_move_time = current_time
+
     def deployBomb(self, bomb_group, explosion_group):
-        if self.currentBomb > 0:
-            Bomb(self, bomb_group, explosion_group)  # Use the correct Bomb class
-            self.currentBomb -= 1  # Create bomb instance  
-          
-    def enter_game_over(self):
-        """Switch to the Game Over state when the player loses all lives."""
-        from states.game_over import GameOver  # Import here to avoid circular import
-        new_state = GameOver(self.game)
-        new_state.enter_state()
-        
-    def loseLife(self):
-        self.lives -= 1
-        if self.lives == 0:
-            self.enter_game_over()  # Game Over when no lives are left
-    
+        """Place a bomb at the player's current position if allowed."""
+        if self.currentBomb < self.maxBombs:
+            Bomb(self, bomb_group, explosion_group)
+            self.currentBomb += 1
+            return True
+        return False
+
+    def handle_bomb_placement(self, bomb_group, explosion_group, key_pressed):
+        """
+        Handle bomb placement with key press/release detection to prevent rapid firing.
+        Returns True if bomb was placed.
+        """
+        if key_pressed:
+            if not self.bomb_key_pressed:  # Only place bomb on initial press
+                self.bomb_key_pressed = True
+                return self.deployBomb(bomb_group, explosion_group)
+        else:
+            self.bomb_key_pressed = False
+        return False
+
     def take_lives(self):
-        current_time = time.time()
-        if current_time - self.last_hit_time >= self.hit_cooldown:
-            self.loseLife()
-            self.last_hit_time = current_time
+        """Reduce player's lives by 1 and handle game over if needed."""
+        self.lives -= 1
+        if self.lives <= 0:
+            from states.game_over import GameOver
+            new_state = GameOver(self.game)
+            new_state.enter_state()
