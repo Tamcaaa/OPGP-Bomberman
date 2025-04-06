@@ -1,7 +1,9 @@
 import pygame
 import config
 import os
+import time
 from bomb import Bomb
+from states.test_field import *
 
 
 class Player(pygame.sprite.Sprite):
@@ -39,6 +41,13 @@ class Player(pygame.sprite.Sprite):
         self.currentBomb = 0
         self.last_move_time = 0
         self.bomb_key_pressed = False
+        self.invincible = False
+        self.last_hit_time = 0
+        self.invincibility_duration = 2
+        self.blink = False
+        self.blink_timer = 0
+        self.blink_interval = 0.2
+        self.is_dead = False
 
     def load_scaled_sprite(self, filename):
         """Load and scale a sprite image."""
@@ -81,6 +90,9 @@ class Player(pygame.sprite.Sprite):
         Handle bomb placement with key press/release detection to prevent rapid firing.
         Returns True if bomb was placed.
         """
+        if self.currentBomb >= self.maxBombs:
+            return False
+
         if key_pressed:
             if not self.bomb_key_pressed:  # Only place bomb on initial press
                 self.bomb_key_pressed = True
@@ -92,7 +104,44 @@ class Player(pygame.sprite.Sprite):
     def take_lives(self):
         """Reduce player's lives by 1 and handle game over if needed."""
         self.lives -= 1
-        if self.lives <= 0:
-            from states.game_over import GameOver
-            new_state = GameOver(self.game)
-            new_state.enter_state()
+        if self.lives < 0:  # Prevent lives from going below 0
+            self.lives = 0
+
+        if self.lives == 0:
+            self.is_dead = True
+            self.currentBomb = 0  # Reset bomb counter upon death
+            self.game.all_sprites.remove(self)  # Remove from all sprite groups
+            self.image = pygame.Surface((config.GRID_SIZE, config.GRID_SIZE))  # Make the player invisible
+            self.image.set_alpha(0)  # Make the player transparent
+            self.rect = self.image.get_rect()  # Update rect to match invisible image
+
+            if self.player_num == 1:
+                self.game.player1 = None  # Player 1 is removed
+            else:
+                self.game.player2 = None  # Player 2 is removed
+
+            # Check if both players are dead
+            if self.game.player1 is None and self.game.player2 is None:
+                from states.game_over import GameOver
+                new_state = GameOver(self.game)
+                new_state.enter_state()
+                
+             
+    def update(self):
+        # Reset invincibility after cooldown
+        now = time.time()
+        if self.invincible and now - self.last_hit_time > self.invincibility_duration:
+            self.invincible = False
+            self.blink = False
+
+
+    def hit_by_explosion(self):
+        now = time.time()
+    
+        # Only react if the player isn't currently invincible
+        if not self.invincible:
+            self.invincible = True  # Make the player invincible temporarily
+            self.last_hit_time = now
+            self.blink = True  # Start blinking effect
+
+            self.take_lives()

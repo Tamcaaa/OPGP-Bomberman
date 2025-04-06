@@ -32,7 +32,7 @@ class Bomb(pygame.sprite.Sprite):
         """Handles the bomb explosion and removes it from the game."""
         print("Bomb exploded!")  # Placeholder for explosion animation
         Explosion(self.rect.x, self.rect.y, explosion_group, self.range)
-        self.player.currentBomb += 1  # Allow the player to place another bomb
+        self.player.currentBomb -= 1  # Allow the player to place another bomb
         self.kill()  # Remove the bomb from the group
         
         
