@@ -22,7 +22,7 @@ Place bomb: Spacebar
       cd OPGP-Bomberman
   2. Install dependencies (if using poetry):
       poetry install
-  3. Run the game:
+  4. Run the game:
       poetry run python main.py
 
 ## 📄 License
