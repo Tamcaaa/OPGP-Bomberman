@@ -2,7 +2,7 @@
 
 3. ročník - OPGP - Ročníkový projekt
 
-A simple Bomberman-style game developed as part of a school project. Players navigate a grid, place bombs, and try to defeat enemies or each other in classic arcade-style gameplay.
+  A simple Bomberman-style game developed as part of a school project. Players navigate a grid, place bombs, and try to defeat enemies or each other in classic arcade-style gameplay.
 
 ## 🧩 Features
   - Classic Bomberman gameplay
