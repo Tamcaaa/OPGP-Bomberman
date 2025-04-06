@@ -20,9 +20,11 @@ Place bomb: Spacebar
       ```bash
       git clone https://github.com/your-username/OPGP-Bomberman.git
       cd OPGP-Bomberman
-  2. Install dependencies (if using poetry):
+  2. Install dependencies:
+      ```bash
       poetry install
   4. Run the game:
+      ```bash
       poetry run python main.py
 
 ## 📄 License
