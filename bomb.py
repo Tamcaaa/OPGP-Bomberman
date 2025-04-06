@@ -1,6 +1,7 @@
 import pygame
 import config
 import time
+from config import FUSE_TIME
 
 class Bomb(pygame.sprite.Sprite):
     def __init__(self, player, bomb_group, explosion_group):
@@ -17,7 +18,7 @@ class Bomb(pygame.sprite.Sprite):
         # Bomb properties
         self.range = player.power  # Explosion range
         self.player = player
-        self.fuse_time = time.time() + 3  # Bomb explodes after 3 seconds
+        self.fuse_time = time.time() + FUSE_TIME  # Bomb explodes after 3 seconds
         self.explosion_group = explosion_group
         # Add the bomb to the bomb group
         bomb_group.add(self)
