@@ -14,12 +14,12 @@ class MainMenu(State):
                                           config.SCREEN_HEIGHT // 2 - config.BUTTON_HEIGHT // 2,
                                           config.BUTTON_WIDTH,
                                           config.BUTTON_HEIGHT,
-                                          "Singleplayer")
+                                          "Local")
         self.multiplayer_button = Button(config.SCREEN_WIDTH // 2 + 20,
                                          config.SCREEN_HEIGHT // 2 - config.BUTTON_HEIGHT // 2,
                                          config.BUTTON_WIDTH,
                                          config.BUTTON_HEIGHT,
-                                         "Multiplayer")
+                                         "Online")
 
     def handle_events(self):
         """Handle button clicks."""
