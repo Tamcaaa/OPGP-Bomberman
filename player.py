@@ -33,12 +33,11 @@ class Player(pygame.sprite.Sprite):
             self.rect.topleft = (25 * config.GRID_SIZE, 13 * config.GRID_SIZE)
 
         # Player properties
-        self.speed = config.MOVE_SPEED
+        self.speed = config.MOVE_SPEED  # Now in pixels per second
         self.lives = config.PLAYER_LIVES
         self.power = 2  # Bomb explosion range
         self.maxBombs = 3
         self.currentBomb = 0
-        self.last_move_time = 0
         self.bomb_key_pressed = False
         self.invincible = False
         self.last_hit_time = 0
@@ -47,34 +46,56 @@ class Player(pygame.sprite.Sprite):
         self.blink_timer = 0
         self.blink_interval = 0.2
         self.is_dead = False
+        self.velocity = pygame.math.Vector2(0, 0)
+        self.moving = {
+            "up": False,
+            "down": False,
+            "left": False,
+            "right": False
+        }
 
     def load_scaled_sprite(self, filename):
         """Load and scale a sprite image."""
         image = pygame.image.load(os.path.join(self.photos_dir, filename)).convert_alpha()
         return pygame.transform.scale(image, (config.GRID_SIZE, config.GRID_SIZE))
 
-    def move(self, dx, dy, direction):
-        """Move the player in the specified direction."""
-        current_time = pygame.time.get_ticks()
-        if current_time - self.last_move_time < 1000 / self.speed:
-            return
+    def update_movement(self, dt):
+        """Update player position based on velocity and delta time."""
+        # Reset velocity
+        self.velocity.x = 0
+        self.velocity.y = 0
 
-        # Update direction and sprite
-        if direction != self.direction:
-            self.direction = direction
-            self.image = self.sprites[self.direction]
+        # Calculate velocity based on movement keys
+        if self.moving["left"]:
+            self.velocity.x = -1
+            self.direction = "left"
+            self.image = self.sprites["left"]
+        if self.moving["right"]:
+            self.velocity.x = 1
+            self.direction = "right"
+            self.image = self.sprites["right"]
+        if self.moving["up"]:
+            self.velocity.y = -1
+            self.direction = "up"
+            self.image = self.sprites["up"]
+        if self.moving["down"]:
+            self.velocity.y = 1
+            self.direction = "down"
+            self.image = self.sprites["down"]
 
-        # Calculate new position
-        new_x = self.rect.x + dx * config.GRID_SIZE
-        new_y = self.rect.y + dy * config.GRID_SIZE
+        # Normalize diagonal movement
+        if self.velocity.length() > 0:
+            self.velocity = self.velocity.normalize() * self.speed * dt
+
+        # Update position
+        new_x = self.rect.x + self.velocity.x
+        new_y = self.rect.y + self.velocity.y
 
         # Boundary checking
         if 0 <= new_x <= config.SCREEN_WIDTH - config.GRID_SIZE:
             self.rect.x = new_x
         if 0 <= new_y <= config.SCREEN_HEIGHT - config.GRID_SIZE:
             self.rect.y = new_y
-
-        self.last_move_time = current_time
 
     def deployBomb(self, bomb_group, explosion_group):
         """Place a bomb at the player's current position if allowed."""
@@ -124,8 +145,7 @@ class Player(pygame.sprite.Sprite):
                 from states.game_over import GameOver
                 new_state = GameOver(self.game)
                 new_state.enter_state()
-                
-             
+
     def update(self):
         # Reset invincibility after cooldown
         now = time.time()
@@ -133,10 +153,9 @@ class Player(pygame.sprite.Sprite):
             self.invincible = False
             self.blink = False
 
-
     def hit_by_explosion(self):
         now = time.time()
-    
+
         # Only react if the player isn't currently invincible
         if not self.invincible:
             self.invincible = True  # Make the player invincible temporarily
