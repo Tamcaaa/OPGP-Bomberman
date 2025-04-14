@@ -52,7 +52,6 @@ class TestField(State):
 
     def render(self, screen):
         screen.fill((255, 255, 255))
-        self.game.draw_text(screen, "BOMBER-MAN", config.BLACK, config.SCREEN_WIDTH // 2, config.SCREEN_HEIGHT // 4)
     
         # Update and draw bombs/explosions
         self.bomb_group.update(self.explosion_group)
