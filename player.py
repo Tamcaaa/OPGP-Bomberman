@@ -32,8 +32,10 @@ class Player(pygame.sprite.Sprite):
         else:
             self.rect.topleft = (25 * config.GRID_SIZE, 13 * config.GRID_SIZE)
 
+
         # Player properties
         self.speed = config.MOVE_SPEED
+        
         self.lives = config.PLAYER_LIVES
         self.power = 2  # Bomb explosion range
         self.maxBombs = 3
