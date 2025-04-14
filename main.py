@@ -20,9 +20,9 @@ class BomberManApp:
         clock = pygame.time.Clock()
         self.running = True
         while self.running:
+            clock.tick(60)  # FPS limit
             self.get_events()  # Handle input events
             self.render()  # Render current state
-            clock.tick(120)  # FPS limit
 
     def get_dt(self):
         """Calculate delta time."""
@@ -48,7 +48,7 @@ class BomberManApp:
                 self.running = False
 
             if self.state_stack:
-                self.state_stack[-1].handle_events()
+                self.state_stack[-1].handle_events(event)
 
     def draw_text(self, screen: pygame.Surface, text: str, color: pygame.Color | tuple, x: int, y: int):
         """Render text on the screen."""

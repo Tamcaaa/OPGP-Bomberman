@@ -15,18 +15,19 @@ class TestField(State):
         self.bomb_group = pygame.sprite.Group()
         self.explosion_group = pygame.sprite.Group()
         
-    def handle_events(self):
-        keys = pygame.key.get_pressed()
-        if keys[pygame.K_a]:  # Move left
-            self.player.move(-1, 0, "left")
-        if keys[pygame.K_d]:  # Move right
-            self.player.move(1, 0, "right")
-        if keys[pygame.K_w]:  # Move up
-            self.player.move(0, -1, "up")
-        if keys[pygame.K_s]:  # Move down
-            self.player.move(0, 1, "down")
-        if keys[pygame.K_SPACE]: # Place a bomb
-            self.player.deployBomb(self.bomb_group, self.explosion_group)
+    def handle_events(self,event):
+        if pygame.time.get_ticks() - self.player.move_timer >= self.player.move_cooldown:
+            if pygame.KEYDOWN == event.type:
+                if event.key == pygame.K_a:  # Move left
+                    self.player.move(-1, 0, "left")
+                elif event.key == pygame.K_d:  # Move right
+                    self.player.move(1, 0, "right")
+                elif event.key == pygame.K_w:  # Move up
+                    self.player.move(0, -1, "up")
+                elif event.key == pygame.K_s:  # Move down
+                    self.player.move(0, 1, "down")
+                if event.key == pygame.K_SPACE: # Place a bomb
+                    self.player.deploy_bomb(self.bomb_group, self.explosion_group)
 
 
     def render(self, screen):

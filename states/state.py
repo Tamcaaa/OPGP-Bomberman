@@ -6,7 +6,7 @@ class State:
     def render(self, screen):
         pass
 
-    def handle_events(self):
+    def handle_events(self,event):
         pass
 
     def enter_state(self):

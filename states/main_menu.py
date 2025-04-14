@@ -21,7 +21,7 @@ class MainMenu(State):
                                          config.BUTTON_HEIGHT,
                                          "Multiplayer")
 
-    def handle_events(self):
+    def handle_events(self,event):
         """Handle button clicks."""
         if self.singleplayer_button.is_clicked():
             self.enter_single_player()
