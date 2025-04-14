@@ -2,12 +2,17 @@ import pygame.image, os
 import config
 from states.state import State
 from states.test_field import TestField
-
+pygame.mixer.init()
 class MainMenu(State):
     def __init__(self, game):
         State.__init__(self, game)
         pygame.display.set_caption("BomberMan: MainMenu")
         self.bg_image = pygame.image.load(os.path.join(game.photos_dir, "bg.png"))
+        
+        sounds_dir = os.path.join(os.path.dirname(__file__), "..", "sounds")
+        pygame.mixer.music.load(os.path.join(sounds_dir, "title.mid"))
+        pygame.mixer.music.set_volume(0.5)
+        pygame.mixer.music.play(-1)
 
         # Create buttons
         self.singleplayer_button = Button(config.SCREEN_WIDTH // 2 - config.BUTTON_WIDTH - 20,
@@ -24,8 +29,10 @@ class MainMenu(State):
     def handle_events(self):
         """Handle button clicks."""
         if self.singleplayer_button.is_clicked():
+            pygame.mixer.music.stop()
             self.enter_single_player()
         elif self.multiplayer_button.is_clicked():
+            pygame.mixer.music.stop()
             print("Multiplayer")
 
     def enter_single_player(self):

@@ -21,7 +21,7 @@ class TestField(State):
         self.explosion_group = pygame.sprite.Group()
         self.heart_image = pygame.image.load("photos/heart.png").convert_alpha()
         self.heart_image = pygame.transform.scale(self.heart_image, (32, 32))
-
+    
     def handle_events(self):
         keys = pygame.key.get_pressed()
 
@@ -43,7 +43,6 @@ class TestField(State):
 
     def render(self, screen):
         screen.fill((255, 255, 255))
-        self.game.draw_text(screen, "BOMBER-MAN", config.BLACK, config.SCREEN_WIDTH // 2, config.SCREEN_HEIGHT // 4)
 
         # Update movement with delta time
         dt = self.game.dt
