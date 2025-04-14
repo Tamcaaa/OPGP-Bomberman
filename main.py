@@ -2,7 +2,6 @@ import time, os, pygame, config
 from states.main_menu import MainMenu  # Import MainMenu state
 
 
-
 class BomberManApp:
     def __init__(self):
         pygame.init()  # Initialize Pygame
@@ -11,19 +10,20 @@ class BomberManApp:
         self.font = pygame.font.Font(None, config.FONT_SIZE)
         self.h1_font = pygame.font.Font(None, config.H1_SIZE)
         self.state_stack = []
-        self.dt, self.prev_time = 0, 0
+        self.dt, self.prev_time = 0, time.time()  # Initialize with current time
         self.running = False
         self.photos_dir = os.path.join("photos")
         self.load_states()  # Load initial states
-        
-        self.all_sprites = pygame.sprite.Group()  
+
+        self.all_sprites = pygame.sprite.Group()
         self.player1 = None
         self.player2 = None
-        
+
     def run(self):
         clock = pygame.time.Clock()
         self.running = True
         while self.running:
+            self.get_dt()  # Update delta time
             self.get_events()  # Handle input events
             self.render()  # Render current state
             clock.tick(120)  # FPS limit
@@ -60,7 +60,7 @@ class BomberManApp:
         text_rect = text_surface.get_rect()
         text_rect.center = (x, y)
         screen.blit(text_surface, text_rect)
-    
+
     def check_for_death(self):
         """Check if either player has died and handle removal."""
         if self.player1 and self.player1.is_dead:
@@ -71,8 +71,9 @@ class BomberManApp:
         # If both players are dead, end the game
         if self.player1 is None and self.player2 is None:
             from states.game_over import GameOver
-            new_state = GameOver(self)  # You can modify this to display the game over screen
+            new_state = GameOver(self)
             new_state.enter_state()
+
 
 # Start the game
 if __name__ == '__main__':
