@@ -14,6 +14,11 @@ class MainMenu(State):
         pygame.mixer.music.set_volume(0.5)
         pygame.mixer.music.play(-1)
 
+        sounds_dir = os.path.join(os.path.dirname(__file__), "..", "sounds")
+        pygame.mixer.music.load(os.path.join(sounds_dir, "title.mid"))
+        pygame.mixer.music.set_volume(0.5)
+        pygame.mixer.music.play(-1)
+
         # Create buttons
         self.singleplayer_button = Button(config.SCREEN_WIDTH // 2 - config.BUTTON_WIDTH - 20,
                                           config.SCREEN_HEIGHT // 2 - config.BUTTON_HEIGHT // 2,
@@ -39,7 +44,7 @@ class MainMenu(State):
         """Switch to single-player state."""
         new_state = TestField(self.game)
         new_state.enter_state()
-    
+
     def render(self, screen):
         """Draw the main menu screen."""
         screen.blit(self.bg_image, (0, 0))

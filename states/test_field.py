@@ -43,15 +43,6 @@ class TestField(State):
 
     def render(self, screen):
         screen.fill((255, 255, 255))
-        self.game.draw_text(screen, "BOMBER-MAN", config.BLACK, config.SCREEN_WIDTH // 2, config.SCREEN_HEIGHT // 4)
-
-        # Update movement with delta time
-        dt = self.game.dt
-        if self.player1 and not self.player1.is_dead:
-            self.player1.update_movement(dt)
-        if self.player2 and not self.player2.is_dead:
-            self.player2.update_movement(dt)
-
         # Update and draw bombs/explosions
         self.bomb_group.update(self.explosion_group)
         self.explosion_group.update()

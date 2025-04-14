@@ -28,7 +28,7 @@ class Player(pygame.sprite.Sprite):
 
         # Set initial position based on player number
         if player_num == 1:
-            self.rect.topleft = (1 * config.GRID_SIZE, 1 * config.GRID_SIZE)
+            self.rect.topleft = (1*config.GRID_SIZE, 1*config.GRID_SIZE)
         else:
             self.rect.topleft = (25 * config.GRID_SIZE, 13 * config.GRID_SIZE)
 
