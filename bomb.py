@@ -3,18 +3,19 @@ import config
 import time
 from config import FUSE_TIME
 
+
 class Bomb(pygame.sprite.Sprite):
     def __init__(self, player, bomb_group, explosion_group):
         super().__init__()
-        
+
         # Load and scale the bomb image
         self.image = pygame.image.load("photos/bomb.png").convert_alpha()
         self.image = pygame.transform.scale(self.image, (config.GRID_SIZE, config.GRID_SIZE))
-        
+
         # Set bomb position to player's current position
         self.rect = self.image.get_rect()
         self.rect.topleft = player.rect.topleft
-        
+
         # Bomb properties
         self.range = player.power  # Explosion range
         self.player = player
@@ -22,24 +23,24 @@ class Bomb(pygame.sprite.Sprite):
         self.explosion_group = explosion_group
         # Add the bomb to the bomb group
         bomb_group.add(self)
-    
+
     def update(self, explosion_group):
         """Update method to check if the bomb should explode."""
         if time.time() >= self.fuse_time:
             self.explode(explosion_group)
-    
+
     def explode(self, explosion_group):
         """Handles the bomb explosion and removes it from the game."""
         print("Bomb exploded!")  # Placeholder for explosion animation
         Explosion(self.rect.x, self.rect.y, explosion_group, self.range)
         self.player.currentBomb -= 1  # Allow the player to place another bomb
         self.kill()  # Remove the bomb from the group
-        
-        
+
+
 class Explosion(pygame.sprite.Sprite):
     def __init__(self, x, y, explosion_group, explosion_range):
         super().__init__()
-        
+
         # Load explosion image
         self.image_a = pygame.image.load("photos/explosion_a.png").convert_alpha()
         self.image_c = pygame.image.load("photos/explosion_c.png").convert_alpha()
@@ -59,7 +60,7 @@ class Explosion(pygame.sprite.Sprite):
         self.lifetime = 0.5  # Remove after 0.5s
 
         explosion_group.add(self)  # Add explosion to group
-        
+
         self.create_explosions(x, y, explosion_group, explosion_range)
 
     def create_explosions(self, x, y, explosion_group, explosion_range):
