@@ -2,7 +2,10 @@ import pygame
 import config
 import time
 from config import FUSE_TIME
+pygame.init()
+pygame.mixer.init()
 
+explosion_sound = pygame.mixer.Sound("sounds/explosion.mp3")
 
 class Bomb(pygame.sprite.Sprite):
     def __init__(self, player, bomb_group, explosion_group):
@@ -31,7 +34,8 @@ class Bomb(pygame.sprite.Sprite):
 
     def explode(self, explosion_group):
         """Handles the bomb explosion and removes it from the game."""
-        print("Bomb exploded!")  # Placeholder for explosion animation
+        print("Bomb exploded!") # Placeholder for explosion animation
+        explosion_sound.play()
         Explosion(self.rect.x, self.rect.y, explosion_group, self.range)
         self.player.currentBomb -= 1  # Allow the player to place another bomb
         self.kill()  # Remove the bomb from the group
