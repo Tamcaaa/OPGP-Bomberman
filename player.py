@@ -4,8 +4,11 @@ import os
 import time
 from bomb import Bomb
 from states.test_field import *
-
-
+pygame.init()
+pygame.mixer.init()
+game_over_sound = pygame.mixer.Sound("sounds/game_over.wav")
+die_sound = pygame.mixer.Sound("sounds/die.wav")
+walk_sound = pygame.mixer.Sound("sounds/walk.wav")
 class Player(pygame.sprite.Sprite):
     def __init__(self, game, player_num=1):
         super().__init__()
@@ -76,7 +79,7 @@ class Player(pygame.sprite.Sprite):
             self.rect.y = new_y
 
         self.last_move_time = current_time
-
+        walk_sound.play()
     def deployBomb(self, bomb_group, explosion_group):
         """Place a bomb at the player's current position if allowed."""
         if self.currentBomb < self.maxBombs:
@@ -114,7 +117,7 @@ class Player(pygame.sprite.Sprite):
             self.image = pygame.Surface((config.GRID_SIZE, config.GRID_SIZE))  # Make the player invisible
             self.image.set_alpha(0)  # Make the player transparent
             self.rect = self.image.get_rect()  # Update rect to match invisible image
-
+            die_sound.play()
             if self.player_num == 1:
                 self.game.player1 = None  # Player 1 is removed
             else:
@@ -125,6 +128,8 @@ class Player(pygame.sprite.Sprite):
                 from states.game_over import GameOver
                 new_state = GameOver(self.game)
                 new_state.enter_state()
+
+                game_over_sound.play()
 
     def update(self):
         # Reset invincibility after cooldown
