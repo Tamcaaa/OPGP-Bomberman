@@ -6,11 +6,18 @@ from player import Player
 
 
 class TestField(State):
-    # In test_field.py, modify the __init__ method:
-    # In test_field.py
     def __init__(self, game):
         State.__init__(self, game)
         pygame.display.set_caption("BomberMan: TestField")
+        
+        # Initialize pygame mixer for background music
+        pygame.mixer.init()
+        
+        # Load and play background music
+        pygame.mixer.music.load("sounds/Boss Battle (BDS).mp3")
+        pygame.mixer.music.set_volume(0.5)  # Set volume to 50%, adjust as needed
+        pygame.mixer.music.play(-1, 0.0)  # Loop music indefinitely
+        
         self.player1 = Player(game, 1)  # Player 1 (WASD)
         self.player2 = Player(game, 2)  # Player 2 (Arrow keys)
         self.game.player1 = self.player1
@@ -84,6 +91,25 @@ class TestField(State):
             self.draw_player_lives(screen, self.player1, 10)  # Player 1 lives on left
         if self.player2:
             self.draw_player_lives(screen, self.player2, config.SCREEN_WIDTH - 120)
+
+        # Check if both players are dead and stop music
+        if self.player1.is_dead and self.player2.is_dead:
+            pygame.mixer.music.stop()  # Stop the current background music
+            self.play_game_over_music()  # Play "Game Over" music
+            self.show_game_over(screen)  # Show game over screen
+
+    def play_game_over_music(self):
+        """Play the 'Game Over' music when both players die."""
+        pygame.mixer.music.load("sounds/19 Game Over.mp3")  # Load the "Game Over" music
+        pygame.mixer.music.set_volume(0.5)  # Set volume to 50%, adjust as needed
+        pygame.mixer.music.play(0, 0.0)  # Play the "Game Over" music once
+
+    def show_game_over(self, screen):
+        """Display the game over screen when both players die."""
+        game_over_text = self.game.font.render("GAME OVER", True, config.BLACK)
+        screen.blit(game_over_text, (config.SCREEN_WIDTH // 2 - game_over_text.get_width() // 2,
+                                    config.SCREEN_HEIGHT // 2 - game_over_text.get_height() // 2))
+        pygame.display.update()
 
     def draw_player_lives(self, screen, player, x_pos):
         """Draw lives for a specific player at the given x position."""
