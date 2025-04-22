@@ -1,4 +1,5 @@
 import pygame
+
 import config
 
 from states.state import State
@@ -14,28 +15,48 @@ class TestField(State):
         self.player = Player()
         self.bomb_group = pygame.sprite.Group()
         self.explosion_group = pygame.sprite.Group()
-        
-    def handle_events(self,event):
-        if pygame.time.get_ticks() - self.player.move_timer >= self.player.move_cooldown:
-            if pygame.KEYDOWN == event.type:
-                if event.key == pygame.K_a:  # Move left
-                    self.player.move(-1, 0, "left")
-                elif event.key == pygame.K_d:  # Move right
-                    self.player.move(1, 0, "right")
-                elif event.key == pygame.K_w:  # Move up
-                    self.player.move(0, -1, "up")
-                elif event.key == pygame.K_s:  # Move down
-                    self.player.move(0, 1, "down")
-                if event.key == pygame.K_SPACE: # Place a bomb
-                    self.player.deploy_bomb(self.bomb_group, self.explosion_group)
+        self.last_move_time = 0
+        self.move_cooldown = config.MOVE_COOLDOWN
+        self.queued_keys = []
+        self.MOVE_KEYS = [pygame.K_w, pygame.K_a, pygame.K_s, pygame.K_d]
+        self.MAX_QUEUE = 3
 
+    def handle_events(self, event):
+        if event.type == pygame.KEYDOWN:
+            if event.key in self.MOVE_KEYS:
+                if len(self.queued_keys) < self.MAX_QUEUE:
+                    self.queued_keys.append(event.key)
+            elif event.key == pygame.K_SPACE:
+                self.queued_keys.append(event.key)
+
+    def update(self):
+        now = pygame.time.get_ticks()
+        if self.queued_keys and now - self.last_move_time >= config.MOVE_COOLDOWN:
+            key = self.queued_keys.pop(0)
+            if key == pygame.K_w:
+                self.player.move(0, -1, "up")
+            elif key == pygame.K_s:
+                self.player.move(0, 1, "down")
+            elif key == pygame.K_a:
+                self.player.move(-1, 0, "left")
+            elif key == pygame.K_d:
+                self.player.move(1, 0, "right")
+            elif key == pygame.K_SPACE:
+                self.player.deploy_bomb(self.bomb_group, self.explosion_group)
+            self.last_move_time = now
 
     def render(self, screen):
         screen.fill((255, 255, 255))
+        for line in range((config.SCREEN_WIDTH // config.GRID_SIZE) + 1):
+            pygame.draw.line(screen, config.BLACK, (line * config.GRID_SIZE, 0),
+                             (line * config.GRID_SIZE, config.SCREEN_HEIGHT))
+        for line in range((config.SCREEN_HEIGHT // config.GRID_SIZE) + 1):
+            pygame.draw.line(screen, config.BLACK, (0, line * config.GRID_SIZE),
+                             (config.SCREEN_WIDTH, line * config.GRID_SIZE))
         self.game.draw_text(screen, "BOMBER-MAN", config.BLACK, config.SCREEN_WIDTH // 2, config.SCREEN_HEIGHT // 4)
         pygame.draw.rect(screen, config.BLACK, (0, 0, config.SCREEN_WIDTH, config.SCREEN_HEIGHT), 1)
         screen.blit(self.player.image, self.player.rect)
-        
+
         # 🔥 Update explosions
         self.bomb_group.update(self.explosion_group)
         self.explosion_group.update()
@@ -43,5 +64,3 @@ class TestField(State):
         # 🎨 Draw objects
         self.bomb_group.draw(screen)
         self.explosion_group.draw(screen)
-        
-

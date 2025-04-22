@@ -6,7 +6,6 @@ from bomb import Bomb
 class Player(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__()
-        global currentBomb  # Global variable access
         self.currentBomb = 1  # Store in instance
         self.maxBombs = 1
         self.power = 1
@@ -27,7 +26,6 @@ class Player(pygame.sprite.Sprite):
         self.rect.topleft = (0, 0)  # Initial position
         self.move_timer = 0  # Timer for movement delay
         self.rect.topleft = (0, 0)
-        self.move_cooldown = config.MOVE_TIMER
 
     def move(self, dx, dy, direction):
         """Move the player and update sprite based on direction."""
@@ -39,7 +37,7 @@ class Player(pygame.sprite.Sprite):
         self.rect.y = max(0, min(self.rect.y, config.SCREEN_HEIGHT - config.GRID_SIZE))
 
         self.image = self.images[direction]  # Update sprite direction
-        self.move_timer = pygame.time.get_ticks()  # Reset move timer
+
 
     def deploy_bomb(self, bomb_group, explosion_group):
         if self.currentBomb > 0:

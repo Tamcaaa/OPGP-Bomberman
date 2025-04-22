@@ -22,8 +22,12 @@ class BomberManApp:
         while self.running:
             clock.tick(60)  # FPS limit
             self.get_events()  # Handle input events
+            self.update()
             self.render()  # Render current state
 
+    def update(self):
+        current_stack = self.state_stack[-1]
+        current_stack.update()
     def get_dt(self):
         """Calculate delta time."""
         now = time.time()

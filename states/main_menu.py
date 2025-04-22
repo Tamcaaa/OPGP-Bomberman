@@ -28,6 +28,9 @@ class MainMenu(State):
         elif self.multiplayer_button.is_clicked():
             print("Multiplayer")
 
+    def update(self):
+        pass
+
     def enter_single_player(self):
         """Switch to single-player state."""
         new_state = TestField(self.game)
