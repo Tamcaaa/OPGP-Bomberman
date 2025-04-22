@@ -26,10 +26,10 @@ class Player(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.topleft = (0, 0)  # Initial position
         self.move_timer = 0  # Timer for movement delay
-        self.rect.topleft = (0, 0)
 
     def move(self, dx, dy, direction):
-        if tile_map[(self.rect.y + dy * config.GRID_SIZE)//30][(self.rect.x + dx * config.GRID_SIZE)//30] == 1:
+        if tile_map[max(0, min((self.rect.y + dy * config.GRID_SIZE), config.SCREEN_HEIGHT - config.GRID_SIZE)) // 30][
+            max(0, min((self.rect.x + dx * config.GRID_SIZE), config.SCREEN_WIDTH - config.GRID_SIZE)) // 30] == 1:
             self.image = self.images[direction]
             return
 
@@ -42,7 +42,6 @@ class Player(pygame.sprite.Sprite):
         self.rect.y = max(0, min(self.rect.y, config.SCREEN_HEIGHT - config.GRID_SIZE))
 
         self.image = self.images[direction]  # Update sprite direction
-
 
     def deploy_bomb(self, bomb_group, explosion_group):
         if self.currentBomb > 0:
