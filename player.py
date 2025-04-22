@@ -1,6 +1,7 @@
 import pygame
 import config
 from bomb import Bomb
+from maps.test_field_map import tile_map
 
 
 class Player(pygame.sprite.Sprite):
@@ -28,6 +29,10 @@ class Player(pygame.sprite.Sprite):
         self.rect.topleft = (0, 0)
 
     def move(self, dx, dy, direction):
+        if tile_map[(self.rect.y + dy * config.GRID_SIZE)//30][(self.rect.x + dx * config.GRID_SIZE)//30] == 1:
+            self.image = self.images[direction]
+            return
+
         """Move the player and update sprite based on direction."""
         self.rect.x += dx * config.GRID_SIZE
         self.rect.y += dy * config.GRID_SIZE

@@ -6,12 +6,14 @@ from states.state import State
 from player import Player
 from bomb import Bomb
 from bomb import Explosion
+from maps.test_field_map import tile_map
 
 
 class TestField(State):
     def __init__(self, game):
         State.__init__(self, game)
         pygame.display.set_caption("BomberMan: TestField")
+        self.game = game
         self.player = Player()
         self.bomb_group = pygame.sprite.Group()
         self.explosion_group = pygame.sprite.Group()
@@ -21,6 +23,8 @@ class TestField(State):
         self.MOVE_KEYS = [pygame.K_w, pygame.K_a, pygame.K_s, pygame.K_d]
         self.MAX_QUEUE = 3
 
+
+        # Draw environment only once
     def handle_events(self, event):
         if event.type == pygame.KEYDOWN:
             if event.key in self.MOVE_KEYS:
@@ -47,13 +51,22 @@ class TestField(State):
 
     def render(self, screen):
         screen.fill((255, 255, 255))
+
         for line in range((config.SCREEN_WIDTH // config.GRID_SIZE) + 1):
             pygame.draw.line(screen, config.BLACK, (line * config.GRID_SIZE, 0),
                              (line * config.GRID_SIZE, config.SCREEN_HEIGHT))
         for line in range((config.SCREEN_HEIGHT // config.GRID_SIZE) + 1):
             pygame.draw.line(screen, config.BLACK, (0, line * config.GRID_SIZE),
                              (config.SCREEN_WIDTH, line * config.GRID_SIZE))
-        self.game.draw_text(screen, "BOMBER-MAN", config.BLACK, config.SCREEN_WIDTH // 2, config.SCREEN_HEIGHT // 4)
+
+        for row_index, row in enumerate(tile_map):
+            for col_index, tile in enumerate(row):
+                if tile == 1:
+                    rect = pygame.Rect(col_index * config.GRID_SIZE, row_index * config.GRID_SIZE, config.GRID_SIZE,
+                                       config.GRID_SIZE)
+                    pygame.draw.rect(screen, config.BLACK, rect)
+
+
         pygame.draw.rect(screen, config.BLACK, (0, 0, config.SCREEN_WIDTH, config.SCREEN_HEIGHT), 1)
         screen.blit(self.player.image, self.player.rect)
 
