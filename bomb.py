@@ -60,8 +60,8 @@ class Explosion(pygame.sprite.Sprite):
 
         # Timing for switching images
         self.start_time = time.time()
-        self.switch_time = self.start_time + 0.25  # Switch to explosion_c after 0.25s
-        self.lifetime = 0.5  # Remove after 0.5s
+        self.switch_time = self.start_time + config.SWITCH_TIME_EXPLOSION # Switch to explosion_c after 0.25s
+        self.lifetime = config.BOMB_LIFETIME # Remove after 0.5s
 
         explosion_group.add(self)  # Add explosion to group
 
