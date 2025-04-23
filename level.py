@@ -1,13 +1,15 @@
 import pygame
 import config
+
 filename = "levels/level1.txt"
+
 
 def load_level(filename):
     try:
         level = []
         with open(filename, 'r') as f:
             lines = f.readlines()
-            
+
             for line in lines:
                 row = [int(cell) for cell in line.strip()]
                 level.append(row)
@@ -16,7 +18,8 @@ def load_level(filename):
         print(f"Error: {filename} not found.")
         raise
 
-# Funkcia na vykreslenie levelu
+
+#Funkcia na vykreslenie levelu
 def draw_level(screen, level):
     for row_idx, row in enumerate(level):
         for col_idx, tile in enumerate(row):

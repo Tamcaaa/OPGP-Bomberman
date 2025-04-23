@@ -4,8 +4,11 @@ import os
 import time
 from bomb import Bomb
 from states.test_field import *
-
-
+pygame.init()
+pygame.mixer.init()
+game_over_sound = pygame.mixer.Sound("sounds/game_over.wav")
+die_sound = pygame.mixer.Sound("sounds/die.wav")
+walk_sound = pygame.mixer.Sound("sounds/walk.wav")
 class Player(pygame.sprite.Sprite):
     def __init__(self, game, player_num=1):
         super().__init__()
@@ -33,7 +36,8 @@ class Player(pygame.sprite.Sprite):
             self.rect.topleft = (25 * config.GRID_SIZE, 13 * config.GRID_SIZE)
 
         # Player properties
-        self.speed = config.MOVE_SPEED  # Now in pixels per second
+        self.speed = config.MOVE_SPEED
+
         self.lives = config.PLAYER_LIVES
         self.power = config.POWER  # Bomb explosion range
         self.maxBombs = config.MAXBOMBS
@@ -46,50 +50,26 @@ class Player(pygame.sprite.Sprite):
         self.blink_timer = config.BLINK_TIMER
         self.blink_interval = config.BLINK_INTERVAL
         self.is_dead = False
-        self.velocity = pygame.math.Vector2(0, 0)
-        self.moving = {
-            "up": False,
-            "down": False,
-            "left": False,
-            "right": False
-        }
 
     def load_scaled_sprite(self, filename):
         """Load and scale a sprite image."""
         image = pygame.image.load(os.path.join(self.photos_dir, filename)).convert_alpha()
         return pygame.transform.scale(image, (config.GRID_SIZE, config.GRID_SIZE))
 
-    def update_movement(self, dt):
-        """Update player position based on velocity and delta time."""
-        # Reset velocity
-        self.velocity.x = 0
-        self.velocity.y = 0
+    def move(self, dx, dy, direction):
+        """Move the player in the specified direction."""
+        current_time = pygame.time.get_ticks()
+        if current_time - self.last_move_time < 1000 / self.speed:
+            return
 
-        # Calculate velocity based on movement keys
-        if self.moving["left"]:
-            self.velocity.x = -1
-            self.direction = "left"
-            self.image = self.sprites["left"]
-        if self.moving["right"]:
-            self.velocity.x = 1
-            self.direction = "right"
-            self.image = self.sprites["right"]
-        if self.moving["up"]:
-            self.velocity.y = -1
-            self.direction = "up"
-            self.image = self.sprites["up"]
-        if self.moving["down"]:
-            self.velocity.y = 1
-            self.direction = "down"
-            self.image = self.sprites["down"]
+        # Update direction and sprite
+        if direction != self.direction:
+            self.direction = direction
+            self.image = self.sprites[self.direction]
 
-        # Normalize diagonal movement
-        if self.velocity.length() > 0:
-            self.velocity = self.velocity.normalize() * self.speed * dt
-
-        # Update position
-        new_x = self.rect.x + self.velocity.x
-        new_y = self.rect.y + self.velocity.y
+        # Calculate new position
+        new_x = self.rect.x + dx * config.GRID_SIZE
+        new_y = self.rect.y + dy * config.GRID_SIZE
 
         # Boundary checking
         if 0 <= new_x <= config.SCREEN_WIDTH - config.GRID_SIZE:
@@ -97,6 +77,8 @@ class Player(pygame.sprite.Sprite):
         if 0 <= new_y <= config.SCREEN_HEIGHT - config.GRID_SIZE:
             self.rect.y = new_y
 
+        self.last_move_time = current_time
+        walk_sound.play()
     def deployBomb(self, bomb_group, explosion_group):
         """Place a bomb at the player's current position if allowed."""
         if self.currentBomb < self.maxBombs:
@@ -134,7 +116,7 @@ class Player(pygame.sprite.Sprite):
             self.image = pygame.Surface((config.GRID_SIZE, config.GRID_SIZE))  # Make the player invisible
             self.image.set_alpha(0)  # Make the player transparent
             self.rect = self.image.get_rect()  # Update rect to match invisible image
-
+            die_sound.play()
             if self.player_num == 1:
                 self.game.player1 = None  # Player 1 is removed
             else:
@@ -145,6 +127,8 @@ class Player(pygame.sprite.Sprite):
                 from states.game_over import GameOver
                 new_state = GameOver(self.game)
                 new_state.enter_state()
+
+                game_over_sound.play()
 
     def update(self):
         # Reset invincibility after cooldown
