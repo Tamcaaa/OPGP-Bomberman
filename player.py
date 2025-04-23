@@ -35,16 +35,16 @@ class Player(pygame.sprite.Sprite):
         # Player properties
         self.speed = config.MOVE_SPEED  # Now in pixels per second
         self.lives = config.PLAYER_LIVES
-        self.power = 2  # Bomb explosion range
-        self.maxBombs = 3
-        self.currentBomb = 0
+        self.power = config.POWER  # Bomb explosion range
+        self.maxBombs = config.MAXBOMBS
+        self.currentBomb = config.CURRENTBOMBS
         self.bomb_key_pressed = False
         self.invincible = False
-        self.last_hit_time = 0
-        self.invincibility_duration = 2
+        self.last_hit_time = config.LAST_HIT_TIME
+        self.invincibility_duration = config.INVICIBILITY_DURATION
         self.blink = False
-        self.blink_timer = 0
-        self.blink_interval = 0.2
+        self.blink_timer = config.BLINK_TIMER
+        self.blink_interval = config.BLINK_INTERVAL
         self.is_dead = False
         self.velocity = pygame.math.Vector2(0, 0)
         self.moving = {
