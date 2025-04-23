@@ -45,6 +45,7 @@ class Player(pygame.sprite.Sprite):
         self.bomb_key_pressed = False
         self.invincible = False
         self.last_hit_time = config.LAST_HIT_TIME
+        self.last_move_time = config.LAST_MOVE_TIME
         self.invincibility_duration = config.INVICIBILITY_DURATION
         self.blink = False
         self.blink_timer = config.BLINK_TIMER
