@@ -5,27 +5,50 @@ from maps.test_field_map import tile_map
 
 
 class Player(pygame.sprite.Sprite):
-    def __init__(self):
+    def __init__(self, player_id: int, starting_location: str | tuple, bomb_group, explosion_group):
         super().__init__()
-        self.currentBomb = 1  # Store in instance
+        self.currentBomb = 1
         self.maxBombs = 1
         self.power = 1
+        self.queued_keys = []
+        self.last_move_time = 0
+        self.bomb_group = bomb_group
+        self.explosion_group = explosion_group
 
-        # Load and scale images for each direction
+        if player_id not in config.PLAYER_CONFIG:
+            raise ValueError(f"Invalid player id {player_id}")
+
+        self.player_config = config.PLAYER_CONFIG[player_id]
+        self.move_keys = self.player_config["move_keys"]
+
+        # Dict of all images of player
         self.images = {
-            "down": pygame.image.load("photos/player_color/p_1_down.png").convert_alpha(),
-            "up": pygame.image.load("photos/player_color/p_1_up.png").convert_alpha(),
-            "left": pygame.image.load("photos/player_color/p_1_left.png").convert_alpha(),
-            "right": pygame.image.load("photos/player_color/p_1_right.png").convert_alpha()
+            key: pygame.transform.scale(img.convert_alpha(), (config.GRID_SIZE, config.GRID_SIZE))
+            for key, img in self.player_config["images"].items()
         }
-
-        for key in self.images:
-            self.images[key] = pygame.transform.scale(self.images[key], (config.GRID_SIZE, config.GRID_SIZE))
 
         self.image = self.images["down"]  # Default direction image
         self.rect = self.image.get_rect()
-        self.rect.topleft = (0, 0)  # Initial position
+        if isinstance(starting_location, str):
+            self.rect.topleft = config.SPAWN_POINTS[starting_location]
+        else:
+            self.rect.topleft = starting_location
         self.move_timer = 0  # Timer for movement delay
+
+    def handle_queued_keys(self, now):
+        if self.queued_keys and now - self.last_move_time >= config.MOVE_COOLDOWN:
+            key = self.queued_keys.pop(0)
+            if key == pygame.K_w or key == pygame.K_UP:
+                self.move(0, -1, "up")
+            elif key == pygame.K_s or key == pygame.K_DOWN:
+                self.move(0, 1, "down")
+            elif key == pygame.K_a or key == pygame.K_LEFT:
+                self.move(-1, 0, "left")
+            elif key == pygame.K_d or key == pygame.K_RIGHT:
+                self.move(1, 0, "right")
+            elif key == pygame.K_SPACE or key == pygame.K_KP0:
+                self.deploy_bomb(self.bomb_group, self.explosion_group)
+            self.last_move_time = now
 
     def move(self, dx, dy, direction):
         if tile_map[max(0, min((self.rect.y + dy * config.GRID_SIZE), config.SCREEN_HEIGHT - config.GRID_SIZE)) // 30][

@@ -1,6 +1,8 @@
-import time, os, pygame, config
-from states.main_menu import MainMenu  # Import MainMenu state
+import config
+import os
+import pygame
 
+from states.main_menu import MainMenu  # Import MainMenu state
 
 
 class BomberManApp:
@@ -28,11 +30,6 @@ class BomberManApp:
     def update(self):
         current_stack = self.state_stack[-1]
         current_stack.update()
-    def get_dt(self):
-        """Calculate delta time."""
-        now = time.time()
-        self.dt = now - self.prev_time
-        self.prev_time = now
 
     def render(self):
         """Render the game state."""

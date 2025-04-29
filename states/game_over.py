@@ -1,48 +1,45 @@
 import pygame.image, os
 import config
 from states.state import State
-from states.test_field import TestField
 
 
-class MainMenu(State):
+class GameOver(State):
     def __init__(self, game):
         State.__init__(self, game)
-        pygame.display.set_caption("BomberMan: MainMenu")
+        pygame.display.set_caption("BomberMan: GameOver")
         self.bg_image = pygame.image.load(os.path.join(game.photos_dir, "bg.png"))
 
         # Create buttons
-        self.singleplayer_button = Button(config.SCREEN_WIDTH // 2 - config.BUTTON_WIDTH - 20,
-                                          config.SCREEN_HEIGHT // 2 - config.BUTTON_HEIGHT // 2,
-                                          config.BUTTON_WIDTH,
-                                          config.BUTTON_HEIGHT,
-                                          "Singleplayer")
-        self.multiplayer_button = Button(config.SCREEN_WIDTH // 2 + 20,
-                                         config.SCREEN_HEIGHT // 2 - config.BUTTON_HEIGHT // 2,
-                                         config.BUTTON_WIDTH,
-                                         config.BUTTON_HEIGHT,
-                                         "Multiplayer")
+        self.retry_button = Button(config.SCREEN_WIDTH // 2 - config.BUTTON_WIDTH - 20,
+                                   config.SCREEN_HEIGHT // 2 - config.BUTTON_HEIGHT // 2,
+                                   config.BUTTON_WIDTH,
+                                   config.BUTTON_HEIGHT,
+                                   "Retry")
+        self.exit_button = Button(config.SCREEN_WIDTH // 2 + 20,
+                                  config.SCREEN_HEIGHT // 2 - config.BUTTON_HEIGHT // 2,
+                                  config.BUTTON_WIDTH,
+                                  config.BUTTON_HEIGHT,
+                                  "Exit")
 
-    def handle_events(self, event):
+    def handle_events(self,event):
         """Handle button clicks."""
-        if self.singleplayer_button.is_clicked():
+        if self.retry_button.is_clicked():
             self.enter_single_player()
-        elif self.multiplayer_button.is_clicked():
+        elif self.exit_button.is_clicked():
             print("Multiplayer")
-
-    def update(self):
-        pass
 
     def enter_single_player(self):
         """Switch to single-player state."""
+        from states.test_field import TestField
         new_state = TestField(self.game)
         new_state.enter_state()
 
     def render(self, screen):
         """Draw the main menu screen."""
         screen.blit(self.bg_image, (0, 0))
-        self.game.draw_text(screen, "BOMBER-MAN", config.BLACK, config.SCREEN_WIDTH // 2, config.SCREEN_HEIGHT // 4)
-        self.singleplayer_button.draw(screen)
-        self.multiplayer_button.draw(screen)
+        self.game.draw_text(screen, "GAME OVER", config.BLACK, config.SCREEN_WIDTH // 2, config.SCREEN_HEIGHT // 4)
+        self.retry_button.draw(screen)
+        self.exit_button.draw(screen)
 
 
 class Button:

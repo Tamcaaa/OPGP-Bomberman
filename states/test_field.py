@@ -14,40 +14,28 @@ class TestField(State):
         State.__init__(self, game)
         pygame.display.set_caption("BomberMan: TestField")
         self.game = game
-        self.player = Player()
+
         self.bomb_group = pygame.sprite.Group()
         self.explosion_group = pygame.sprite.Group()
-        self.last_move_time = 0
-        self.move_cooldown = config.MOVE_COOLDOWN
-        self.queued_keys = []
-        self.MOVE_KEYS = [pygame.K_w, pygame.K_a, pygame.K_s, pygame.K_d]
-        self.MAX_QUEUE = 3
 
+        self.player1 = Player(1, "spawn1", self.bomb_group, self.explosion_group)
+        self.player2 = Player(2, "spawn4", self.bomb_group, self.explosion_group)
 
-        # Draw environment only once
     def handle_events(self, event):
-        if event.type == pygame.KEYDOWN:
-            if event.key in self.MOVE_KEYS:
-                if len(self.queued_keys) < self.MAX_QUEUE:
-                    self.queued_keys.append(event.key)
-            elif event.key == pygame.K_SPACE:
-                self.queued_keys.append(event.key)
+
+        if not event.type == pygame.KEYDOWN:
+            return
+        if event.key in config.PLAYER1_MOVE_KEYS:
+            if len(self.player1.queued_keys) < config.MAX_QUEUE:
+                self.player1.queued_keys.append(event.key)
+        elif event.key in config.PLAYER2_MOVE_KEYS:
+            if len(self.player2.queued_keys) < config.MAX_QUEUE:
+                self.player2.queued_keys.append(event.key)
 
     def update(self):
         now = pygame.time.get_ticks()
-        if self.queued_keys and now - self.last_move_time >= config.MOVE_COOLDOWN:
-            key = self.queued_keys.pop(0)
-            if key == pygame.K_w:
-                self.player.move(0, -1, "up")
-            elif key == pygame.K_s:
-                self.player.move(0, 1, "down")
-            elif key == pygame.K_a:
-                self.player.move(-1, 0, "left")
-            elif key == pygame.K_d:
-                self.player.move(1, 0, "right")
-            elif key == pygame.K_SPACE:
-                self.player.deploy_bomb(self.bomb_group, self.explosion_group)
-            self.last_move_time = now
+        self.player1.handle_queued_keys(now)
+        self.player2.handle_queued_keys(now)
 
     def render(self, screen):
         screen.fill((255, 255, 255))
@@ -66,9 +54,8 @@ class TestField(State):
                                        config.GRID_SIZE)
                     pygame.draw.rect(screen, config.BLACK, rect)
 
-
-        pygame.draw.rect(screen, config.BLACK, (0, 0, config.SCREEN_WIDTH, config.SCREEN_HEIGHT), 1)
-        screen.blit(self.player.image, self.player.rect)
+        screen.blit(self.player1.image, self.player1.rect)
+        screen.blit(self.player2.image, self.player2.rect)
 
         # 🔥 Update explosions
         self.bomb_group.update(self.explosion_group)
