@@ -1,4 +1,5 @@
-import pygame.image, os
+import os
+import pygame.image
 import config
 from states.state import State
 
@@ -21,18 +22,17 @@ class GameOver(State):
                                   config.BUTTON_HEIGHT,
                                   "Exit")
 
-    def handle_events(self,event):
+    def handle_events(self, event):
         """Handle button clicks."""
         if self.retry_button.is_clicked():
             self.enter_single_player()
         elif self.exit_button.is_clicked():
-            print("Multiplayer")
+            self.exit_state()
 
     def enter_single_player(self):
         """Switch to single-player state."""
-        from states.test_field import TestField
-        new_state = TestField(self.game)
-        new_state.enter_state()
+        self.exit_state()
+        self.game.state_manager.change_state("TestField")
 
     def render(self, screen):
         """Draw the main menu screen."""

@@ -1,7 +1,7 @@
-import pygame.image, os
+import os
+import pygame.image
 import config
 from states.state import State
-from states.test_field import TestField
 
 
 class MainMenu(State):
@@ -34,6 +34,7 @@ class MainMenu(State):
 
     def enter_single_player(self):
         """Switch to single-player state."""
+        from states.test_field import TestField
         new_state = TestField(self.game)
         new_state.enter_state()
 

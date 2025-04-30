@@ -1,24 +1,31 @@
 import pygame
 import config
+import time
 from bomb import Bomb
 from maps.test_field_map import tile_map
 
 
 class Player(pygame.sprite.Sprite):
-    def __init__(self, player_id: int, starting_location: str | tuple, bomb_group, explosion_group):
+    def __init__(self, player_id: int, starting_location: str | tuple, test_field):
         super().__init__()
+
+        self.player_id = player_id
+
+        if self.player_id not in config.PLAYER_CONFIG:
+            raise ValueError(f"Invalid player id {self.player_id}")
+
+        self.health = 3
         self.currentBomb = 1
         self.maxBombs = 1
         self.power = 1
         self.queued_keys = []
         self.last_move_time = 0
-        self.bomb_group = bomb_group
-        self.explosion_group = explosion_group
+        self.iframe_timer = 0
 
-        if player_id not in config.PLAYER_CONFIG:
-            raise ValueError(f"Invalid player id {player_id}")
+        self.bomb_group = test_field.bomb_group
+        self.explosion_group = test_field.explosion_group
 
-        self.player_config = config.PLAYER_CONFIG[player_id]
+        self.player_config = config.PLAYER_CONFIG[self.player_id]
         self.move_keys = self.player_config["move_keys"]
 
         # Dict of all images of player
@@ -34,6 +41,22 @@ class Player(pygame.sprite.Sprite):
         else:
             self.rect.topleft = starting_location
         self.move_timer = 0  # Timer for movement delay
+
+    def check_hit(self):
+        now = time.time()
+        if not now - self.iframe_timer >= config.PLAYER_IFRAMES:
+            return
+        if bool(pygame.sprite.spritecollide(self, self.explosion_group, False)):  # type: ignore[arg-type]
+            self.iframe_timer = time.time()
+            self.health -= 1
+            return True
+        return False
+
+    def get_player_location(self):
+        return self.rect.x, self.rect.y
+
+    def get_health(self):
+        return self.health
 
     def handle_queued_keys(self, now):
         if self.queued_keys and now - self.last_move_time >= config.MOVE_COOLDOWN:

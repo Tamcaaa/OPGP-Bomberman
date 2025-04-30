@@ -18,13 +18,14 @@ BUTTON_HOVER_COLOR = (0, 100, 200)
 TEXT_COLOR = (255, 255, 255)
 # ------------------------------------------------------------------------------------------------------------------------------------------
 # Test_Field
+PLAYER_IFRAMES = 0.75
 MAX_QUEUE = 3
 SPAWN_POINTS = {"spawn1": (0, 0),
                 "spawn2": (930, 0),
                 "spawn3": (0, 510),
                 "spawn4": (930, 510)}
 # Movement keys
-PLAYER1_MOVE_KEYS = [pygame.K_w, pygame.K_a, pygame.K_s, pygame.K_d,pygame.K_SPACE]
+PLAYER1_MOVE_KEYS = [pygame.K_w, pygame.K_a, pygame.K_s, pygame.K_d, pygame.K_SPACE]
 PLAYER2_MOVE_KEYS = [pygame.K_UP, pygame.K_LEFT, pygame.K_DOWN, pygame.K_RIGHT, pygame.K_KP0]
 
 # Player images

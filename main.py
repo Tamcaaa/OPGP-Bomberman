@@ -2,7 +2,7 @@ import config
 import os
 import pygame
 
-from states.main_menu import MainMenu  # Import MainMenu state
+from state_manager import StateManager
 
 
 class BomberManApp:
@@ -16,6 +16,8 @@ class BomberManApp:
         self.dt, self.prev_time = 0, 0
         self.running = False
         self.photos_dir = os.path.join("photos")
+        self.state_manager = StateManager(self)
+
         self.load_states()  # Load initial states
 
     def run(self):
@@ -39,8 +41,7 @@ class BomberManApp:
 
     def load_states(self):
         """Load the MainMenu state."""
-        main_menu_screen = MainMenu(self)
-        self.state_stack.append(main_menu_screen)
+        self.state_manager.change_state("MainMenu")
 
     def get_events(self):
         """Handle events like window close or key presses."""

@@ -4,8 +4,6 @@ import config
 
 from states.state import State
 from player import Player
-from bomb import Bomb
-from bomb import Explosion
 from maps.test_field_map import tile_map
 
 
@@ -18,13 +16,13 @@ class TestField(State):
         self.bomb_group = pygame.sprite.Group()
         self.explosion_group = pygame.sprite.Group()
 
-        self.player1 = Player(1, "spawn1", self.bomb_group, self.explosion_group)
-        self.player2 = Player(2, "spawn4", self.bomb_group, self.explosion_group)
+        self.player1 = Player(1, "spawn1", self)
+        self.player2 = Player(2, "spawn4", self)
 
     def handle_events(self, event):
-
         if not event.type == pygame.KEYDOWN:
             return
+        print(self.game.state_stack)
         if event.key in config.PLAYER1_MOVE_KEYS:
             if len(self.player1.queued_keys) < config.MAX_QUEUE:
                 self.player1.queued_keys.append(event.key)
@@ -32,10 +30,25 @@ class TestField(State):
             if len(self.player2.queued_keys) < config.MAX_QUEUE:
                 self.player2.queued_keys.append(event.key)
 
+    def handle_explosions(self):
+        # Check if some explosion exists
+        if self.explosion_group:
+            if self.player1.check_hit():
+                print("Player1 got hit")
+                if self.player1.get_health() == 0:
+                    self.exit_state()
+                    self.game.state_manager.change_state("GameOver")
+            elif self.player2.check_hit():
+                print("Player2 got hit")
+                if self.player2.get_health() == 0:
+                    print("Player2 is Dead")
+
     def update(self):
         now = pygame.time.get_ticks()
         self.player1.handle_queued_keys(now)
         self.player2.handle_queued_keys(now)
+
+        self.handle_explosions()
 
     def render(self, screen):
         screen.fill((255, 255, 255))

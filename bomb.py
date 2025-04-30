@@ -30,7 +30,6 @@ class Bomb(pygame.sprite.Sprite):
 
     def explode(self, explosion_group):
         """Handles the bomb explosion and removes it from the game."""
-        print("Bomb exploded!")  # Placeholder for explosion animation
         Explosion(self.rect.x, self.rect.y, explosion_group, self.range)
         self.player.currentBomb += 1  # Allow the player to place another bomb
         self.kill()  # Remove the bomb from the group
@@ -64,7 +63,7 @@ class Explosion(pygame.sprite.Sprite):
 
     def create_explosions(self, x, y, explosion_group, explosion_range):
         """Generate explosion sprites in all four directions."""
-        directions = [(0, 0), (0, 0), (0, 0), (0, 0)]  # Right, Left, Down, Up
+        directions = [(1, 0), (-1, 0), (0, 1), (0, -1)]  # Right, Left, Down, Up
         for dx, dy in directions:
             for i in range(1, explosion_range + 1):
                 new_x = x + dx * config.GRID_SIZE * i
