@@ -4,8 +4,10 @@ import time
 
 
 class Bomb(pygame.sprite.Sprite):
-    def __init__(self, player, bomb_group, explosion_group):
+    def __init__(self, player, bomb_group, explosion_group, test_field):
         super().__init__()
+
+        self.test_field = test_field
 
         # Load and scale the bomb image
         self.image = pygame.image.load("photos/bomb.png").convert_alpha()
@@ -30,15 +32,16 @@ class Bomb(pygame.sprite.Sprite):
 
     def explode(self, explosion_group):
         """Handles the bomb explosion and removes it from the game."""
-        Explosion(self.rect.x, self.rect.y, explosion_group, self.range)
+        Explosion(self.rect.x, self.rect.y, explosion_group, self.range, self.test_field)
         self.player.currentBomb += 1  # Allow the player to place another bomb
         self.kill()  # Remove the bomb from the group
 
 
 class Explosion(pygame.sprite.Sprite):
-    def __init__(self, x, y, explosion_group, explosion_range):
+    def __init__(self, x, y, explosion_group, explosion_range, test_field):
         super().__init__()
 
+        self.test_field = test_field
         # Load explosion image
         self.image_a = pygame.image.load("photos/explosion_a.png").convert_alpha()
         self.image_c = pygame.image.load("photos/explosion_c.png").convert_alpha()
@@ -68,8 +71,14 @@ class Explosion(pygame.sprite.Sprite):
             for i in range(1, explosion_range + 1):
                 new_x = x + dx * config.GRID_SIZE * i
                 new_y = y + dy * config.GRID_SIZE * i
-                explosion = Explosion(new_x, new_y, explosion_group, 0)  # Create explosion effect
-                explosion_group.add(explosion)
+
+                if self.test_field.tile_map[new_y // config.GRID_SIZE][new_x // config.GRID_SIZE] == 0:
+                    explosion = Explosion(new_x, new_y, explosion_group, 0, self.test_field)  # Create explosion effect
+                    explosion_group.add(explosion)
+                elif self.test_field.tile_map[new_y // config.GRID_SIZE][new_x // config.GRID_SIZE] == 2:
+                    self.test_field.destroy_tile(new_x // config.GRID_SIZE, new_y // config.GRID_SIZE)
+                    explosion = Explosion(new_x, new_y, explosion_group, 0, self.test_field)  # Create explosion effect
+                    explosion_group.add(explosion)
 
     def update(self):
         """Remove explosion after lifetime expires."""

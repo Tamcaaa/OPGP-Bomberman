@@ -22,8 +22,9 @@ class Player(pygame.sprite.Sprite):
         self.last_move_time = 0
         self.iframe_timer = 0
 
-        self.bomb_group = test_field.bomb_group
-        self.explosion_group = test_field.explosion_group
+        self.test_field = test_field
+        self.bomb_group = self.test_field.bomb_group
+        self.explosion_group = self.test_field.explosion_group
 
         self.player_config = config.PLAYER_CONFIG[self.player_id]
         self.move_keys = self.player_config["move_keys"]
@@ -74,22 +75,24 @@ class Player(pygame.sprite.Sprite):
             self.last_move_time = now
 
     def move(self, dx, dy, direction):
-        if tile_map[max(0, min((self.rect.y + dy * config.GRID_SIZE), config.SCREEN_HEIGHT - config.GRID_SIZE)) // 30][
-            max(0, min((self.rect.x + dx * config.GRID_SIZE), config.SCREEN_WIDTH - config.GRID_SIZE)) // 30] == 1:
+
+        new_x = self.rect.x + dx * config.GRID_SIZE
+        new_y = self.rect.y + dy * config.GRID_SIZE
+
+        bound_x = max(0, min(new_x, config.SCREEN_WIDTH - config.GRID_SIZE))
+        bound_y = max(0, min(new_y, config.SCREEN_HEIGHT - config.GRID_SIZE))
+
+        if tile_map[bound_y // 30][bound_x // 30] in [1, 2]:
             self.image = self.images[direction]
             return
 
-        """Move the player and update sprite based on direction."""
-        self.rect.x += dx * config.GRID_SIZE
-        self.rect.y += dy * config.GRID_SIZE
-
         # Boundary correction
-        self.rect.x = max(0, min(self.rect.x, config.SCREEN_WIDTH - config.GRID_SIZE))
-        self.rect.y = max(0, min(self.rect.y, config.SCREEN_HEIGHT - config.GRID_SIZE))
+        self.rect.x = bound_x
+        self.rect.y = bound_y
 
         self.image = self.images[direction]  # Update sprite direction
 
     def deploy_bomb(self, bomb_group, explosion_group):
         if self.currentBomb > 0:
-            Bomb(self, bomb_group, explosion_group)  # Používame správnu triedu!
+            Bomb(self, bomb_group, explosion_group, self.test_field)  # Používame správnu triedu!
             self.currentBomb -= 1  # Create bomb instance

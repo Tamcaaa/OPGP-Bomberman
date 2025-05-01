@@ -41,7 +41,7 @@ class MainMenu(State):
     def render(self, screen):
         """Draw the main menu screen."""
         screen.blit(self.bg_image, (0, 0))
-        self.game.draw_text(screen, "BOMBER-MAN", config.BLACK, config.SCREEN_WIDTH // 2, config.SCREEN_HEIGHT // 4)
+        self.game.draw_text(screen, "BOMBER-MAN", config.COLOR_BLACK, config.SCREEN_WIDTH // 2, config.SCREEN_HEIGHT // 4)
         self.singleplayer_button.draw(screen)
         self.multiplayer_button.draw(screen)
 

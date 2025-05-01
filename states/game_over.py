@@ -37,7 +37,7 @@ class GameOver(State):
     def render(self, screen):
         """Draw the main menu screen."""
         screen.blit(self.bg_image, (0, 0))
-        self.game.draw_text(screen, "GAME OVER", config.BLACK, config.SCREEN_WIDTH // 2, config.SCREEN_HEIGHT // 4)
+        self.game.draw_text(screen, "GAME OVER", config.COLOR_BLACK, config.SCREEN_WIDTH // 2, config.SCREEN_HEIGHT // 4)
         self.retry_button.draw(screen)
         self.exit_button.draw(screen)
 
