@@ -1,6 +1,7 @@
 import pygame
 import config
 import time
+from managers.music_manager import MusicManager
 
 
 class Bomb(pygame.sprite.Sprite):
@@ -8,6 +9,7 @@ class Bomb(pygame.sprite.Sprite):
         super().__init__()
 
         self.test_field = test_field
+        self.music_manager = MusicManager()
 
         # Load and scale the bomb image
         self.image = pygame.image.load("assets/bomb.png").convert_alpha()
@@ -32,6 +34,7 @@ class Bomb(pygame.sprite.Sprite):
 
     def explode(self, explosion_group):
         """Handles the bomb explosion and removes it from the game."""
+        self.music_manager.play_sound("explosion", "explosion_volume")
         Explosion(self.rect.x, self.rect.y, explosion_group, self.range, self.test_field)
         self.player.currentBomb += 1  # Allow the player to place another bomb
         self.kill()  # Remove the bomb from the group

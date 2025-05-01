@@ -2,6 +2,7 @@ import pygame
 import config
 import time
 from bomb import Bomb
+from managers.music_manager import MusicManager
 
 
 class Player(pygame.sprite.Sprite):
@@ -22,6 +23,7 @@ class Player(pygame.sprite.Sprite):
         self.iframe_timer = 0
 
         self.test_field = test_field
+        self.music_manager = MusicManager()
         self.bomb_group = self.test_field.bomb_group
         self.explosion_group = self.test_field.explosion_group
 
@@ -85,6 +87,7 @@ class Player(pygame.sprite.Sprite):
             self.image = self.images[direction]
             return
 
+        self.music_manager.play_sound("walk", "walk_volume")
         # Boundary correction
         self.rect.x = bound_x
         self.rect.y = bound_y

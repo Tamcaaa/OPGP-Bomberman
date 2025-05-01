@@ -2,12 +2,14 @@ import config
 import os
 import pygame
 
-from state_manager import StateManager
+from managers.state_manager import StateManager
 
 
 class BomberManApp:
     def __init__(self):
         pygame.init()  # Initialize Pygame
+        pygame.mixer.init()
+
         self.game_canvas = pygame.Surface((config.SCREEN_WIDTH, config.SCREEN_HEIGHT))
         self.screen = pygame.display.set_mode((config.SCREEN_WIDTH, config.SCREEN_HEIGHT))
         self.font = pygame.font.Font(None, config.FONT_SIZE)
@@ -16,6 +18,7 @@ class BomberManApp:
         self.dt, self.prev_time = 0, 0
         self.running = False
         self.photos_dir = os.path.join("assets")
+
         self.state_manager = StateManager(self)
 
         self.load_states()  # Load initial states

@@ -10,6 +10,15 @@ GRID_SIZE = 30
 GRID_WIDTH, GRID_HEIGHT = SCREEN_WIDTH // GRID_SIZE, SCREEN_HEIGHT // GRID_SIZE
 MOVE_COOLDOWN = 120
 
+MUSIC_VOLUME = {
+    "main_menu_volume": 0.25,
+    "level_volume": 0.5,
+    "game_over_volume": 0.5,
+    "explosion_volume": 1,
+    "walk_volume": 0.5,
+    "death_volume": 1
+}
+
 # Colors
 COLOR_WHITE = (255, 255, 255)
 COLOR_BLACK = (0, 0, 0)
@@ -17,8 +26,10 @@ COLOR_GREEN = (0, 128, 0)
 BUTTON_COLOR = (88, 94, 149)
 BUTTON_HOVER_COLOR = (0, 100, 200)
 TEXT_COLOR = (255, 255, 255)
-# ------------------------------------------------------------------------------------------------------------------------------------------
-# Test_Field
+
+# ----------------------------------------------------------------Main_menu-----------------------------------------------------------------
+
+# ----------------------------------------------------------------Test_field----------------------------------------------------------------
 PLAYER_IFRAMES = 0.75
 MAX_QUEUE = 3
 SPAWN_POINTS = {"spawn1": (0, 30),

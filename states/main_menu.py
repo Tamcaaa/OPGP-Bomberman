@@ -1,7 +1,9 @@
 import os
 import pygame.image
 import config
+
 from states.state import State
+from managers.music_manager import MusicManager
 
 
 class MainMenu(State):
@@ -9,6 +11,9 @@ class MainMenu(State):
         State.__init__(self, game)
         pygame.display.set_caption("BomberMan: MainMenu")
         self.bg_image = pygame.image.load(os.path.join(game.photos_dir, "bg.png"))
+
+        self.music_manager = MusicManager()
+        self.load_music()
 
         # Create buttons
         self.singleplayer_button = Button(config.SCREEN_WIDTH // 2 - config.BUTTON_WIDTH - 20,
@@ -25,9 +30,13 @@ class MainMenu(State):
     def handle_events(self, event):
         """Handle button clicks."""
         if self.singleplayer_button.is_clicked():
+            pygame.mixer_music.stop()
             self.enter_single_player()
         elif self.multiplayer_button.is_clicked():
             print("Multiplayer")
+
+    def load_music(self):
+        self.music_manager.play_music('title', 'main_menu_volume', True)
 
     def update(self):
         pass
@@ -40,6 +49,7 @@ class MainMenu(State):
 
     def render(self, screen):
         """Draw the main menu screen."""
+        pygame.display.set_caption("BomberMan: MainMenu")
         screen.blit(self.bg_image, (0, 0))
         self.game.draw_text(screen, "BOMBER-MAN", config.COLOR_BLACK, config.SCREEN_WIDTH // 2, config.SCREEN_HEIGHT // 4)
         self.singleplayer_button.draw(screen)
