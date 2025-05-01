@@ -21,8 +21,8 @@ TEXT_COLOR = (255, 255, 255)
 # Test_Field
 PLAYER_IFRAMES = 0.75
 MAX_QUEUE = 3
-SPAWN_POINTS = {"spawn1": (0, 0),
-                "spawn2": (930, 0),
+SPAWN_POINTS = {"spawn1": (0, 30),
+                "spawn2": (930, 30),
                 "spawn3": (0, 510),
                 "spawn4": (930, 510)}
 # Movement keys
@@ -31,16 +31,16 @@ PLAYER2_MOVE_KEYS = [pygame.K_UP, pygame.K_LEFT, pygame.K_DOWN, pygame.K_RIGHT, 
 
 # Player images
 PLAYER1_IMAGES = {
-    "down": pygame.image.load("photos/player_color/p_1_down.png"),
-    "up": pygame.image.load("photos/player_color/p_1_up.png"),
-    "left": pygame.image.load("photos/player_color/p_1_left.png"),
-    "right": pygame.image.load("photos/player_color/p_1_right.png")
+    "down": pygame.image.load("assets/player_color/p_1_down.png"),
+    "up": pygame.image.load("assets/player_color/p_1_up.png"),
+    "left": pygame.image.load("assets/player_color/p_1_left.png"),
+    "right": pygame.image.load("assets/player_color/p_1_right.png")
 }
 PLAYER2_IMAGES = {
-    "down": pygame.image.load("photos/player_color/p_2_down.png"),
-    "up": pygame.image.load("photos/player_color/p_2_up.png"),
-    "left": pygame.image.load("photos/player_color/p_2_left.png"),
-    "right": pygame.image.load("photos/player_color/p_2_right.png")
+    "down": pygame.image.load("assets/player_color/p_2_down.png"),
+    "up": pygame.image.load("assets/player_color/p_2_up.png"),
+    "left": pygame.image.load("assets/player_color/p_2_left.png"),
+    "right": pygame.image.load("assets/player_color/p_2_right.png")
 }
 
 PLAYER_CONFIG = {

@@ -15,7 +15,7 @@ class BomberManApp:
         self.state_stack = []
         self.dt, self.prev_time = 0, 0
         self.running = False
-        self.photos_dir = os.path.join("photos")
+        self.photos_dir = os.path.join("assets")
         self.state_manager = StateManager(self)
 
         self.load_states()  # Load initial states

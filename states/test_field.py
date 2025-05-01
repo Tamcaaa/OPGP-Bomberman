@@ -21,6 +21,9 @@ class TestField(State):
         self.player1 = Player(1, "spawn1", self)
         self.player2 = Player(2, "spawn4", self)
 
+        self.heart_image = pygame.image.load("assets/menu_items/heart.png").convert_alpha()
+        self.heart_image = pygame.transform.scale(self.heart_image, (30, 30))
+
     def handle_events(self, event):
         if not event.type == pygame.KEYDOWN:
             return
@@ -60,11 +63,11 @@ class TestField(State):
         screen.fill((255, 255, 255))
 
         for line in range((config.SCREEN_WIDTH // config.GRID_SIZE) + 1):
-            pygame.draw.line(screen, config.COLOR_BLACK, (line * config.GRID_SIZE, 0),
+            pygame.draw.line(screen, config.COLOR_BLACK, (line * config.GRID_SIZE, 30),
                              (line * config.GRID_SIZE, config.SCREEN_HEIGHT))
-        for line in range((config.SCREEN_HEIGHT // config.GRID_SIZE) + 1):
-            pygame.draw.line(screen, config.COLOR_BLACK, (0, line * config.GRID_SIZE),
-                             (config.SCREEN_WIDTH, line * config.GRID_SIZE))
+        for line in range((config.SCREEN_HEIGHT // config.GRID_SIZE) - 1):
+            pygame.draw.line(screen, config.COLOR_BLACK, (0, line * config.GRID_SIZE + 30),
+                             (config.SCREEN_WIDTH, line * config.GRID_SIZE + 30))
 
         for row_index, row in enumerate(self.tile_map):
             for col_index, tile in enumerate(row):
@@ -79,6 +82,15 @@ class TestField(State):
 
         screen.blit(self.player1.image, self.player1.rect)
         screen.blit(self.player2.image, self.player2.rect)
+
+        player1_lives_text = self.game.font.render(f"x {self.player1.get_health()}", True, config.COLOR_BLACK)
+        player2_lives_text = self.game.font.render(f"x {self.player2.get_health()}", True, config.COLOR_BLACK)
+
+        screen.blit(player1_lives_text, (config.GRID_SIZE, 10))
+        screen.blit(player2_lives_text, (config.SCREEN_WIDTH - config.GRID_SIZE, 10))
+
+        screen.blit(self.heart_image, (0, 0))
+        screen.blit(self.heart_image, (config.SCREEN_WIDTH - 2 * config.GRID_SIZE, 0))
 
         # 🔥 Update explosions
         self.bomb_group.update(self.explosion_group)

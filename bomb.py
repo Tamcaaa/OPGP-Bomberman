@@ -10,7 +10,7 @@ class Bomb(pygame.sprite.Sprite):
         self.test_field = test_field
 
         # Load and scale the bomb image
-        self.image = pygame.image.load("photos/bomb.png").convert_alpha()
+        self.image = pygame.image.load("assets/bomb.png").convert_alpha()
         self.image = pygame.transform.scale(self.image, (config.GRID_SIZE, config.GRID_SIZE))
 
         # Set bomb position to player's current position
@@ -43,8 +43,8 @@ class Explosion(pygame.sprite.Sprite):
 
         self.test_field = test_field
         # Load explosion image
-        self.image_a = pygame.image.load("photos/explosion_a.png").convert_alpha()
-        self.image_c = pygame.image.load("photos/explosion_c.png").convert_alpha()
+        self.image_a = pygame.image.load("assets/explosion_a.png").convert_alpha()
+        self.image_c = pygame.image.load("assets/explosion_c.png").convert_alpha()
 
         # Scale images
         self.image_a = pygame.transform.scale(self.image_a, (config.GRID_SIZE, config.GRID_SIZE))
