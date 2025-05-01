@@ -1,213 +1,100 @@
 import pygame
 import config
-import os
 import time
 from bomb import Bomb
+from managers.music_manager import MusicManager
+
 
 class Player(pygame.sprite.Sprite):
-    def __init__(self, game, player_num=1):
+    def __init__(self, player_id: int, starting_location: str | tuple, test_field):
         super().__init__()
-        self.game = game
-        self.player_num = player_num  # 1 or 2
-        self.photos_dir = os.path.join("photos", "player_color")
 
-        # Load all directional sprites
-        self.sprites = {
-            "up": self.load_scaled_sprite(f"p_{player_num}_up.png"),
-            "down": self.load_scaled_sprite(f"p_{player_num}_down.png"),
-            "left": self.load_scaled_sprite(f"p_{player_num}_left.png"),
-            "right": self.load_scaled_sprite(f"p_{player_num}_right.png")
+        self.player_id = player_id
+
+        if self.player_id not in config.PLAYER_CONFIG:
+            raise ValueError(f"Invalid player id {self.player_id}")
+
+        self.health = 3
+        self.currentBomb = 1
+        self.maxBombs = 1
+        self.power = 1
+        self.queued_keys = []
+        self.last_move_time = 0
+        self.iframe_timer = 0
+
+        self.test_field = test_field
+        self.music_manager = MusicManager()
+        self.bomb_group = self.test_field.bomb_group
+        self.explosion_group = self.test_field.explosion_group
+
+        self.player_config = config.PLAYER_CONFIG[self.player_id]
+        self.move_keys = self.player_config["move_keys"]
+
+        # Dict of all images of player
+        self.images = {
+            key: pygame.transform.scale(img.convert_alpha(), (config.GRID_SIZE, config.GRID_SIZE))
+            for key, img in self.player_config["images"].items()
         }
 
-        # Set initial sprite and position
-        self.direction = "down"
-        self.image = self.sprites[self.direction]
+        self.image = self.images["down"]  # Default direction image
         self.rect = self.image.get_rect()
-
-        # Set initial position based on player number
-        if player_num == 1:
-            self.rect.topleft = (1 * config.GRID_SIZE, 1 * config.GRID_SIZE)
+        if isinstance(starting_location, str):
+            self.rect.topleft = config.SPAWN_POINTS[starting_location]
         else:
-            self.rect.topleft = (25 * config.GRID_SIZE, 13 * config.GRID_SIZE)
+            self.rect.topleft = starting_location
+        self.move_timer = 0  # Timer for movement delay
 
-        # Player properties
-        self.speed = config.MOVE_SPEED
-        self.lives = config.PLAYER_LIVES
-        self.power = config.POWER  # Bomb explosion range
-        self.maxBombs = config.MAXBOMBS
-        self.currentBomb = config.CURRENTBOMBS
-        self.bomb_key_pressed = False
-        self.invincible = False
-        self.last_hit_time = config.LAST_HIT_TIME
-        self.last_move_time = config.LAST_MOVE_TIME
-        self.invincibility_duration = config.INVICIBILITY_DURATION
-        self.blink = False
-        self.blink_timer = config.BLINK_TIMER
-        self.blink_interval = config.BLINK_INTERVAL
-        self.is_dead = False
-
-    def load_scaled_sprite(self, filename):
-        """Load and scale a sprite image."""
-        image = pygame.image.load(os.path.join(self.photos_dir, filename)).convert_alpha()
-        return pygame.transform.scale(image, (config.GRID_SIZE, config.GRID_SIZE))
-
-    def move(self, dx, dy, direction):
-        """Move the player in the specified direction with proper collision detection."""
-        current_time = pygame.time.get_ticks()
-        if current_time - self.last_move_time < 1000 / self.speed:
+    def check_hit(self):
+        now = time.time()
+        if not now - self.iframe_timer >= config.PLAYER_IFRAMES:
             return
-
-        # Update direction and sprite
-        if direction != self.direction:
-            self.direction = direction
-            self.image = self.sprites[self.direction]
-
-        # Store original position
-        original_x = self.rect.x
-        original_y = self.rect.y
-
-        # Calculate new position
-        new_x = original_x + dx * config.GRID_SIZE
-        new_y = original_y + dy * config.GRID_SIZE
-
-        # Check for wall collisions individually in each direction
-        # First check horizontal movement
-        temp_rect = self.rect.copy()
-        temp_rect.x = new_x
-        temp_rect.y = original_y
-        
-        if self.can_move_to_position(temp_rect):
-            self.rect.x = new_x
-        
-        # Then check vertical movement
-        temp_rect = self.rect.copy()
-        temp_rect.x = self.rect.x  # Use possibly updated x position
-        temp_rect.y = new_y
-        
-        if self.can_move_to_position(temp_rect):
-            self.rect.y = new_y
-        
-        # Only play sound if player actually moved
-        if self.rect.x != original_x or self.rect.y != original_y:
-            self.last_move_time = current_time
-            walk_sound = pygame.mixer.Sound("sounds/walk.wav")
-            walk_sound.play()
-    
-    def can_move_to_position(self, rect):
-        """Check if player can move to the given position."""
-        # Get the level from the current state stack
-        current_state = self.game.state_stack[-1]
-        level = current_state.level
-        
-        # Calculate grid coordinates for all corners of the player's rect
-        # We'll check if any corner is in a non-empty tile
-        grid_positions = [
-            (rect.left // config.GRID_SIZE, rect.top // config.GRID_SIZE),    # Top-left
-            ((rect.right - 1) // config.GRID_SIZE, rect.top // config.GRID_SIZE),   # Top-right
-            (rect.left // config.GRID_SIZE, (rect.bottom - 1) // config.GRID_SIZE), # Bottom-left
-            ((rect.right - 1) // config.GRID_SIZE, (rect.bottom - 1) // config.GRID_SIZE) # Bottom-right
-        ]
-        
-        # Check if any corner is in a wall or brick
-        for grid_x, grid_y in grid_positions:
-            # Check boundaries
-            if grid_x < 0 or grid_x >= level.width or grid_y < 0 or grid_y >= level.height:
-                return False
-            
-            # Check if tile is a wall or brick
-            if level.grid[grid_y][grid_x] != 0:  # Not empty
-                return False
-        
-        # Check for bomb collisions - bomb_group is in the current state
-        if hasattr(current_state, 'bomb_group'):
-            for bomb in current_state.bomb_group:
-                if rect.colliderect(bomb.rect):
-                    # Don't collide with the player's own bombs immediately after placing them
-                    # This prevents the player from getting stuck on their own bombs
-                    if bomb.owner == self and bomb.just_placed:
-                        continue
-                    return False
-                
-        return True
-
-    def deployBomb(self, bomb_group, explosion_group):
-        """Place a bomb at the player's current position if allowed."""
-        if self.currentBomb < self.maxBombs:
-            # Calculate grid position for bomb placement
-            grid_x = (self.rect.x + config.GRID_SIZE // 2) // config.GRID_SIZE
-            grid_y = (self.rect.y + config.GRID_SIZE // 2) // config.GRID_SIZE
-            
-            # Create bomb at center of tile
-            bomb_x = grid_x * config.GRID_SIZE
-            bomb_y = grid_y * config.GRID_SIZE
-            
-            # Check if there's already a bomb at this position
-            for bomb in bomb_group:
-                if bomb.rect.x == bomb_x and bomb.rect.y == bomb_y:
-                    return False
-            
-            Bomb(self, bomb_group, explosion_group, position=(bomb_x, bomb_y))
-            self.currentBomb += 1
+        if bool(pygame.sprite.spritecollide(self, self.explosion_group, False)):  # type: ignore[arg-type]
+            self.iframe_timer = time.time()
+            self.health -= 1
             return True
         return False
 
-    def handle_bomb_placement(self, bomb_group, explosion_group, key_pressed):
-        """
-        Handle bomb placement with key press/release detection to prevent rapid firing.
-        Returns True if bomb was placed.
-        """
-        if self.currentBomb >= self.maxBombs:
-            return False
+    def get_player_location(self):
+        return self.rect.x, self.rect.y
 
-        if key_pressed:
-            if not self.bomb_key_pressed:  # Only place bomb on initial press
-                self.bomb_key_pressed = True
-                return self.deployBomb(bomb_group, explosion_group)
-        else:
-            self.bomb_key_pressed = False
-        return False
+    def get_health(self):
+        return self.health
 
-    def take_lives(self):
-        """Reduce player's lives by 1 and handle game over if needed."""
-        self.lives -= 1
-        if self.lives < 0:  # Prevent lives from going below 0
-            self.lives = 0
+    def handle_queued_keys(self, now):
+        if self.queued_keys and now - self.last_move_time >= config.MOVE_COOLDOWN:
+            key = self.queued_keys.pop(0)
+            if key == pygame.K_w or key == pygame.K_UP:
+                self.move(0, -1, "up")
+            elif key == pygame.K_s or key == pygame.K_DOWN:
+                self.move(0, 1, "down")
+            elif key == pygame.K_a or key == pygame.K_LEFT:
+                self.move(-1, 0, "left")
+            elif key == pygame.K_d or key == pygame.K_RIGHT:
+                self.move(1, 0, "right")
+            elif key == pygame.K_SPACE or key == pygame.K_KP0:
+                self.deploy_bomb(self.bomb_group, self.explosion_group)
+            self.last_move_time = now
 
-        if self.lives == 0:
-            self.is_dead = True
-            self.currentBomb = 0  # Reset bomb counter upon death
-            self.game.all_sprites.remove(self)  # Remove from all sprite groups
-            self.image = pygame.Surface((config.GRID_SIZE, config.GRID_SIZE))  # Make the player invisible
-            self.image.set_alpha(0)  # Make the player transparent
-            self.rect = self.image.get_rect()  # Update rect to match invisible image
-            pygame.mixer.Sound("sounds/die.wav").play()
-            
-            if self.player_num == 1:
-                self.game.player1 = None  # Player 1 is removed
-            else:
-                self.game.player2 = None  # Player 2 is removed
+    def move(self, dx, dy, direction):
 
-            # Check if both players are dead
-            if self.game.player1 is None and self.game.player2 is None:
-                from states.game_over import GameOver
-                new_state = GameOver(self.game)
-                new_state.enter_state()
-                pygame.mixer.Sound("sounds/game_over.wav").play()
+        new_x = self.rect.x + dx * config.GRID_SIZE
+        new_y = self.rect.y + dy * config.GRID_SIZE
 
-    def update(self):
-        # Reset invincibility after cooldown
-        now = time.time()
-        if self.invincible and now - self.last_hit_time > self.invincibility_duration:
-            self.invincible = False
-            self.blink = False
+        bound_x = max(0, min(new_x, config.SCREEN_WIDTH - config.GRID_SIZE))
+        bound_y = max(0, min(new_y, config.SCREEN_HEIGHT - config.GRID_SIZE))
 
-    def hit_by_explosion(self):
-        now = time.time()
+        if self.test_field.tile_map[bound_y // config.GRID_SIZE][bound_x // config.GRID_SIZE] in [1, 2, 3]:
+            self.image = self.images[direction]
+            return
 
-        # Only react if the player isn't currently invincible
-        if not self.invincible:
-            self.invincible = True  # Make the player invincible temporarily
-            self.last_hit_time = now
-            self.blink = True  # Start blinking effect
+        self.music_manager.play_sound("walk", "walk_volume")
+        # Boundary correction
+        self.rect.x = bound_x
+        self.rect.y = bound_y
 
-            self.take_lives()
+        self.image = self.images[direction]  # Update sprite direction
+
+    def deploy_bomb(self, bomb_group, explosion_group):
+        if self.currentBomb > 0:
+            Bomb(self, bomb_group, explosion_group, self.test_field)  # Používame správnu triedu!
+            self.currentBomb -= 1  # Create bomb instance

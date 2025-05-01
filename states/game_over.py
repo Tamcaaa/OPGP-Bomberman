@@ -1,42 +1,55 @@
-import pygame.image, os
+import os
+import pygame.image
 import config
+
 from states.state import State
+from managers.music_manager import MusicManager
+
 
 class GameOver(State):
-    def __init__(self, game):
+    def __init__(self, game, winner):
         State.__init__(self, game)
         pygame.display.set_caption("BomberMan: GameOver")
         self.bg_image = pygame.image.load(os.path.join(game.photos_dir, "bg.png"))
+        self.winner = winner
 
         # Create buttons
         self.retry_button = Button(config.SCREEN_WIDTH // 2 - config.BUTTON_WIDTH - 20,
-                                          config.SCREEN_HEIGHT // 2 - config.BUTTON_HEIGHT // 2,
-                                          config.BUTTON_WIDTH,
-                                          config.BUTTON_HEIGHT,
-                                          "Retry")
+                                   config.SCREEN_HEIGHT // 2 - config.BUTTON_HEIGHT // 2,
+                                   config.BUTTON_WIDTH,
+                                   config.BUTTON_HEIGHT,
+                                   "Retry")
         self.exit_button = Button(config.SCREEN_WIDTH // 2 + 20,
-                                         config.SCREEN_HEIGHT // 2 - config.BUTTON_HEIGHT // 2,
-                                         config.BUTTON_WIDTH,
-                                         config.BUTTON_HEIGHT,
-                                         "Exit")
+                                  config.SCREEN_HEIGHT // 2 - config.BUTTON_HEIGHT // 2,
+                                  config.BUTTON_WIDTH,
+                                  config.BUTTON_HEIGHT,
+                                  "Exit")
+        self.music_manager = MusicManager()
+        self.load_music()
 
-    def handle_events(self):
+    def load_music(self):
+        self.music_manager.play_music('game_over', 'game_over_volume', True)
+
+    def handle_events(self, event):
         """Handle button clicks."""
         if self.retry_button.is_clicked():
+            pygame.mixer_music.stop()
             self.enter_single_player()
         elif self.exit_button.is_clicked():
-            print("Multiplayer")
+            pygame.mixer_music.stop()
+            self.music_manager.play_music('title', 'main_menu_volume', True)
+            self.exit_state()
 
     def enter_single_player(self):
         """Switch to single-player state."""
-        from states.test_field import TestField
-        new_state = TestField(self.game)
-        new_state.enter_state()
-    
+        self.exit_state()
+        self.game.state_manager.change_state("TestField")
+
     def render(self, screen):
         """Draw the main menu screen."""
         screen.blit(self.bg_image, (0, 0))
-        self.game.draw_text(screen, "GAME OVER", config.BLACK, config.SCREEN_WIDTH // 2, config.SCREEN_HEIGHT // 4)
+        self.game.draw_text(screen, "GAME OVER", config.COLOR_BLACK, config.SCREEN_WIDTH // 2, config.SCREEN_HEIGHT // 4)
+        self.game.draw_text(screen, f"Player{self.winner} won!", config.COLOR_BLACK, config.SCREEN_WIDTH // 2, config.SCREEN_HEIGHT // 3)
         self.retry_button.draw(screen)
         self.exit_button.draw(screen)
 
