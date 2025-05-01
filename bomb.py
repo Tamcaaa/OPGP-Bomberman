@@ -69,14 +69,21 @@ class Explosion(pygame.sprite.Sprite):
         directions = [(1, 0), (-1, 0), (0, 1), (0, -1)]  # Right, Left, Down, Up
         for dx, dy in directions:
             for i in range(1, explosion_range + 1):
-                new_x = x + dx * config.GRID_SIZE * i
-                new_y = y + dy * config.GRID_SIZE * i
+                tile_x = (x + dx * config.GRID_SIZE * i) // config.GRID_SIZE
+                tile_y = (y + dy * config.GRID_SIZE * i) // config.GRID_SIZE
 
-                if self.test_field.tile_map[new_y // config.GRID_SIZE][new_x // config.GRID_SIZE] == 0:
+                max_x = (config.SCREEN_WIDTH - config.GRID_SIZE) // config.GRID_SIZE
+                max_y = (config.SCREEN_HEIGHT - config.GRID_SIZE) // config.GRID_SIZE
+
+                new_x = tile_x * config.GRID_SIZE
+                new_y = tile_y * config.GRID_SIZE
+                if not (0 <= tile_x <= max_x and 0 <= tile_y <= max_y):
+                    continue
+                elif self.test_field.tile_map[tile_y][tile_x] == 0:
                     explosion = Explosion(new_x, new_y, explosion_group, 0, self.test_field)  # Create explosion effect
                     explosion_group.add(explosion)
-                elif self.test_field.tile_map[new_y // config.GRID_SIZE][new_x // config.GRID_SIZE] == 2:
-                    self.test_field.destroy_tile(new_x // config.GRID_SIZE, new_y // config.GRID_SIZE)
+                elif self.test_field.tile_map[tile_y][tile_x] == 2:
+                    self.test_field.destroy_tile(tile_x, tile_y)
                     explosion = Explosion(new_x, new_y, explosion_group, 0, self.test_field)  # Create explosion effect
                     explosion_group.add(explosion)
 
