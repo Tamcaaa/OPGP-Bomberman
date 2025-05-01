@@ -2,7 +2,6 @@ import pygame
 import config
 import time
 from bomb import Bomb
-from maps.test_field_map import tile_map
 
 
 class Player(pygame.sprite.Sprite):
@@ -82,7 +81,7 @@ class Player(pygame.sprite.Sprite):
         bound_x = max(0, min(new_x, config.SCREEN_WIDTH - config.GRID_SIZE))
         bound_y = max(0, min(new_y, config.SCREEN_HEIGHT - config.GRID_SIZE))
 
-        if tile_map[bound_y // config.GRID_SIZE][bound_x // config.GRID_SIZE] in [1, 2]:
+        if self.test_field.tile_map[bound_y // config.GRID_SIZE][bound_x // config.GRID_SIZE] in [1, 2, 3]:
             self.image = self.images[direction]
             return
 
