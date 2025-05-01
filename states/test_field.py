@@ -1,5 +1,5 @@
+import copy
 import pygame
-
 import config
 
 from states.state import State
@@ -13,13 +13,13 @@ class TestField(State):
         pygame.display.set_caption("BomberMan: TestField")
         self.game = game
 
+        self.tile_map = copy.deepcopy(tile_map)
+
         self.bomb_group = pygame.sprite.Group()
         self.explosion_group = pygame.sprite.Group()
 
         self.player1 = Player(1, "spawn1", self)
         self.player2 = Player(2, "spawn4", self)
-
-        self.tile_map = tile_map
 
     def handle_events(self, event):
         if not event.type == pygame.KEYDOWN:
@@ -66,7 +66,7 @@ class TestField(State):
             pygame.draw.line(screen, config.COLOR_BLACK, (0, line * config.GRID_SIZE),
                              (config.SCREEN_WIDTH, line * config.GRID_SIZE))
 
-        for row_index, row in enumerate(tile_map):
+        for row_index, row in enumerate(self.tile_map):
             for col_index, tile in enumerate(row):
                 if tile == 1:
                     rect = pygame.Rect(col_index * config.GRID_SIZE, row_index * config.GRID_SIZE, config.GRID_SIZE,
