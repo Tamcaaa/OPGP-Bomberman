@@ -24,8 +24,6 @@ class Bomb(pygame.sprite.Sprite):
         self.player = player
         self.fuse_time = time.time() + 3  # Bomb explodes after 3 seconds
         self.explosion_group = explosion_group
-        self.position = position
-        self.rect = pygame.Rect(position[0], position[1], config.BOMB_WIDTH, config.BOMB_HEIGHT)
         # Add the bomb to the bomb group
         bomb_group.add(self)
 
