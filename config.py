@@ -16,7 +16,8 @@ MUSIC_VOLUME = {
     "game_over_volume": 0.5,
     "explosion_volume": 1,
     "walk_volume": 0.5,
-    "death_volume": 1
+    "death_volume": 1,
+    "win_volume": 1
 }
 
 # Colors

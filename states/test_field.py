@@ -23,9 +23,31 @@ class TestField(State):
 
         self.player1 = Player(1, "spawn1", self)
         self.player2 = Player(2, "spawn4", self)
+        self.players_exited = []
+        self.players = [self.player1, self.player2]
+        self.has_key = False
+        
+        # Initialize the key icon for UI
+        self.key_icon_image = pygame.image.load("assets/key.png").convert_alpha()
+        self.key_icon = pygame.transform.scale(self.key_icon_image, (20, 20))
 
         self.heart_image = pygame.image.load("assets/menu_items/heart.png").convert_alpha()
         self.heart_image = pygame.transform.scale(self.heart_image, (30, 30))
+        
+        self.wall_image = pygame.image.load("assets/wall.png").convert_alpha()
+        self.wall_image = pygame.transform.scale(self.wall_image, (30, 30))
+
+        self.brick_image = pygame.image.load("assets/brick.png").convert_alpha()
+        self.brick_image = pygame.transform.scale(self.brick_image, (30, 30))
+        
+        self.ground_image = pygame.image.load("assets/floor.png").convert_alpha()
+        self.ground_image = pygame.transform.scale(self.ground_image, (30, 30))
+        
+        self.door_image = pygame.image.load('assets/door.png').convert_alpha()
+        self.door_image = pygame.transform.scale(self.door_image, (30, 30))
+        
+        self.key_image = pygame.image.load('assets/key.png').convert_alpha()
+        self.key_image = pygame.transform.scale(self.key_image, (30, 30))  
 
         self.load_music()
 
@@ -60,7 +82,13 @@ class TestField(State):
                 self.game.state_manager.change_state("GameOver", self.player1.player_id)
 
     def destroy_tile(self, x, y):
-        self.tile_map[y][x] = 0
+        # Check for hidden items before destroying tile
+        if self.tile_map[y][x] == 4:  # Hidden door
+            self.tile_map[y][x] = 6   # Reveal door
+        elif self.tile_map[y][x] == 5:  # Hidden key
+            self.tile_map[y][x] = 7    # Reveal key
+        else:
+            self.tile_map[y][x] = 0    # Just destroy the tile
 
     def update(self):
         now = pygame.time.get_ticks()
@@ -81,6 +109,12 @@ class TestField(State):
 
         screen.blit(self.heart_image, (0, 0))
         screen.blit(self.heart_image, (config.SCREEN_WIDTH - 2 * config.GRID_SIZE, 0))
+        
+        # Display key icons if players have keys
+        if self.player1.has_key:
+            screen.blit(self.key_icon, (config.GRID_SIZE * 3, 10))
+        if self.player2.has_key:
+            screen.blit(self.key_icon, (config.SCREEN_WIDTH - config.GRID_SIZE * 3, 10))
 
     @staticmethod
     def draw_grid(screen):
@@ -94,17 +128,24 @@ class TestField(State):
     def draw_walls(self, screen):
         for row_index, row in enumerate(self.tile_map):
             for col_index, tile in enumerate(row):
+                x = col_index * config.GRID_SIZE
+                y = row_index * config.GRID_SIZE
+
                 if tile == 1:
-                    rect = pygame.Rect(col_index * config.GRID_SIZE, row_index * config.GRID_SIZE, config.GRID_SIZE,
-                                       config.GRID_SIZE)
-                    pygame.draw.rect(screen, config.COLOR_BLACK, rect)
+                    screen.blit(self.wall_image, (x, y))
                 elif tile == 2:
-                    rect = pygame.Rect(col_index * config.GRID_SIZE, row_index * config.GRID_SIZE, config.GRID_SIZE,
-                                       config.GRID_SIZE)
-                    pygame.draw.rect(screen, config.COLOR_GREEN, rect)
+                    screen.blit(self.brick_image, (x, y))
+                elif tile == 4: # Door (brick initially)
+                    screen.blit(self.brick_image, (x, y))
+                elif tile == 5: # Key (brick initially)
+                    screen.blit(self.brick_image, (x, y))
+                elif tile == 6: # Revealed door
+                    screen.blit(self.door_image, (x, y))
+                elif tile == 7: # Revealed key
+                    screen.blit(self.key_image, (x, y))
 
     def render(self, screen):
-        screen.fill((255, 255, 255))
+        screen.fill((162, 235, 154))
 
         # Draw playing field
         self.draw_grid(screen)

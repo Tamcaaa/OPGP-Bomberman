@@ -89,6 +89,24 @@ class Explosion(pygame.sprite.Sprite):
                     self.test_field.destroy_tile(tile_x, tile_y)
                     explosion = Explosion(new_x, new_y, explosion_group, 0, self.test_field)  # Create explosion effect
                     explosion_group.add(explosion)
+                elif self.test_field.tile_map[tile_y][tile_x] == 4:  # Hidden door
+                    # Reveal the door (change from hidden to visible)
+                    self.test_field.tile_map[tile_y][tile_x] = 6
+                    explosion = Explosion(new_x, new_y, explosion_group, 0, self.test_field)
+                    explosion_group.add(explosion)
+                    break  # Stop explosion in this direction
+                elif self.test_field.tile_map[tile_y][tile_x] == 5:  # Hidden key
+                    # Reveal the key (change from hidden to visible)
+                    self.test_field.tile_map[tile_y][tile_x] = 7
+                    explosion = Explosion(new_x, new_y, explosion_group, 0, self.test_field)
+                    explosion_group.add(explosion)
+                    break  # Stop explosion in this direction
+                elif self.test_field.tile_map[tile_y][tile_x] == 1:  # Wall
+                    break  # Stop explosion in this direction
+                elif self.test_field.tile_map[tile_y][tile_x] in [6, 7]:  # Visible door or key
+                    explosion = Explosion(new_x, new_y, explosion_group, 0, self.test_field)
+                    explosion_group.add(explosion)
+                    break  # Stop explosion in this direction
 
     def update(self):
         """Remove explosion after lifetime expires."""
