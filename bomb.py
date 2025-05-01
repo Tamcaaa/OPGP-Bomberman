@@ -8,7 +8,7 @@ pygame.mixer.init()
 explosion_sound = pygame.mixer.Sound("sounds/explosion.mp3")
 
 class Bomb(pygame.sprite.Sprite):
-    def __init__(self, player, bomb_group, explosion_group):
+    def __init__(self, player, bomb_group, explosion_group, position):
         super().__init__()
 
         # Load and scale the bomb image
@@ -24,6 +24,8 @@ class Bomb(pygame.sprite.Sprite):
         self.player = player
         self.fuse_time = time.time() + FUSE_TIME  # Bomb explodes after 3 seconds
         self.explosion_group = explosion_group
+        self.position = position
+        self.rect = pygame.Rect(position[0], position[1], config.BOMB_WIDTH, config.BOMB_HEIGHT)
         # Add the bomb to the bomb group
         bomb_group.add(self)
 
