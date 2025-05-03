@@ -27,6 +27,12 @@ class TestField(State):
         self.heart_image = pygame.image.load("assets/menu_items/heart.png").convert_alpha()
         self.heart_image = pygame.transform.scale(self.heart_image, (30, 30))
 
+        self.breakable_wall = pygame.image.load("assets/environment/wall.png").convert_alpha()
+        self.breakable_wall = pygame.transform.scale(self.breakable_wall, (30, 30))
+
+        self.unbreakable_wall = pygame.image.load("assets/environment/brick.png").convert_alpha()
+        self.unbreakable_wall = pygame.transform.scale(self.unbreakable_wall, (30, 30))
+
         self.load_music()
 
     def load_music(self):
@@ -48,7 +54,7 @@ class TestField(State):
             return
         if self.player1.check_hit():
             if self.player1.get_health() == 0:
-                self.music_manager.play_sound("death","death_volume")
+                self.music_manager.play_sound("death", "death_volume")
                 pygame.mixer_music.stop()
                 self.exit_state()
                 self.game.state_manager.change_state("GameOver", self.player2.player_id)
@@ -70,9 +76,6 @@ class TestField(State):
         self.handle_explosions()
 
     def draw_menu(self, screen):
-        screen.blit(self.player1.image, self.player1.rect)
-        screen.blit(self.player2.image, self.player2.rect)
-
         player1_lives_text = self.game.font.render(f"x {self.player1.get_health()}", True, config.COLOR_BLACK)
         player2_lives_text = self.game.font.render(f"x {self.player2.get_health()}", True, config.COLOR_BLACK)
 
@@ -94,22 +97,26 @@ class TestField(State):
     def draw_walls(self, screen):
         for row_index, row in enumerate(self.tile_map):
             for col_index, tile in enumerate(row):
-                if tile == 1:
+                if tile == 0:
                     rect = pygame.Rect(col_index * config.GRID_SIZE, row_index * config.GRID_SIZE, config.GRID_SIZE,
                                        config.GRID_SIZE)
-                    pygame.draw.rect(screen, config.COLOR_BLACK, rect)
+                    pygame.draw.rect(screen, config.COLOR_DARK_GREEN if (col_index + row_index) % 2 == 0 else config.COLOR_LIGHT_GREEN,
+                                     rect)
+                elif tile == 1:
+                    screen.blit(self.unbreakable_wall, (col_index * config.GRID_SIZE, row_index * config.GRID_SIZE))
                 elif tile == 2:
-                    rect = pygame.Rect(col_index * config.GRID_SIZE, row_index * config.GRID_SIZE, config.GRID_SIZE,
-                                       config.GRID_SIZE)
-                    pygame.draw.rect(screen, config.COLOR_GREEN, rect)
+                    screen.blit(self.breakable_wall, (col_index * config.GRID_SIZE, row_index * config.GRID_SIZE))
 
     def render(self, screen):
-        screen.fill((255, 255, 255))
+        screen.fill(config.COLOR_WHITE)
 
         # Draw playing field
-        self.draw_grid(screen)
         self.draw_walls(screen)
+        self.draw_grid(screen)
         self.draw_menu(screen)
+
+        screen.blit(self.player1.image, self.player1.rect)
+        screen.blit(self.player2.image, self.player2.rect)
 
         # 🔥 Update explosions
         self.bomb_group.update(self.explosion_group)

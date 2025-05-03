@@ -23,9 +23,13 @@ MUSIC_VOLUME = {
 COLOR_WHITE = (255, 255, 255)
 COLOR_BLACK = (0, 0, 0)
 COLOR_GREEN = (0, 128, 0)
+COLOR_DARK_GREEN = (80, 160, 0)
+COLOR_LIGHT_GREEN = (144, 208, 80)
 BUTTON_COLOR = (88, 94, 149)
 BUTTON_HOVER_COLOR = (0, 100, 200)
+BACKGROUND_COLOR = (162, 235, 154)
 TEXT_COLOR = (255, 255, 255)
+
 
 # ----------------------------------------------------------------Main_menu-----------------------------------------------------------------
 
