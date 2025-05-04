@@ -1,7 +1,6 @@
 import copy
 import pygame
 import config
-import os
 
 from states.state import State
 from player import Player
@@ -14,9 +13,10 @@ class TestField(State):
         State.__init__(self, game)
         pygame.display.set_caption("BomberMan: TestField")
         self.game = game
-
         self.music_manager = MusicManager()
         self.tile_map = copy.deepcopy(tile_map)
+
+        self.keys_held = {pygame.K_s: False, pygame.K_d: False}
 
         self.bomb_group = pygame.sprite.Group()
         self.explosion_group = pygame.sprite.Group()
@@ -39,14 +39,16 @@ class TestField(State):
         self.music_manager.play_music('level', 'level_volume', True)
 
     def handle_events(self, event):
-        if not event.type == pygame.KEYDOWN:
-            return
-        if event.key in config.PLAYER1_MOVE_KEYS:
-            if len(self.player1.queued_keys) < config.MAX_QUEUE:
-                self.player1.queued_keys.append(event.key)
-        elif event.key in config.PLAYER2_MOVE_KEYS:
-            if len(self.player2.queued_keys) < config.MAX_QUEUE:
-                self.player2.queued_keys.append(event.key)
+        if event.type == pygame.KEYDOWN:
+            if event.key in config.PLAYER1_MOVE_KEYS:
+                self.player1.held_down_keys.append(event.key)
+            if event.key in config.PLAYER2_MOVE_KEYS:
+                self.player2.held_down_keys.append(event.key)
+        elif event.type == pygame.KEYUP:
+            if event.key in config.PLAYER1_MOVE_KEYS:
+                self.player1.held_down_keys.remove(event.key)
+            if event.key in config.PLAYER2_MOVE_KEYS:
+                self.player2.held_down_keys.remove(event.key)
 
     def handle_explosions(self):
         # Check if some explosion exists

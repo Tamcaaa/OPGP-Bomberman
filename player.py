@@ -19,6 +19,7 @@ class Player(pygame.sprite.Sprite):
         self.maxBombs = 1
         self.power = 1
         self.queued_keys = []
+        self.held_down_keys = []
         self.last_move_time = 0
         self.iframe_timer = 0
 
@@ -61,7 +62,8 @@ class Player(pygame.sprite.Sprite):
         return self.health
 
     def handle_queued_keys(self, now):
-        if self.queued_keys and now - self.last_move_time >= config.MOVE_COOLDOWN:
+        if now - self.last_move_time >= config.MOVE_COOLDOWN and self.held_down_keys:
+            self.queued_keys.append(self.held_down_keys[-1])
             key = self.queued_keys.pop(0)
             if key == pygame.K_w or key == pygame.K_UP:
                 self.move(0, -1, "up")
