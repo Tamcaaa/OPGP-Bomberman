@@ -81,7 +81,7 @@ class Explosion(pygame.sprite.Sprite):
                 new_x = tile_x * config.GRID_SIZE
                 new_y = tile_y * config.GRID_SIZE
                 if not (0 <= tile_x <= max_x and 0 <= tile_y <= max_y):
-                    continue
+                    break
                 elif self.test_field.tile_map[tile_y][tile_x] == 0:
                     explosion = Explosion(new_x, new_y, explosion_group, 0, self.test_field)  # Create explosion effect
                     explosion_group.add(explosion)
