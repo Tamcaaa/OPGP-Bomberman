@@ -4,6 +4,7 @@ import pygame
 
 from managers.state_manager import StateManager
 
+
 class BomberManApp:
     def __init__(self):
         pygame.init()  # Initialize Pygame
