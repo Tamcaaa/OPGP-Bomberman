@@ -6,6 +6,7 @@ from states.state import State
 from player import Player
 from maps.test_field_map import tile_map
 from managers.music_manager import MusicManager
+from managers.power_up_manager import PowerUpManager
 
 
 class TestField(State):
@@ -14,6 +15,7 @@ class TestField(State):
         pygame.display.set_caption("BomberMan: TestField")
         self.game = game
         self.music_manager = MusicManager()
+        self.power_up_manager = PowerUpManager()
         self.tile_map = copy.deepcopy(tile_map)
 
         self.keys_held = {pygame.K_s: False, pygame.K_d: False}
@@ -69,6 +71,7 @@ class TestField(State):
 
     def destroy_tile(self, x, y):
         self.tile_map[y][x] = 0
+        self.power_up_manager.spawn_power_up(x, y)
 
     def update(self):
         now = pygame.time.get_ticks()
@@ -86,6 +89,10 @@ class TestField(State):
 
         screen.blit(self.heart_image, (0, 0))
         screen.blit(self.heart_image, (config.SCREEN_WIDTH - 2 * config.GRID_SIZE, 0))
+
+    def draw_power_ups(self, screen):
+        for i in self.power_up_manager.get_power_ups():
+            print(i)
 
     @staticmethod
     def draw_grid(screen):
@@ -116,6 +123,7 @@ class TestField(State):
         self.draw_walls(screen)
         self.draw_grid(screen)
         self.draw_menu(screen)
+        self.draw_power_ups(screen)
 
         screen.blit(self.player1.image, self.player1.rect)
         screen.blit(self.player2.image, self.player2.rect)
