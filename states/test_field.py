@@ -92,7 +92,7 @@ class TestField(State):
 
     def draw_power_ups(self, screen):
         for i in self.power_up_manager.get_power_ups():
-            print(i)
+            screen.blit(i[2], i[0])
 
     @staticmethod
     def draw_grid(screen):
