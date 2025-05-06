@@ -26,12 +26,6 @@ class MainMenu(State):
                                          config.BUTTON_WIDTH,
                                          config.BUTTON_HEIGHT,
                                          "Multiplayer")
-        self.settings_button = Button(
-            config.SCREEN_WIDTH // 2 - config.BUTTON_WIDTH // 2,
-            config.SCREEN_HEIGHT // 2 + 80,
-            config.BUTTON_WIDTH,
-            config.BUTTON_HEIGHT,
-            "Settings")
 
     def handle_events(self, event):
         """Handle button clicks."""
@@ -40,10 +34,6 @@ class MainMenu(State):
             self.enter_single_player()
         elif self.multiplayer_button.is_clicked():
             print("Multiplayer")
-        elif self.settings_button.is_clicked():
-            from states.settings import Settings
-            new_state = Settings(self.game)
-            new_state.enter_state()
 
     def load_music(self):
         self.music_manager.play_music('title', 'main_menu_volume', True)
@@ -64,7 +54,6 @@ class MainMenu(State):
         self.game.draw_text(screen, "BOMBER-MAN", config.COLOR_BLACK, config.SCREEN_WIDTH // 2, config.SCREEN_HEIGHT // 4)
         self.singleplayer_button.draw(screen)
         self.multiplayer_button.draw(screen)
-        self.settings_button.draw(screen)
 
 
 class Button:

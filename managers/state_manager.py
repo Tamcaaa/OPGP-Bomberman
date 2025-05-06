@@ -4,8 +4,7 @@ class StateManager:
         self.state_map = {
             "GameOver": "states.game_over.GameOver",
             "TestField": "states.test_field.TestField",
-            "MainMenu": "states.main_menu.MainMenu",
-            "Victory": "states.victory.Victory"
+            "MainMenu": "states.main_menu.MainMenu"
         }
 
     def change_state(self, class_path: str, arg: int | None = None) -> None:

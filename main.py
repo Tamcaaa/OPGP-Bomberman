@@ -26,11 +26,7 @@ class BomberManApp:
         self.all_sprites = pygame.sprite.Group()
         self.player1 = None
         self.player2 = None
-        self.settings = {
-            "volume": 0.5,
 
-
-        }
     def run(self):
         clock = pygame.time.Clock()
         self.running = True
