@@ -10,9 +10,13 @@ class Settings(State):
 
         self.volume = game.settings.get("volume", 0.5)
 
-        self.back_button = Button(50, 50, 150, 50, "Back")
-        self.volume_up_button = Button(300, 200, 50, 50, "+")
-        self.volume_down_button = Button(200, 200, 50, 50, "-")
+        # Buttons
+        self.back_button = Button(20, config.SCREEN_HEIGHT - 70, 150, 50, "Back")
+        self.volume_up_button = Button(330, 200, 50, 50, "+")
+        self.volume_down_button = Button(220, 200, 50, 50, "-")
+        
+        # Mute/Unmute button
+        self.mute_button = Button(220, 300, 150, 50, "Mute")  # Default text "Mute"
 
     def handle_events(self, event):
         if self.back_button.is_clicked():
@@ -25,15 +29,34 @@ class Settings(State):
             self.volume = max(0.0, self.volume - 0.1)
             pygame.mixer.music.set_volume(self.volume)
             self.game.settings["volume"] = self.volume
+        elif self.mute_button.is_clicked():  # Toggle mute/unmute
+            if self.volume > 0.0:  # If the volume is > 0, mute it
+                self.volume = 0.0
+                self.mute_button.text = "Unmute"  # Change button text to "Unmute"
+            else:  # If the volume is 0, unmute it
+                self.volume = 0.5  # You can set this back to any default value
+                self.mute_button.text = "Mute"  # Change button text to "Mute"
+            pygame.mixer.music.set_volume(self.volume)
+            self.game.settings["volume"] = self.volume
 
     def render(self, screen):
         screen.fill((30, 30, 30))
+
+        # Draw buttons
         self.back_button.draw(screen)
         self.volume_up_button.draw(screen)
         self.volume_down_button.draw(screen)
+        self.mute_button.draw(screen)  # Draw the mute/unmute button
 
+        # Volume text
         vol_text = self.font.render(f"Volume: {int(self.volume * 100)}%", True, config.TEXT_COLOR)
         screen.blit(vol_text, (200, 150))
+
+        # Mute status text
+        if self.volume == 0.0:
+            mute_text = self.font.render("Sound Muted", True, config.TEXT_COLOR)
+            screen.blit(mute_text, (config.SCREEN_WIDTH // 2, 350))
+
 
 class Button:
     def __init__(self, x, y, width, height, text):
@@ -50,4 +73,3 @@ class Button:
 
     def is_clicked(self):
         return self.rect.collidepoint(pygame.mouse.get_pos()) and pygame.mouse.get_pressed()[0]
-
