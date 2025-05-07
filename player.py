@@ -15,13 +15,16 @@ class Player(pygame.sprite.Sprite):
             raise ValueError(f"Invalid player id {self.player_id}")
 
         self.health = 3
+        self.max_bomb_limit = 4
         self.currentBomb = 1
         self.maxBombs = 1
-        self.power = 1
+        self.power = 1  # Explosion range
+        self.speed = 1  # Movement speed multiplier
         self.queued_keys = []
         self.held_down_keys = []
         self.last_move_time = 0
         self.iframe_timer = 0
+        self.score = 0
 
         self.test_field = test_field
         self.music_manager = MusicManager()
@@ -30,6 +33,11 @@ class Player(pygame.sprite.Sprite):
 
         self.player_config = config.PLAYER_CONFIG[self.player_id]
         self.move_keys = self.player_config["move_keys"]
+
+        # Power-up effects
+        self.active_powerups = {}  # Track active power-ups and their timers
+        self.freeze_timer = 0
+        self.invincible_timer = 0
 
         # Dict of all images of player
         self.images = {
@@ -46,7 +54,10 @@ class Player(pygame.sprite.Sprite):
         self.move_timer = 0  # Timer for movement delay
 
     def check_hit(self):
+        """Check if player is hit by an explosion"""
         now = time.time()
+
+        # Invincibility frames check
         if not now - self.iframe_timer >= config.PLAYER_IFRAMES:
             return
         if bool(pygame.sprite.spritecollide(self, self.explosion_group, False)):  # type: ignore[arg-type]
@@ -55,10 +66,65 @@ class Player(pygame.sprite.Sprite):
             return True
         return False
 
+    def slow_other_player(self):
+        """Apply freeze effect to the other player"""
+        other_player = self.test_field.player2 if self.player_id == 1 else self.test_field.player1
+        other_player.freeze_timer = time.time() + 5  # Apply freeze effect for 5 seconds
+
+    def activate_powerup(self, powerup_type, duration=30):
+        """Activate a power-up effect"""
+        now = time.time()
+
+        if powerup_type == "speed_powerup":
+            # Increase explosion range
+            self.power += 1
+
+        elif powerup_type == "bomb_powerup":
+            # Increase max bombs
+            self.maxBombs += 1
+            self.currentBomb += 1
+
+        elif powerup_type == "freeze_powerup":
+            # Freeze other player
+            self.slow_other_player()
+
+        elif powerup_type == "live+_powerup":
+            # Add extra life (up to maximum of 5)
+            self.health = min(self.health + 1, 5)
+
+        elif powerup_type == "shield_powerup":
+            # Temporary invincibility
+            self.invincible_timer = now + duration
+
+        # Add power-up to active list with expiration time for temporary effects
+        self.active_powerups[powerup_type] = now + duration
+
+    def update_powerups(self):
+        """Update active power-ups and remove expired ones"""
+        now = time.time()
+        expired = []
+
+        for powerup, expire_time in self.active_powerups.items():
+            if now >= expire_time:
+                expired.append(powerup)
+
+                # Handle removing temporary effects
+                if powerup == "bomb_powerup":
+                    self.maxBombs = max(1, self.maxBombs - 1)  # Return to normal, minimum 1
+
+                elif powerup == "speed_powerup":
+                    self.power = max(1, self.power - 1)  # Return to normal, minimum 1
+
+        # Remove expired power-ups
+        for powerup in expired:
+            del self.active_powerups[powerup]
+
     def get_player_location(self):
+        """Get player's current position"""
         return self.rect.x, self.rect.y
 
     def get_health(self):
+        """Get player's current health"""
         return self.health
 
     def handle_queued_keys(self, now):
@@ -78,14 +144,18 @@ class Player(pygame.sprite.Sprite):
             self.last_move_time = now
 
     def move(self, dx, dy, direction):
-
+        """Move the player in the specified direction"""
         new_x = self.rect.x + dx * config.GRID_SIZE
         new_y = self.rect.y + dy * config.GRID_SIZE
 
         bound_x = max(0, min(new_x, config.SCREEN_WIDTH - config.GRID_SIZE))
         bound_y = max(0, min(new_y, config.SCREEN_HEIGHT - config.GRID_SIZE))
 
-        if self.test_field.tile_map[bound_y // config.GRID_SIZE][bound_x // config.GRID_SIZE] in [1, 2, 3]:
+        # Check for collision with walls and bricks
+        tile_type = self.test_field.tile_map[bound_y // config.GRID_SIZE][bound_x // config.GRID_SIZE]
+
+        # Prevent walking into walls and bricks
+        if tile_type in [1, 2]:  # Wall, brick
             self.image = self.images[direction]
             return
 
@@ -97,6 +167,7 @@ class Player(pygame.sprite.Sprite):
         self.image = self.images[direction]  # Update sprite direction
 
     def deploy_bomb(self, bomb_group, explosion_group):
+        """Deploy a bomb at the player's current position"""
         if self.currentBomb > 0:
-            Bomb(self, bomb_group, explosion_group, self.test_field)  # Používame správnu triedu!
-            self.currentBomb -= 1  # Create bomb instance
+            Bomb(self, bomb_group, explosion_group, self.test_field)
+            self.currentBomb -= 1  # Decrement available bombs

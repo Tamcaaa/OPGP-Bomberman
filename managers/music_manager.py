@@ -8,6 +8,7 @@ class MusicManager:
         self.music = {
             "title": "assets/sounds/title.mid",
             "game_over": "assets/sounds/game_over.mp3",
+            "win": "assets/sounds/win.mid",
             "level": "assets/sounds/level.mp3",
         }
         self.sounds = {
