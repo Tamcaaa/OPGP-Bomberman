@@ -51,14 +51,6 @@ class TestField(State):
         # Place power-ups under random bricks at the start
         self.place_hidden_powerups()
 
-    def remove_door_and_key(self):
-        """Remove door and key tiles from the map"""
-        for y in range(len(self.tile_map)):
-            for x in range(len(self.tile_map[y])):
-                # Replace door and key tiles (4, 5, 6, 7) with empty tiles (0)
-                if self.tile_map[y][x] in [4, 5, 6, 7]:
-                    self.tile_map[y][x] = 0
-
     def place_hidden_powerups(self):
         """Place power-ups under random bricks at the start of the game"""
         brick_positions = []

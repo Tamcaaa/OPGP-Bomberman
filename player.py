@@ -155,7 +155,7 @@ class Player(pygame.sprite.Sprite):
         tile_type = self.test_field.tile_map[bound_y // config.GRID_SIZE][bound_x // config.GRID_SIZE]
 
         # Prevent walking into walls and bricks
-        if tile_type in [1, 2]:  # Wall, brick
+        if tile_type in [1, 2, 3]:  # Wall, brick
             self.image = self.images[direction]
             return
 
