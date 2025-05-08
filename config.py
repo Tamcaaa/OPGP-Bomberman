@@ -17,13 +17,16 @@ MUSIC_VOLUME = {
     "explosion_volume": 1,
     "walk_volume": 0.5,
     "death_volume": 1
-    
+
 }
 
 # Colors
 COLOR_WHITE = (255, 255, 255)
 COLOR_BLACK = (0, 0, 0)
 COLOR_GREEN = (0, 128, 0)
+COLOR_DARK_GREEN = (80, 160, 0)
+COLOR_LIGHT_GREEN = (144, 208, 80)
+COLOR_LIGHT_BLUE = (70, 130, 180)
 BACKGROUND_COLOR = (162, 235, 154)
 BUTTON_COLOR = (88, 94, 149)
 BUTTON_HOVER_COLOR = (0, 100, 200)
@@ -41,14 +44,6 @@ SPAWN_POINTS = {"spawn1": (0, 30),
 # Movement keys
 PLAYER1_MOVE_KEYS = [pygame.K_w, pygame.K_a, pygame.K_s, pygame.K_d, pygame.K_SPACE]
 PLAYER2_MOVE_KEYS = [pygame.K_UP, pygame.K_LEFT, pygame.K_DOWN, pygame.K_RIGHT, pygame.K_KP0]
-# Powerups
-POWERUP_TYPES = [
-    "bomb_powerup",   # Increases max bombs
-    "speed_powerup",  # Increases explosion range
-    "freeze_powerup", # Freezes the other player
-    "live+_powerup",  # Adds an extra life
-    "shield_powerup"]  # Temporary invincibility
-POWERUP_SPAWNING_RATE = 0.4
 # Player images
 PLAYER1_IMAGES = {
     "down": pygame.image.load("assets/player_color/p_1_down.png"),
@@ -73,3 +68,18 @@ PLAYER_CONFIG = {
         'images': PLAYER2_IMAGES,
     }
 }
+# -----------------------------------------------------------------Power_up-----------------------------------------------------------------
+
+POWERUP_TYPES = [
+    "bomb_powerup",  # Increases max bombs
+    "range_powerup",  # Increases explosion range
+    "freeze_powerup",  # Freezes the other player
+    "live+_powerup",  # Adds an extra life
+    "shield_powerup"]  # Temporary invincibility
+POWERUP_SPAWNING_RATE = 0.4
+POWERUP_DURATIONS = {
+    'shield_powerup': 15,
+    'freeze_powerup': 5,
+}
+# ------------------------------------------------------------------Player------------------------------------------------------------------
+PLAYER_MAX_HEALTH = 5

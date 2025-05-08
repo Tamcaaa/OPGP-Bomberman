@@ -10,7 +10,7 @@ class Player(pygame.sprite.Sprite):
         super().__init__()
 
         self.player_id = player_id
-    
+
         if self.player_id not in config.PLAYER_CONFIG:
             raise ValueError(f"Invalid player id {self.player_id}")
 
@@ -19,12 +19,10 @@ class Player(pygame.sprite.Sprite):
         self.currentBomb = 1
         self.maxBombs = 1
         self.power = 1  # Explosion range
-        self.speed = 1  # Movement speed multiplier
         self.queued_keys = []
+        self.held_down_keys = []
         self.last_move_time = 0
-        self.iframe_timer = 0
         self.score = 0
-        
 
         self.test_field = test_field
         self.music_manager = MusicManager()
@@ -33,11 +31,11 @@ class Player(pygame.sprite.Sprite):
 
         self.player_config = config.PLAYER_CONFIG[self.player_id]
         self.move_keys = self.player_config["move_keys"]
-        
+
         # Power-up effects
         self.active_powerups = {}  # Track active power-ups and their timers
         self.freeze_timer = 0
-        self.invincible_timer = 0
+        self.iframe_timer = 0
 
         # Dict of all images of player
         self.images = {
@@ -56,96 +54,75 @@ class Player(pygame.sprite.Sprite):
     def check_hit(self):
         """Check if player is hit by an explosion"""
         now = time.time()
-        
+
         # Invincibility frames check
         if not now - self.iframe_timer >= config.PLAYER_IFRAMES:
-            return False
-            
-        # Temporary invincibility from power-up check
-        if self.invincible_timer > 0 and now < self.invincible_timer:
-            return False
-            
-        # Check collision with explosions
+            return
         if bool(pygame.sprite.spritecollide(self, self.explosion_group, False)):  # type: ignore[arg-type]
             self.iframe_timer = time.time()
             self.health -= 1
             return True
         return False
-            
-    def slow_other_player(self):
-        """Apply freeze effect to the other player"""
-        other_player = self.test_field.player2 if self.player_id == 1 else self.test_field.player1
-        other_player.freeze_timer = time.time() + 5  # Apply freeze effect for 5 seconds
-            
-    def activate_powerup(self, powerup_type, duration=30):
+
+    def activate_powerup(self, powerup_type, duration=10):
         """Activate a power-up effect"""
         now = time.time()
-        
-        if powerup_type == "speed_powerup":
+
+        if powerup_type == "range_powerup":
             # Increase explosion range
             self.power += 1
-            
         elif powerup_type == "bomb_powerup":
             # Increase max bombs
             self.maxBombs += 1
             self.currentBomb += 1
-            
         elif powerup_type == "freeze_powerup":
             # Freeze other player
-            self.slow_other_player()
-            
+            other_player = self.test_field.player2 if self.player_id == 1 else self.test_field.player1
+            other_player.freeze_timer = time.time() + duration
         elif powerup_type == "live+_powerup":
-            # Add extra life (up to maximum of 5)
-            self.health = min(self.health + 1, 5)
-            
+            # Add extra life
+            self.health = min(self.health + 1, config.PLAYER_MAX_HEALTH)
+
         elif powerup_type == "shield_powerup":
             # Temporary invincibility
-            self.invincible_timer = now + duration
-            
+            self.iframe_timer = now + duration
+
         # Add power-up to active list with expiration time for temporary effects
         self.active_powerups[powerup_type] = now + duration
-    
+
     def update_powerups(self):
         """Update active power-ups and remove expired ones"""
         now = time.time()
         expired = []
-        
+
         for powerup, expire_time in self.active_powerups.items():
             if now >= expire_time:
                 expired.append(powerup)
-                
-                # Handle removing temporary effects
-                if powerup == "bomb_powerup":
-                    self.maxBombs = max(1, self.maxBombs - 1)  # Return to normal, minimum 1
-                    
-                elif powerup == "speed_powerup":
-                    self.power = max(1, self.power - 1)  # Return to normal, minimum 1
-                    
+                # Here add temporary powerups if needed
         # Remove expired power-ups
         for powerup in expired:
             del self.active_powerups[powerup]
-        
+
     def get_player_location(self):
         """Get player's current position"""
         return self.rect.x, self.rect.y
 
-    def get_health(self):
+    def get_health(self) -> int:
         """Get player's current health"""
         return self.health
 
-    def handle_queued_keys(self, now):
-        """Process queued movement keys"""
-        self.update_powerups()  # Always keep power-ups updated
+    def get_max_bombs(self) -> int:
+        return self.maxBombs
 
+    def handle_queued_keys(self, now):
         # Block movement while frozen
         if time.time() < self.freeze_timer:
             move_delay = config.MOVE_COOLDOWN * 2.0  # slower
         else:
-            move_delay = config.MOVE_COOLDOWN / self.speed
+            move_delay = config.MOVE_COOLDOWN
 
-        move_delay = config.MOVE_COOLDOWN / self.speed
-
-        if self.queued_keys and now - self.last_move_time >= move_delay:
+        if now - self.last_move_time >= move_delay and self.held_down_keys:
+            self.queued_keys.append(self.held_down_keys[-1])
             key = self.queued_keys.pop(0)
             if key == pygame.K_w or key == pygame.K_UP:
                 self.move(0, -1, "up")
@@ -171,7 +148,7 @@ class Player(pygame.sprite.Sprite):
         tile_type = self.test_field.tile_map[bound_y // config.GRID_SIZE][bound_x // config.GRID_SIZE]
 
         # Prevent walking into walls and bricks
-        if tile_type in [1, 2]:  # Wall, brick
+        if tile_type in [1, 2, 3]:  # Wall, brick, Menu
             self.image = self.images[direction]
             return
 
