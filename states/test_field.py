@@ -245,6 +245,19 @@ class TestField(State):
                 elif tile == 2:
                     screen.blit(self.breakable_wall, (col_index * config.GRID_SIZE, row_index * config.GRID_SIZE))
 
+    def draw_players(self, screen):
+        screen.blit(self.player1.image, self.player1.rect)
+        screen.blit(self.player2.image, self.player2.rect)
+
+        if self.player1.active_powerups.get("shield_powerup"):
+            radius = config.GRID_SIZE // 2
+            player_center = (self.player1.rect.x + radius, self.player1.rect.y + radius)
+            pygame.draw.circle(screen, config.COLOR_LIGHT_BLUE, player_center, radius, width=3)
+        elif self.player2.active_powerups.get("shield_powerup"):
+            radius = config.GRID_SIZE // 2
+            player_center = (self.player2.rect.x + radius, self.player2.rect.y + radius)
+            pygame.draw.circle(screen, config.COLOR_LIGHT_BLUE, player_center, radius, width=3)
+
     def render(self, screen):
         screen.fill(config.COLOR_WHITE)
 
@@ -253,8 +266,8 @@ class TestField(State):
         self.draw_grid(screen)
         self.draw_menu(screen)
 
-        screen.blit(self.player1.image, self.player1.rect)
-        screen.blit(self.player2.image, self.player2.rect)
+        # Draw Players
+        self.draw_players(screen)
 
         # 🔥 Update explosions
         self.bomb_group.update(self.explosion_group)
