@@ -13,7 +13,7 @@ class PowerUp(pygame.sprite.Sprite):
         if powerup_type is None:
             self.type = random.choice([
                 "bomb_powerup",  # Increases max bombs
-                "speed_powerup",  # Increases explosion range
+                "range_powerup",  # Increases explosion range
                 "freeze_powerup",  # Freezes the other player
                 "live+_powerup",  # Adds an extra life
                 "shield_powerup"  # Temporary invincibility
@@ -54,7 +54,7 @@ class PowerUp(pygame.sprite.Sprite):
         # Different colors for different power-up types
         if self.type == "bomb_powerup":
             image.fill((255, 0, 0))  # Red for bomb power
-        elif self.type == "speed_powerup":
+        elif self.type == "range_powerup":
             image.fill((0, 0, 255))  # Blue for speed/range
         elif self.type == "freeze_powerup":
             image.fill((0, 255, 255))  # Cyan for freeze
@@ -95,9 +95,9 @@ class PowerUp(pygame.sprite.Sprite):
                 player.activate_powerup("bomb_powerup")
             return f"Player {player.player_id} can place more bombs permanently!"
 
-        elif self.type == "speed_powerup":
-            player.activate_powerup('speed_powerup')
-            return f"Player {player.player_id}'s explosion range increased for {self.effect_duration}s!"
+        elif self.type == "range_powerup":
+            player.activate_powerup('range_powerup')
+            return f"Player {player.player_id}'s explosion range increased permanently!"
 
         elif self.type == "freeze_powerup":
             # Apply freeze effect to the other player

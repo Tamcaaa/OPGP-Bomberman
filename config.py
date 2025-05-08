@@ -72,7 +72,7 @@ PLAYER_CONFIG = {
 
 POWERUP_TYPES = [
     "bomb_powerup",  # Increases max bombs
-    "speed_powerup",  # Increases explosion range
+    "range_powerup",  # Increases explosion range
     "freeze_powerup",  # Freezes the other player
     "live+_powerup",  # Adds an extra life
     "shield_powerup"]  # Temporary invincibility

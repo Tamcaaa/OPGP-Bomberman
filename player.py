@@ -64,11 +64,11 @@ class Player(pygame.sprite.Sprite):
             return True
         return False
 
-    def activate_powerup(self, powerup_type, duration=30):
+    def activate_powerup(self, powerup_type, duration=10):
         """Activate a power-up effect"""
         now = time.time()
 
-        if powerup_type == "speed_powerup":
+        if powerup_type == "range_powerup":
             # Increase explosion range
             self.power += 1
         elif powerup_type == "bomb_powerup":
@@ -98,14 +98,7 @@ class Player(pygame.sprite.Sprite):
         for powerup, expire_time in self.active_powerups.items():
             if now >= expire_time:
                 expired.append(powerup)
-
-                # Handle removing temporary effects
-                if powerup == "bomb_powerup":
-                    self.maxBombs = max(1, self.maxBombs - 1)  # Return to normal, minimum 1
-
-                elif powerup == "speed_powerup":
-                    self.power = max(1, self.power - 1)  # Return to normal, minimum 1
-
+                # Here add temporary powerups if needed
         # Remove expired power-ups
         for powerup in expired:
             del self.active_powerups[powerup]

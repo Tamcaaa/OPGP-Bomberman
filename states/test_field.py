@@ -72,7 +72,7 @@ class TestField(State):
         # Place power-ups under selected bricks
         for x, y in selected_bricks:
             # Create a hidden power-up (not added to sprite group yet)
-            powerup = PowerUp(x, y)
+            powerup = PowerUp(x, y, 'range_powerup')
             self.hidden_powerups[(x, y)] = powerup
 
     def load_music(self):
@@ -140,25 +140,6 @@ class TestField(State):
                 self.message_timer = pygame.time.get_ticks()
                 self.music_manager.play_sound("walk", "walk_volume")  # Play pickup sound
                 powerup.kill()  # Remove from sprite group
-
-    def update(self):
-        now = pygame.time.get_ticks()
-        self.player1.handle_queued_keys(now)
-        self.player2.handle_queued_keys(now)
-
-        self.handle_explosions()
-        self.check_powerup_collisions()
-
-        self.player1.update_powerups()
-        self.player2.update_powerups()
-
-        # Update power-ups
-        self.powerup_group.update()
-
-        # Clear message after 3 seconds
-        if self.message_timer > 0 and now - self.message_timer > 3000:
-            self.powerup_message = ""
-            self.message_timer = 0
 
     def draw_menu(self, screen):
         player1_lives_text = self.game.font.render(f"x {self.player1.get_health()}", True, config.COLOR_BLACK)
@@ -257,6 +238,25 @@ class TestField(State):
             radius = config.GRID_SIZE // 2
             player_center = (self.player2.rect.x + radius, self.player2.rect.y + radius)
             pygame.draw.circle(screen, config.COLOR_LIGHT_BLUE, player_center, radius, width=3)
+
+    def update(self):
+        now = pygame.time.get_ticks()
+        self.player1.handle_queued_keys(now)
+        self.player2.handle_queued_keys(now)
+
+        self.handle_explosions()
+        self.check_powerup_collisions()
+
+        self.player1.update_powerups()
+        self.player2.update_powerups()
+
+        # Update power-ups
+        self.powerup_group.update()
+
+        # Clear message after 3 seconds
+        if self.message_timer > 0 and now - self.message_timer > 3000:
+            self.powerup_message = ""
+            self.message_timer = 0
 
     def render(self, screen):
         screen.fill(config.COLOR_WHITE)
