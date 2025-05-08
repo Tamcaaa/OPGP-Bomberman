@@ -72,7 +72,7 @@ class TestField(State):
         # Place power-ups under selected bricks
         for x, y in selected_bricks:
             # Create a hidden power-up (not added to sprite group yet)
-            powerup = PowerUp(x, y, 'range_powerup')
+            powerup = PowerUp(x, y)
             self.hidden_powerups[(x, y)] = powerup
 
     def load_music(self):

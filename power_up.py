@@ -101,8 +101,9 @@ class PowerUp(pygame.sprite.Sprite):
 
         elif self.type == "freeze_powerup":
             # Apply freeze effect to the other player
-            player.activate_powerup("freeze_powerup", config.POWERUP_DURATIONS.get("freeze_powerup", 5))
-            return f"Player {player.player_id} froze the opponent for 5s!"
+            freeze_duration = config.POWERUP_DURATIONS.get("freeze_powerup", 5)
+            player.activate_powerup("freeze_powerup", freeze_duration)
+            return f"Player {player.player_id} froze the opponent for {freeze_duration}s!"
 
         elif self.type == "live+_powerup":
             player.activate_powerup("live+_powerup")
@@ -110,7 +111,7 @@ class PowerUp(pygame.sprite.Sprite):
 
         elif self.type == "shield_powerup":
             # Temporary invincibility
-            shield_duration = config.POWERUP_DURATIONS.get("shield_powerup", 5)
+            shield_duration = config.POWERUP_DURATIONS.get("shield_powerup", 15)
             player.activate_powerup("shield_powerup", shield_duration)
             return f"Player {player.player_id} is invincible for {shield_duration}s!"
 

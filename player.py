@@ -80,8 +80,8 @@ class Player(pygame.sprite.Sprite):
             other_player = self.test_field.player2 if self.player_id == 1 else self.test_field.player1
             other_player.freeze_timer = time.time() + duration
         elif powerup_type == "live+_powerup":
-            # Add extra life (up to maximum of 5)
-            self.health = min(self.health + 1, 5)
+            # Add extra life
+            self.health = min(self.health + 1, config.PLAYER_MAX_HEALTH)
 
         elif powerup_type == "shield_powerup":
             # Temporary invincibility
