@@ -114,9 +114,12 @@ class Player(pygame.sprite.Sprite):
         """Get player's current position"""
         return self.rect.x, self.rect.y
 
-    def get_health(self):
+    def get_health(self) -> int:
         """Get player's current health"""
         return self.health
+
+    def get_max_bombs(self) -> int:
+        return self.maxBombs
 
     def handle_queued_keys(self, now):
         # Block movement while frozen

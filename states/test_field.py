@@ -46,6 +46,9 @@ class TestField(State):
         self.unbreakable_wall = pygame.image.load("assets/environment/brick.png").convert_alpha()
         self.unbreakable_wall = pygame.transform.scale(self.unbreakable_wall, (30, 30))
 
+        self.bomb_icon = pygame.image.load("assets/bomb.png").convert_alpha()
+        self.bomb_icon = pygame.transform.scale(self.bomb_icon, (30, 30))
+
         self.load_music()
 
         # Place power-ups under random bricks at the start
@@ -162,10 +165,19 @@ class TestField(State):
         player2_lives_text = self.game.font.render(f"x {self.player2.get_health()}", True, config.COLOR_BLACK)
 
         screen.blit(player1_lives_text, (config.GRID_SIZE, 10))
-        screen.blit(player2_lives_text, (config.SCREEN_WIDTH - config.GRID_SIZE, 10))
+        screen.blit(player2_lives_text, (config.SCREEN_WIDTH - 3 * config.GRID_SIZE, 10))
 
         screen.blit(self.heart_image, (0, 0))
-        screen.blit(self.heart_image, (config.SCREEN_WIDTH - 2 * config.GRID_SIZE, 0))
+        screen.blit(self.heart_image, (config.SCREEN_WIDTH - 4 * config.GRID_SIZE, 0))
+
+        player1_bombs = self.game.font.render(f"x {self.player1.get_max_bombs()}", True, config.COLOR_BLACK)
+        player2_bombs = self.game.font.render(f"x {self.player2.get_max_bombs()}", True, config.COLOR_BLACK)
+
+        screen.blit(self.bomb_icon, (config.GRID_SIZE * 2, 0))
+        screen.blit(self.bomb_icon, (config.SCREEN_WIDTH - 2 * config.GRID_SIZE, 0))
+
+        screen.blit(player1_bombs, (config.GRID_SIZE * 3, 10))
+        screen.blit(player2_bombs, (config.SCREEN_WIDTH - config.GRID_SIZE, 10))
 
         # Display active power-ups for each player
         self.draw_active_powerups(screen)
