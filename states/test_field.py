@@ -9,7 +9,8 @@ from player import Player
 from maps.test_field_map import tile_map
 from managers.music_manager import MusicManager
 from power_up import PowerUp
-
+from maps.map_selector import run_map_selection
+from maps.test_field_map import map1, map2, map3, map4, map5
 
 class TestField(State):
     def __init__(self, game):
@@ -48,11 +49,69 @@ class TestField(State):
 
         self.bomb_icon = pygame.image.load("assets/bomb.png").convert_alpha()
         self.bomb_icon = pygame.transform.scale(self.bomb_icon, (30, 30))
-
+        
+        all_maps = {
+            "Classic": map1,
+            "Urban Assault": map2,
+            "Crystal Caves": map3,
+            "Ancient Ruins": map4,
+            "Desert Maze": map5
+        }
+        
+        selected_map = run_map_selection(all_maps)
+        if selected_map is None:
+            # Ak hráč zruší, vráť sa do MainMenu
+            from main_menu import MainMenu
+            self.game.change_state(MainMenu(self.game))
+            return
+        
+        self.tile_map = selected_map
+        self.selected_map = selected_map  # Store selected map for drawing
+        
+        self.setup_level()
         self.load_music()
-
-        # Place power-ups under random bricks at the start
+        
         self.place_hidden_powerups()
+
+    def setup_level(self):
+        """Set up the level by initializing players at spawn points and preparing the game area."""
+        # Find spawn points in the tile map
+        spawn_positions = {}
+        
+        # This assumes your tile_map has some specific notation for spawn points
+        # If they're not in the tile_map, you'll need to adjust this logic
+        for y in range(len(self.tile_map)):
+            for x in range(len(self.tile_map[y])):
+                # Check if the current position is a spawn point (0 = empty space)
+                if self.tile_map[y][x] == 0:
+                    # Define corners as spawn points
+                    if (x == 1 and y == 1):
+                        spawn_positions["spawn1"] = (x * config.GRID_SIZE, y * config.GRID_SIZE)
+                    elif (x == len(self.tile_map[0]) - 2 and y == 1):
+                        spawn_positions["spawn2"] = (x * config.GRID_SIZE, y * config.GRID_SIZE)
+                    elif (x == 1 and y == len(self.tile_map) - 2):
+                        spawn_positions["spawn3"] = (x * config.GRID_SIZE, y * config.GRID_SIZE)
+                    elif (x == len(self.tile_map[0]) - 2 and y == len(self.tile_map) - 2):
+                        spawn_positions["spawn4"] = (x * config.GRID_SIZE, y * config.GRID_SIZE)
+        
+        # Set player positions
+        if "spawn1" in spawn_positions:
+            self.player1.rect.x, self.player1.rect.y = spawn_positions["spawn1"]
+        else:
+            # Fallback position
+            self.player1.rect.x, self.player1.rect.y = config.GRID_SIZE, config.GRID_SIZE
+            
+        if "spawn4" in spawn_positions:
+            self.player2.rect.x, self.player2.rect.y = spawn_positions["spawn4"]
+        else:
+            # Fallback position
+            self.player2.rect.x, self.player2.rect.y = (len(self.tile_map[0]) - 2) * config.GRID_SIZE, (len(self.tile_map) - 2) * config.GRID_SIZE
+        
+        # Reset other level-specific variables if needed
+        self.bomb_group.empty()
+        self.explosion_group.empty()
+        self.powerup_group.empty()
+        self.hidden_powerups = {}
 
     def place_hidden_powerups(self):
         """Place power-ups under random bricks at the start of the game"""
@@ -86,9 +145,17 @@ class TestField(State):
                 self.player2.held_down_keys.append(event.key)
         elif event.type == pygame.KEYUP:
             if event.key in config.PLAYER1_MOVE_KEYS:
-                self.player1.held_down_keys.remove(event.key)
+                try:
+                    self.player1.held_down_keys.remove(event.key)
+                except ValueError:
+                    # Key not in list, just ignore
+                    pass
             if event.key in config.PLAYER2_MOVE_KEYS:
-                self.player2.held_down_keys.remove(event.key)
+                try:
+                    self.player2.held_down_keys.remove(event.key)
+                except ValueError:
+                    # Key not in list, just ignore
+                    pass
 
     def handle_explosions(self):
         # Check if some explosion exists
@@ -214,17 +281,24 @@ class TestField(State):
                              (config.SCREEN_WIDTH, line * config.GRID_SIZE + 30))
 
     def draw_walls(self, screen):
-        for row_index, row in enumerate(self.tile_map):
-            for col_index, tile in enumerate(row):
-                if tile == 0:
-                    rect = pygame.Rect(col_index * config.GRID_SIZE, row_index * config.GRID_SIZE, config.GRID_SIZE,
-                                       config.GRID_SIZE)
-                    pygame.draw.rect(screen, config.COLOR_DARK_GREEN if (col_index + row_index) % 2 == 0 else config.COLOR_LIGHT_GREEN,
-                                     rect)
-                elif tile == 1:
-                    screen.blit(self.unbreakable_wall, (col_index * config.GRID_SIZE, row_index * config.GRID_SIZE))
-                elif tile == 2:
-                    screen.blit(self.breakable_wall, (col_index * config.GRID_SIZE, row_index * config.GRID_SIZE))
+        tile_map = self.tile_map
+        if hasattr(self, 'selected_map') and isinstance(self.selected_map, dict) and 'tile_map' in self.selected_map:
+            tile_map = self.selected_map['tile_map']
+        
+        for row_index, row in enumerate(tile_map):  # Iterate through each row in the tile_map
+            for col_index, tile in enumerate(row):  # Iterate through each tile in the row
+                x = col_index * config.GRID_SIZE  # X position for the tile
+                y = row_index * config.GRID_SIZE  # Y position for the tile
+
+                # Check the tile type and draw accordingly
+                if tile == 0:  # Empty space (no wall)
+                    rect = pygame.Rect(x, y, config.GRID_SIZE, config.GRID_SIZE)
+                    color = config.COLOR_DARK_GREEN if (col_index + row_index) % 2 == 0 else config.COLOR_LIGHT_GREEN
+                    pygame.draw.rect(screen, color, rect)  # Draw grid background
+                elif tile == 1:  # Unbreakable wall
+                    screen.blit(self.unbreakable_wall, (x, y))  # Draw unbreakable wall
+                elif tile == 2:  # Breakable wall
+                    screen.blit(self.breakable_wall, (x, y))
 
     def draw_players(self, screen):
         screen.blit(self.player1.image, self.player1.rect)
