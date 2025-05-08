@@ -2,6 +2,7 @@ import pygame
 import config
 from states.state import State
 
+
 class Settings(State):
     def __init__(self, game):
         super().__init__(game)

@@ -55,11 +55,10 @@ class TestField(State):
         """Place power-ups under random bricks at the start of the game"""
         brick_positions = []
 
-        # Find all brick tiles
         for y in range(len(self.tile_map)):
             for x in range(len(self.tile_map[y])):
-                if self.tile_map[y][x] == 2:  # Brick
-                    brick_positions.append((x, y))
+                if self.tile_map[y][x] == 2:
+                    brick_positions.append((x, y,))
 
         # Determine how many power-ups to place (e.g., 40% of bricks)
         num_powerups = int(len(brick_positions) * config.POWERUP_SPAWNING_RATE)
@@ -125,16 +124,14 @@ class TestField(State):
         # Only collect visible (not hidden) power-ups
         visible_powerups = [p for p in self.powerup_group.sprites() if not p.hidden]
 
-        # Player 1 collisions
         for powerup in visible_powerups:
+            # Player 1 collision
             if pygame.sprite.collide_rect(self.player1, powerup):
                 self.powerup_message = powerup.apply_effect(self.player1)
                 self.message_timer = pygame.time.get_ticks()
                 self.music_manager.play_sound("walk", "walk_volume")  # Play pickup sound
                 powerup.kill()  # Remove from sprite group
-
-        # Player 2 collisions
-        for powerup in visible_powerups:
+            # Player 2 collision
             if pygame.sprite.collide_rect(self.player2, powerup):
                 self.powerup_message = powerup.apply_effect(self.player2)
                 self.message_timer = pygame.time.get_ticks()
@@ -148,6 +145,9 @@ class TestField(State):
 
         self.handle_explosions()
         self.check_powerup_collisions()
+
+        self.player1.update_powerups()
+        self.player2.update_powerups()
 
         # Update power-ups
         self.powerup_group.update()
@@ -179,27 +179,22 @@ class TestField(State):
         """Display active power-ups for each player"""
         # Player 1 active power-ups
         p1_powerups_text = []
-        for powerup, expire_time in self.player1.active_powerups.items():
-            remaining = int(expire_time - time.time())
-            if remaining > 0:
-                if powerup == "bomb_powerup":
-                    p1_powerups_text.append(f"Bombs+: {remaining}s")
-                elif powerup == "speed_powerup":
-                    p1_powerups_text.append(f"Range+: {remaining}s")
-                elif powerup == "shield_powerup":
-                    p1_powerups_text.append(f"Shield: {remaining}s")
-
-        # Player 2 active power-ups
         p2_powerups_text = []
-        for powerup, expire_time in self.player2.active_powerups.items():
-            remaining = int(expire_time - time.time())
+
+        for powerup, expire_time in self.player1.active_powerups.items():
+            remaining = round(expire_time - time.time(), 2)
             if remaining > 0:
-                if powerup == "bomb_powerup":
-                    p2_powerups_text.append(f"Bombs+: {remaining}s")
-                elif powerup == "speed_powerup":
-                    p2_powerups_text.append(f"Range+: {remaining}s")
-                elif powerup == "shield_powerup":
+                if powerup == "shield_powerup":
+                    p1_powerups_text.append(f"Shield: {remaining}s")
+                elif powerup == 'freeze_powerup':
+                    p2_powerups_text.append(f'Freeze: {remaining}s')
+        for powerup, expire_time in self.player2.active_powerups.items():
+            remaining = round(expire_time - time.time(), 2)
+            if remaining > 0:
+                if powerup == "shield_powerup":
                     p2_powerups_text.append(f"Shield: {remaining}s")
+                elif powerup == 'freeze_powerup':
+                    p1_powerups_text.append(f'Freeze: {remaining}s')
 
         # Display Player 1 power-ups
         y_offset = 40

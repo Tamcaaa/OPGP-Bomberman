@@ -19,11 +19,9 @@ class Player(pygame.sprite.Sprite):
         self.currentBomb = 1
         self.maxBombs = 1
         self.power = 1  # Explosion range
-        self.speed = 1  # Movement speed multiplier
         self.queued_keys = []
         self.held_down_keys = []
         self.last_move_time = 0
-        self.iframe_timer = 0
         self.score = 0
 
         self.test_field = test_field
@@ -37,7 +35,7 @@ class Player(pygame.sprite.Sprite):
         # Power-up effects
         self.active_powerups = {}  # Track active power-ups and their timers
         self.freeze_timer = 0
-        self.invincible_timer = 0
+        self.iframe_timer = 0
 
         # Dict of all images of player
         self.images = {
@@ -66,11 +64,6 @@ class Player(pygame.sprite.Sprite):
             return True
         return False
 
-    def slow_other_player(self):
-        """Apply freeze effect to the other player"""
-        other_player = self.test_field.player2 if self.player_id == 1 else self.test_field.player1
-        other_player.freeze_timer = time.time() + 5  # Apply freeze effect for 5 seconds
-
     def activate_powerup(self, powerup_type, duration=30):
         """Activate a power-up effect"""
         now = time.time()
@@ -78,23 +71,21 @@ class Player(pygame.sprite.Sprite):
         if powerup_type == "speed_powerup":
             # Increase explosion range
             self.power += 1
-
         elif powerup_type == "bomb_powerup":
             # Increase max bombs
             self.maxBombs += 1
             self.currentBomb += 1
-
         elif powerup_type == "freeze_powerup":
             # Freeze other player
-            self.slow_other_player()
-
+            other_player = self.test_field.player2 if self.player_id == 1 else self.test_field.player1
+            other_player.freeze_timer = time.time() + duration
         elif powerup_type == "live+_powerup":
             # Add extra life (up to maximum of 5)
             self.health = min(self.health + 1, 5)
 
         elif powerup_type == "shield_powerup":
             # Temporary invincibility
-            self.invincible_timer = now + duration
+            self.iframe_timer = now + duration
 
         # Add power-up to active list with expiration time for temporary effects
         self.active_powerups[powerup_type] = now + duration
@@ -128,7 +119,13 @@ class Player(pygame.sprite.Sprite):
         return self.health
 
     def handle_queued_keys(self, now):
-        if now - self.last_move_time >= config.MOVE_COOLDOWN and self.held_down_keys:
+        # Block movement while frozen
+        if time.time() < self.freeze_timer:
+            move_delay = config.MOVE_COOLDOWN * 2.0  # slower
+        else:
+            move_delay = config.MOVE_COOLDOWN
+
+        if now - self.last_move_time >= move_delay and self.held_down_keys:
             self.queued_keys.append(self.held_down_keys[-1])
             key = self.queued_keys.pop(0)
             if key == pygame.K_w or key == pygame.K_UP:
