@@ -151,6 +151,15 @@ class Player(pygame.sprite.Sprite):
         if tile_type in [1, 2, 3]:  # Wall, brick, Menu
             self.image = self.images[direction]
             return
+         # Check for collision with bombs
+        future_rect = self.rect.copy()
+        future_rect.x = bound_x
+        future_rect.y = bound_y
+        for bomb in self.bomb_group:
+            if not bomb.passable and bomb.rect.colliderect(future_rect):
+                self.image = self.images[direction]
+                return  # Block movement if colliding with any bomb
+    
 
         self.music_manager.play_sound("walk", "walk_volume")
         # Boundary correction
