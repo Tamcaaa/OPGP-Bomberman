@@ -7,9 +7,11 @@ from managers.music_manager import MusicManager
 
 
 class GameOver(State):
-    def __init__(self, game, winner):
+    def __init__(self, game, winner,map_selected,map_name):
         State.__init__(self, game)
         pygame.display.set_caption("BomberMan: GameOver")
+        self.map_selected = map_selected
+        self.map_name = map_name
         self.bg_image = pygame.image.load(os.path.join(game.photos_dir, "bg.png"))
         self.winner = winner
 
@@ -43,7 +45,7 @@ class GameOver(State):
     def enter_single_player(self):
         """Switch to single-player state."""
         self.exit_state()
-        self.game.state_manager.change_state("TestField")
+        self.game.state_manager.change_state("TestField",self.map_selected,self.map_name)
 
     def render(self, screen):
         """Draw the main menu screen."""
