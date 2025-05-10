@@ -1,5 +1,3 @@
-from typing import Dict
-
 import pygame
 import random
 import config
@@ -8,19 +6,28 @@ from managers.music_manager import MusicManager
 from states.state import State
 from maps.test_field_map import all_maps
 from collections import Counter
+from dataclasses import dataclass
+
+
+@dataclass
+class PlayerSelection:
+    selection_index: int = 0
+    vote_index: int | None = None
+    vote_flash_timer: int = 0
 
 
 class MapSelector(State):
-
     def __init__(self, game):
         State.__init__(self, game)
         pygame.display.set_caption("BomberMan: MapSelection")
         self.selected_maps = []
-        self.player_votes = {1: None, 2: None}
-        self.player_selection = {1: 0, 2: 0}  # Current index selection
         self.final_map = None
         self.music_manager = MusicManager()
 
+        self.players = {
+            1: PlayerSelection(),
+            2: PlayerSelection()
+        }
         self.all_maps = all_maps
 
         # Enhanced fonts
@@ -33,7 +40,6 @@ class MapSelector(State):
         # Animation variables
         self.animation_timer = 30
         self.transition_effect = 1.0
-        self.vote_flash_timer = {1: 0, 2: 0}
 
         # Select initial maps
         self.select_random_maps()
@@ -44,27 +50,27 @@ class MapSelector(State):
         self.selected_maps = random.sample(available_maps, count)
 
     def move_selection(self, player_id, direction):
-        if player_id in self.player_selection:
-            current = self.player_selection[player_id]
-            self.player_selection[player_id] = (current + direction) % len(self.selected_maps)
+        if player_id in self.players:
+            current = self.players[player_id].selection_index
+            self.players[player_id].selection_index = (current + direction) % len(self.selected_maps)
             # self.music_manager.play_sound("move_map_selector")
 
     def confirm_vote(self, player_id):
-        self.player_votes[player_id] = self.player_selection.get(player_id)
-        self.vote_flash_timer[player_id] = 30  # Start vote flash animation
-        # self.music_manager.play_music("select_map_selector")
-        if all(vote is not None for vote in self.player_votes.values()):
+        player = self.players[player_id]
+        player.vote_index = player.selection_index
+        player.vote_flash_timer = 30
+        if all(p.vote_index is not None for p in self.players.values()):
             self.determine_final_map()
 
     def determine_final_map(self):
-        votes = [vote for vote in self.player_votes.values() if vote is not None]
+        votes = [p.vote_index for p in self.players.values() if p.vote_index is not None]
+        print(votes)
         vote_counter = Counter(votes)
         max_votes = max(vote_counter.values())
         top_maps = [index for index, count in vote_counter.items() if count == max_votes]
         winning_index = random.choice(top_maps) if len(top_maps) > 1 else top_maps[0]
         self.final_map = self.selected_maps[winning_index]
-        self.animation_timer = 60  # Animation frames for final selection
-        # self.music_manager.play_music("final_map_selector")
+        self.animation_timer = 60
 
     def get_final_map(self):
         return self.final_map
@@ -77,25 +83,23 @@ class MapSelector(State):
         if self.transition_effect > 0:
             self.transition_effect = max(0, self.transition_effect - 0.02)
 
-        for player in self.vote_flash_timer:
-            if self.vote_flash_timer[player] > 0:
-                self.vote_flash_timer[player] -= 1
+        for player in self.players.values():
+            if player.vote_flash_timer > 0:
+                player.vote_flash_timer -= 1
 
     def draw_player_indicators(self, screen):
         # Draw player selection indicators
         for player_id in [1, 2]:
-            if self.player_selection[player_id] >= len(self.selected_maps):
+            if self.players[player_id].selection_index >= len(self.selected_maps):
                 continue
 
-            selection_idx = self.player_selection[player_id]
+            selection_idx = self.players[player_id].selection_index
             map_count = len(self.selected_maps)
 
             # Calculate x position based on the card position
-            card_width = 240
-            card_spacing = 60  # Space between cards
-            total_width = (card_width * map_count) + (card_spacing * (map_count - 1))
+            total_width = (config.SEL_CARD_WIDTH * map_count) + (config.SEL_CARD_SPACING * (map_count - 1))
             start_x = (config.SCREEN_WIDTH - total_width) // 2
-            x = start_x + (card_width + card_spacing) * selection_idx + card_width // 2
+            x = start_x + (config.SEL_CARD_WIDTH + config.SEL_CARD_SPACING) * selection_idx + config.SEL_CARD_WIDTH // 2
 
             y = config.SCREEN_HEIGHT // 2 - 120
 
@@ -130,18 +134,14 @@ class MapSelector(State):
 
     def draw_map_cards(self, screen):
         map_count = len(self.selected_maps)
-        card_width = 240
-        card_height = 180
-        card_spacing = 60  # Space between cards
-
         # Calculate total width of all cards + spacing
-        total_width = (card_width * map_count) + (card_spacing * (map_count - 1))
+        total_width = (config.SEL_CARD_WIDTH * map_count) + (config.SEL_CARD_SPACING * (map_count - 1))
         start_x = (config.SCREEN_WIDTH - total_width) // 2
 
         for i, (name, map_data) in enumerate(self.selected_maps):
             # Calculate position with spacing
-            x = start_x + (card_width + card_spacing) * i
-            y = config.SCREEN_HEIGHT // 2 - card_height // 2
+            x = start_x + (config.SEL_CARD_WIDTH + config.SEL_CARD_SPACING) * i
+            y = config.SCREEN_HEIGHT // 2 - config.SEL_CARD_HEIGHT // 2
 
             # Apply entrance animation
             if self.animation_timer > 0:
@@ -149,13 +149,13 @@ class MapSelector(State):
                 y = y + (1 - offset) * 300
 
             # Create card rect
-            card_rect = pygame.Rect(x, y, card_width, card_height)
+            card_rect = pygame.Rect(x, y, config.SEL_CARD_WIDTH, config.SEL_CARD_HEIGHT)
 
             # Determine if this card is selected by either player
-            p1_selected = self.player_selection[1] == i
-            p2_selected = self.player_selection[2] == i
-            p1_voted = self.player_votes[1] == i
-            p2_voted = self.player_votes[2] == i
+            p1_selected = self.players[1].selection_index == i
+            p2_selected = self.players[2].selection_index == i
+            p1_voted = self.players[1].vote_index == i
+            p2_voted = self.players[2].vote_index == i
 
             # Draw card background with rounded corners (radius of 15)
             self.draw_rounded_rect(screen, config.SELECTOR_COLORS['map_bg'], card_rect, 15)
@@ -177,22 +177,22 @@ class MapSelector(State):
 
             # Draw map name
             name_text = self.map_font.render(name, True, config.SELECTOR_COLORS['text'])
-            screen.blit(name_text, (x + card_width // 2 - name_text.get_width() // 2, y + 20))
+            screen.blit(name_text, (x + config.SEL_CARD_WIDTH // 2 - name_text.get_width() // 2, y + 20))
 
             # Draw vote indicators
-            vote_y = y + card_height - 40
+            vote_y = y + config.SEL_CARD_HEIGHT - 40
 
             if p1_voted:
-                flash_effect = self.vote_flash_timer[1] > 0 and self.vote_flash_timer[1] % 10 < 5
+                flash_effect = self.players[1].vote_flash_timer > 0 and self.players[1].vote_flash_timer % 10 < 5
                 vote_color = (255, 255, 255) if flash_effect else config.SELECTOR_COLORS['p1']
                 vote_text = self.info_font.render("P1 Vote", True, vote_color)
                 screen.blit(vote_text, (x + 20, vote_y))
 
             if p2_voted:
-                flash_effect = self.vote_flash_timer[2] > 0 and self.vote_flash_timer[2] % 10 < 5
+                flash_effect = self.players[2].vote_flash_timer > 0 and self.players[2].vote_flash_timer % 10 < 5
                 vote_color = (255, 255, 255) if flash_effect else config.SELECTOR_COLORS['p2']
                 vote_text = self.info_font.render("P2 Vote", True, vote_color)
-                screen.blit(vote_text, (x + card_width - 20 - vote_text.get_width(), vote_y))
+                screen.blit(vote_text, (x + config.SEL_CARD_WIDTH - 20 - vote_text.get_width(), vote_y))
 
             # Highlight the winning map with rounded corners
             if self.final_map and self.final_map[0] == name:
@@ -202,7 +202,7 @@ class MapSelector(State):
 
     def draw_instructions(self, screen):
         # Player 1 instructions
-        if self.player_votes[1] is None:
+        if self.players[1].vote_index is None:
             p1_text = "Player 1: ← → to move, ENTER to vote"
         else:
             p1_text = "Player 1: Vote confirmed!"
@@ -211,7 +211,7 @@ class MapSelector(State):
         screen.blit(p1_instr, (50, config.SCREEN_HEIGHT - 80))
 
         # Player 2 instructions
-        if self.player_votes[2] is None:
+        if self.players[2].vote_index is None:
             p2_text = "Player 2: A D to move, RIGHT SHIFT to vote"
         else:
             p2_text = "Player 2: Vote confirmed!"
@@ -291,7 +291,7 @@ class MapSelector(State):
             elif event.key == pygame.K_RIGHT:
                 self.move_selection(1, 1)
             elif event.key == pygame.K_RETURN:
-                if self.player_votes[1] is None:
+                if self.players[1].vote_index is None:
                     self.confirm_vote(1)
 
             # Player 2: A / D to move, RSHIFT to confirm
@@ -300,7 +300,7 @@ class MapSelector(State):
             elif event.key == pygame.K_d:
                 self.move_selection(2, 1)
             elif event.key == pygame.K_RSHIFT:
-                if self.player_votes[2] is None:
+                if self.players[2].vote_index is None:
                     self.confirm_vote(2)
 
             # If space is pressed and the final map is selected, exit the loop

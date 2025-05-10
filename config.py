@@ -95,5 +95,7 @@ SELECTOR_COLORS = {
     'selected_border': (255, 255, 255),
     'instructions': (180, 180, 180)
 }
-
+SEL_CARD_WIDTH = 240
+SEL_CARD_HEIGHT = 180
+SEL_CARD_SPACING = 60
 
