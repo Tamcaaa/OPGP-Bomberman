@@ -41,9 +41,13 @@ SPAWN_POINTS = {"spawn1": (0, 30),
                 "spawn2": (930, 30),
                 "spawn3": (0, 510),
                 "spawn4": (930, 510)}
-# Movement keys
-PLAYER1_MOVE_KEYS = [pygame.K_w, pygame.K_a, pygame.K_s, pygame.K_d, pygame.K_SPACE]
-PLAYER2_MOVE_KEYS = [pygame.K_UP, pygame.K_LEFT, pygame.K_DOWN, pygame.K_RIGHT, pygame.K_KP0]
+DEFAULT_PLAYER1_MOVE_KEYS = [pygame.K_w, pygame.K_a, pygame.K_s, pygame.K_d, pygame.K_SPACE]
+DEFAULT_PLAYER2_MOVE_KEYS = [pygame.K_UP, pygame.K_LEFT, pygame.K_DOWN, pygame.K_RIGHT, pygame.K_KP0]
+
+# Aktuální nastavení, které lze měnit
+PLAYER1_MOVE_KEYS = DEFAULT_PLAYER1_MOVE_KEYS.copy()
+PLAYER2_MOVE_KEYS = DEFAULT_PLAYER2_MOVE_KEYS.copy()
+
 # Player images
 PLAYER1_IMAGES = {
     "down": pygame.image.load("assets/player_color/p_1_down.png"),

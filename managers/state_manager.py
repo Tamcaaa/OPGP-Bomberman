@@ -5,7 +5,7 @@ class StateManager:
             "GameOver": "states.game_over.GameOver",
             "TestField": "states.test_field.TestField",
             "MainMenu": "states.main_menu.MainMenu",
-            "Victory": "states.victory.Victory"
+            "Pause": "states.pause_state.PauseState"
         }
 
     def change_state(self, class_path: str, *args) -> None:
