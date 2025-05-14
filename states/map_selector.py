@@ -2,11 +2,12 @@ import pygame
 import random
 import config
 import os
-from managers.music_manager import MusicManager
 from states.state import State
 from maps.test_field_map import all_maps
 from collections import Counter
 from dataclasses import dataclass
+from managers.music_manager import MusicManager
+from managers.state_manager import StateManager
 
 
 @dataclass
@@ -23,6 +24,7 @@ class MapSelector(State):
         self.selected_maps = []
         self.final_map = None
         self.music_manager = MusicManager()
+        self.state_manager = StateManager(self.game)
 
         self.players = {
             1: PlayerSelection(),
@@ -64,7 +66,6 @@ class MapSelector(State):
 
     def determine_final_map(self):
         votes = [p.vote_index for p in self.players.values() if p.vote_index is not None]
-        print(votes)
         vote_counter = Counter(votes)
         max_votes = max(vote_counter.values())
         top_maps = [index for index, count in vote_counter.items() if count == max_votes]
@@ -81,7 +82,7 @@ class MapSelector(State):
             self.animation_timer -= 1
 
         if self.transition_effect > 0:
-            self.transition_effect = max(0, self.transition_effect - 0.02)
+            self.transition_effect = max(0.0, self.transition_effect - 0.02)
 
         for player in self.players.values():
             if player.vote_flash_timer > 0:
@@ -160,7 +161,6 @@ class MapSelector(State):
             # Draw card background with rounded corners (radius of 15)
             self.draw_rounded_rect(screen, config.SELECTOR_COLORS['map_bg'], card_rect, 15)
 
-            # Draw selection border with rounded corners
             border_width = 3
             if p1_selected and p2_selected:
                 # Purple border for both players
@@ -193,12 +193,6 @@ class MapSelector(State):
                 vote_color = (255, 255, 255) if flash_effect else config.SELECTOR_COLORS['p2']
                 vote_text = self.info_font.render("P2 Vote", True, vote_color)
                 screen.blit(vote_text, (x + config.SEL_CARD_WIDTH - 20 - vote_text.get_width(), vote_y))
-
-            # Highlight the winning map with rounded corners
-            if self.final_map and self.final_map[0] == name:
-                highlight_size = min(20, self.animation_timer) / 2
-                highlight_rect = card_rect.inflate(highlight_size, highlight_size)
-                self.draw_rounded_rect(screen, config.SELECTOR_COLORS['highlight'], highlight_rect, 18, 4)
 
     def draw_instructions(self, screen):
         # Player 1 instructions
@@ -306,8 +300,6 @@ class MapSelector(State):
             # If space is pressed and the final map is selected, exit the loop
             if event.key == pygame.K_SPACE and self.final_map:
                 self.exit_state()
-                from states.test_field import TestField
                 map_name = self.final_map[0]
                 selected_map = self.final_map[1]
-                new_state = TestField(self.game, selected_map, map_name)
-                new_state.enter_state()
+                self.state_manager.change_state("TestField", selected_map, map_name)
