@@ -1,3 +1,4 @@
+from managers.music_manager import MusicManager
 import pygame
 import random
 import config
@@ -13,6 +14,8 @@ class MapSelector:
         self.player_votes = {1: None, 2: None}
         self.player_selection = {1: 0, 2: 0}  # Current index selection
         self.final_map = None
+
+        self.music_manager = MusicManager()
         
         # Enhanced fonts
         pygame.font.init()
@@ -52,6 +55,7 @@ class MapSelector:
             self.sound_enabled = True
         except:
             self.sound_enabled = False
+        self.music_manager.play_music("map_selector",volume=1,loop=True)
 
     def play_sound(self, sound_type):
         self.move_sound.set_volume(1.0)

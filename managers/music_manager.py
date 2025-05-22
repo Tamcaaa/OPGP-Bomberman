@@ -10,6 +10,7 @@ class MusicManager:
             "game_over": "assets/sounds/game_over.mp3",
             "win": "assets/sounds/win.mid",
             "level": "assets/sounds/level.mp3",
+            "map_selector": "assets/sounds/map_selector.mp3",  
         }
         self.sounds = {
             "explosion": "assets/sounds/explosion.mp3",
