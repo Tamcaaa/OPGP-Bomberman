@@ -14,7 +14,10 @@ class MusicManager:
         self.sounds = {
             "explosion": "assets/sounds/explosion.mp3",
             "walk": "assets/sounds/walk.wav",
-            "death": "assets/sounds/death.wav"
+            "death": "assets/sounds/death.wav",
+            'move_map_selector': "assets/sounds/move.wav",
+            'select_map_selector': "assets/sounds/select.wav",
+            'final_map_selector': "assets/sounds/final.wav"
         }
 
     def play_music(self, name: str, volume: str | float = 1, loop: int | bool = False):
