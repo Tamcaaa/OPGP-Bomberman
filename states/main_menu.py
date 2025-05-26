@@ -53,8 +53,8 @@ class MainMenu(State):
 
     def enter_single_player(self):
         """Switch to single-player state."""
-        from states.test_field import TestField
-        new_state = TestField(self.game)
+        from states.map_selector import MapSelector
+        new_state = MapSelector(self.game)
         new_state.enter_state()
 
     def render(self, screen):

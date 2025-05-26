@@ -8,7 +8,7 @@ class StateManager:
             "Pause": "states.pause_state.PauseState"
         }
 
-    def change_state(self, class_path: str, arg: int | None = None) -> None:
+    def change_state(self, class_path: str, *args) -> None:
         class_path = self.state_map.get(class_path, class_path)
         try:
             module_path, class_name = class_path.rsplit('.', 1)
@@ -17,5 +17,5 @@ class StateManager:
         except (ImportError, AttributeError, ValueError) as e:
             raise ImportError(f"Cannot import state '{class_path}': {e}")
 
-        new_state = state_class(self.game, arg) if arg else state_class(self.game)
+        new_state = state_class(self.game, *args) if args else state_class(self.game)
         new_state.enter_state()

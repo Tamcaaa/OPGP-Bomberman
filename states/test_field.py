@@ -1,24 +1,25 @@
-import copy
 import pygame
 import config
+import copy
 import time
 import random
 
 from states.state import State
 from player import Player
-from maps.test_field_map import tile_map
 from managers.music_manager import MusicManager
 from power_up import PowerUp
-from maps.map_selector import run_map_selection
-from maps.test_field_map import map1, map2, map3, map4, map5
+
 
 class TestField(State):
-    def __init__(self, game):
+    def __init__(self, game, selected_map, map_name):
         State.__init__(self, game)
-        pygame.display.set_caption("BomberMan: TestField")
+
+        self.selected_map = selected_map
+        self.map_name = map_name
+
+        pygame.display.set_caption(f"BomberMan: {map_name}")
         self.game = game
         self.music_manager = MusicManager()
-        self.tile_map = copy.deepcopy(tile_map)
 
         self.keys_held = {pygame.K_s: False, pygame.K_d: False}
 
@@ -49,69 +50,11 @@ class TestField(State):
 
         self.bomb_icon = pygame.image.load("assets/bomb.png").convert_alpha()
         self.bomb_icon = pygame.transform.scale(self.bomb_icon, (30, 30))
-        
-        all_maps = {
-            "Classic": map1,
-            "Urban Assault": map2,
-            "Crystal Caves": map3,
-            "Ancient Ruins": map4,
-            "Desert Maze": map5
-        }
-        
-        selected_map = run_map_selection(all_maps)
-        if selected_map is None:
-            # Ak hráč zruší, vráť sa do MainMenu
-            from main_menu import MainMenu
-            self.game.change_state(MainMenu(self.game))
-            return
-        
-        self.tile_map = selected_map
-        self.selected_map = selected_map  # Store selected map for drawing
-        
-        self.setup_level()
-        self.load_music()
-        
-        self.place_hidden_powerups()
 
-    def setup_level(self):
-        """Set up the level by initializing players at spawn points and preparing the game area."""
-        # Find spawn points in the tile map
-        spawn_positions = {}
-        
-        # This assumes your tile_map has some specific notation for spawn points
-        # If they're not in the tile_map, you'll need to adjust this logic
-        for y in range(len(self.tile_map)):
-            for x in range(len(self.tile_map[y])):
-                # Check if the current position is a spawn point (0 = empty space)
-                if self.tile_map[y][x] == 0:
-                    # Define corners as spawn points
-                    if (x == 1 and y == 1):
-                        spawn_positions["spawn1"] = (x * config.GRID_SIZE, y * config.GRID_SIZE)
-                    elif (x == len(self.tile_map[0]) - 2 and y == 1):
-                        spawn_positions["spawn2"] = (x * config.GRID_SIZE, y * config.GRID_SIZE)
-                    elif (x == 1 and y == len(self.tile_map) - 2):
-                        spawn_positions["spawn3"] = (x * config.GRID_SIZE, y * config.GRID_SIZE)
-                    elif (x == len(self.tile_map[0]) - 2 and y == len(self.tile_map) - 2):
-                        spawn_positions["spawn4"] = (x * config.GRID_SIZE, y * config.GRID_SIZE)
-        
-        # Set player positions
-        if "spawn1" in spawn_positions:
-            self.player1.rect.x, self.player1.rect.y = spawn_positions["spawn1"]
-        else:
-            # Fallback position
-            self.player1.rect.x, self.player1.rect.y = config.GRID_SIZE, config.GRID_SIZE
-            
-        if "spawn4" in spawn_positions:
-            self.player2.rect.x, self.player2.rect.y = spawn_positions["spawn4"]
-        else:
-            # Fallback position
-            self.player2.rect.x, self.player2.rect.y = (len(self.tile_map[0]) - 2) * config.GRID_SIZE, (len(self.tile_map) - 2) * config.GRID_SIZE
-        
-        # Reset other level-specific variables if needed
-        self.bomb_group.empty()
-        self.explosion_group.empty()
-        self.powerup_group.empty()
-        self.hidden_powerups = {}
+        self.tile_map = copy.deepcopy(selected_map)
+        self.available_powerups = ["bomb_powerup", "range_powerup", "freeze_powerup", "live+_powerup", "shield_powerup"]
+        self.load_music()
+        self.place_hidden_powerups()
 
     def place_hidden_powerups(self):
         """Place power-ups under random bricks at the start of the game"""
@@ -130,14 +73,14 @@ class TestField(State):
 
         # Place power-ups under selected bricks
         for x, y in selected_bricks:
-            # Create a hidden power-up (not added to sprite group yet)
-            powerup = PowerUp(x, y)
-            self.hidden_powerups[(x, y)] = powerup
+            powerup_type = random.choice(self.available_powerups)
+            self.hidden_powerups[(x, y)] = powerup_type  # Only store type here
 
     def load_music(self):
         self.music_manager.play_music('level', 'level_volume', True)
 
     def handle_events(self, event):
+        # Check if keys are being held or not
         if event.type == pygame.KEYDOWN:
             if event.key in config.PLAYER1_MOVE_KEYS:
                 self.player1.held_down_keys.append(event.key)
@@ -147,18 +90,10 @@ class TestField(State):
                 self.game.state_manager.change_state("Pause")
                 
         elif event.type == pygame.KEYUP:
-            if event.key in config.PLAYER1_MOVE_KEYS:
-                try:
-                    self.player1.held_down_keys.remove(event.key)
-                except ValueError:
-                    # Key not in list, just ignore
-                    pass
-            if event.key in config.PLAYER2_MOVE_KEYS:
-                try:
-                    self.player2.held_down_keys.remove(event.key)
-                except ValueError:
-                    # Key not in list, just ignore
-                    pass
+            if event.key in config.PLAYER1_MOVE_KEYS and event.key in self.player1.held_down_keys:
+                self.player1.held_down_keys.remove(event.key)
+            if event.key in config.PLAYER2_MOVE_KEYS and event.key in self.player2.held_down_keys:
+                self.player2.held_down_keys.remove(event.key)
 
     def handle_explosions(self):
         # Check if some explosion exists
@@ -169,13 +104,13 @@ class TestField(State):
                 self.music_manager.play_sound("death", "death_volume")
                 pygame.mixer_music.stop()
                 self.exit_state()
-                self.game.state_manager.change_state("GameOver", self.player2.player_id)
+                self.game.state_manager.change_state("GameOver", self.player2.player_id, self.selected_map, self.map_name)
         elif self.player2.check_hit():
             if self.player2.get_health() == 0:
                 self.music_manager.play_sound("death", "death_volume")
                 pygame.mixer_music.stop()
                 self.exit_state()
-                self.game.state_manager.change_state("GameOver", self.player1.player_id)
+                self.game.state_manager.change_state("GameOver", self.player1.player_id, self.selected_map, self.map_name)
 
     def destroy_tile(self, x, y):
         """Destroy a brick tile and reveal a power-up if one is hidden underneath"""
@@ -183,11 +118,11 @@ class TestField(State):
         if self.tile_map[y][x] == 2:
             # Check if there's a power-up hidden under this brick
             if (x, y) in self.hidden_powerups:
-                # Reveal the hidden power-up
-                powerup = self.hidden_powerups[(x, y)]
-                powerup.reveal()  # Mark as revealed
-                self.powerup_group.add(powerup)  # Add to visible sprites
-                del self.hidden_powerups[(x, y)]  # Remove from hidden collection
+                powerup_type = self.hidden_powerups[(x, y)]
+                powerup = PowerUp(x, y, powerup_type)  # You’ll need to update the constructor
+                powerup.reveal()
+                self.powerup_group.add(powerup)
+                del self.hidden_powerups[(x, y)]
 
             # Update the map (brick is destroyed)
             self.tile_map[y][x] = 0
@@ -239,7 +174,6 @@ class TestField(State):
             screen.blit(message_text, (config.SCREEN_WIDTH // 2 - message_text.get_width() // 2, 10))
 
     def draw_active_powerups(self, screen):
-        """Display active power-ups for each player"""
         # Player 1 active power-ups
         p1_powerups_text = []
         p2_powerups_text = []
@@ -284,22 +218,16 @@ class TestField(State):
                              (config.SCREEN_WIDTH, line * config.GRID_SIZE + 30))
 
     def draw_walls(self, screen):
-        tile_map = self.tile_map
-        if hasattr(self, 'selected_map') and isinstance(self.selected_map, dict) and 'tile_map' in self.selected_map:
-            tile_map = self.selected_map['tile_map']
-        
-        for row_index, row in enumerate(tile_map):  # Iterate through each row in the tile_map
-            for col_index, tile in enumerate(row):  # Iterate through each tile in the row
-                x = col_index * config.GRID_SIZE  # X position for the tile
-                y = row_index * config.GRID_SIZE  # Y position for the tile
-
-                # Check the tile type and draw accordingly
+        for row_index, row in enumerate(self.tile_map):
+            for col_index, tile in enumerate(row):
+                x = col_index * config.GRID_SIZE
+                y = row_index * config.GRID_SIZE
                 if tile == 0:  # Empty space (no wall)
                     rect = pygame.Rect(x, y, config.GRID_SIZE, config.GRID_SIZE)
                     color = config.COLOR_DARK_GREEN if (col_index + row_index) % 2 == 0 else config.COLOR_LIGHT_GREEN
-                    pygame.draw.rect(screen, color, rect)  # Draw grid background
+                    pygame.draw.rect(screen, color, rect)
                 elif tile == 1:  # Unbreakable wall
-                    screen.blit(self.unbreakable_wall, (x, y))  # Draw unbreakable wall
+                    screen.blit(self.unbreakable_wall, (x, y))
                 elif tile == 2:  # Breakable wall
                     screen.blit(self.breakable_wall, (x, y))
 
