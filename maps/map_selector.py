@@ -54,6 +54,7 @@ class MapSelector:
             self.sound_enabled = False
 
     def play_sound(self, sound_type):
+        self.move_sound.set_volume(1.0)
         if not self.sound_enabled:
             return
             
@@ -78,12 +79,12 @@ class MapSelector:
         if player_id in self.player_selection:
             current = self.player_selection[player_id]
             self.player_selection[player_id] = (current + direction) % len(self.selected_maps)
-            self.play_sound("move")
+            self.move_sound.play()
 
     def confirm_vote(self, player_id):
         self.player_votes[player_id] = self.player_selection[player_id]
         self.vote_flash_timer[player_id] = 30  # Start vote flash animation
-        self.play_sound("select")
+        self.select_sound.play()
         
         if all(vote is not None for vote in self.player_votes.values()):
             self.determine_final_map()

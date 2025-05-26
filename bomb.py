@@ -26,6 +26,7 @@ class Bomb(pygame.sprite.Sprite):
         self.explosion_group = explosion_group
         # Add the bomb to the bomb group
         bomb_group.add(self)
+        self.passable = False
 
     def update(self, explosion_group):
         """Update method to check if the bomb should explode."""

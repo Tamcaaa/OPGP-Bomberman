@@ -115,7 +115,9 @@ class Player(pygame.sprite.Sprite):
         return self.maxBombs
 
     def handle_queued_keys(self, now):
-        # Block movement while frozen
+        # Získání kláves z konfigurace
+        move_keys = self.player_config['move_keys']
+
         if time.time() < self.freeze_timer:
             move_delay = config.MOVE_COOLDOWN * 2.0  # slower
         else:
@@ -124,15 +126,15 @@ class Player(pygame.sprite.Sprite):
         if now - self.last_move_time >= move_delay and self.held_down_keys:
             self.queued_keys.append(self.held_down_keys[-1])
             key = self.queued_keys.pop(0)
-            if key == pygame.K_w or key == pygame.K_UP:
+            if key == move_keys[0]:  # Up
                 self.move(0, -1, "up")
-            elif key == pygame.K_s or key == pygame.K_DOWN:
+            elif key == move_keys[2]:  # Down
                 self.move(0, 1, "down")
-            elif key == pygame.K_a or key == pygame.K_LEFT:
+            elif key == move_keys[1]:  # Left
                 self.move(-1, 0, "left")
-            elif key == pygame.K_d or key == pygame.K_RIGHT:
+            elif key == move_keys[3]:  # Right
                 self.move(1, 0, "right")
-            elif key == pygame.K_SPACE or key == pygame.K_KP0:
+            elif key == move_keys[4]:  # Bomb
                 self.deploy_bomb(self.bomb_group, self.explosion_group)
             self.last_move_time = now
 
@@ -151,6 +153,15 @@ class Player(pygame.sprite.Sprite):
         if tile_type in [1, 2, 3]:  # Wall, brick, Menu
             self.image = self.images[direction]
             return
+         # Check for collision with bombs
+        future_rect = self.rect.copy()
+        future_rect.x = bound_x
+        future_rect.y = bound_y
+        for bomb in self.bomb_group:
+            if not bomb.passable and bomb.rect.colliderect(future_rect):
+                self.image = self.images[direction]
+                return  # Block movement if colliding with any bomb
+    
 
         self.music_manager.play_sound("walk", "walk_volume")
         # Boundary correction
