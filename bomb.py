@@ -70,15 +70,9 @@ class Bomb(pygame.sprite.Sprite):
                     self.test_field.destroy_tile(tile_x, tile_y)
                     Explosion(x, y, explosion_group, 0, self.test_field)
                     break  # Stop explosion after destroying brick
-                elif tile_type == 4:  # Hidden door
-                    # Reveal the door (change from hidden to visible)
-                    self.test_field.tile_map[tile_y][tile_x] = 6
-                    Explosion(x, y, explosion_group, 0, self.test_field)
+                elif tile_type == 4:  # Blue cave
                     break  # Stop explosion in this direction
-                elif tile_type == 5:  # Hidden key
-                    # Reveal the key (change from hidden to visible)
-                    self.test_field.tile_map[tile_y][tile_x] = 7
-                    Explosion(x, y, explosion_group, 0, self.test_field)
+                elif tile_type == 5:  # Red cave
                     break  # Stop explosion in this direction
                 elif tile_type in [6, 7]:  # Visible door or key
                     Explosion(x, y, explosion_group, 0, self.test_field)
@@ -143,15 +137,19 @@ class Explosion(pygame.sprite.Sprite):
                     explosion = Explosion(new_x, new_y, explosion_group, 0, self.test_field)
                     explosion_group.add(explosion)
                     break  # Stop explosion in this direction
-                elif self.test_field.tile_map[tile_y][tile_x] == 4:  # Hidden door
+                elif self.test_field.tile_map[tile_y][tile_x] == 4:
+                    break
+                elif self.test_field.tile_map[tile_y][tile_x] == 5:
+                    break
+                elif self.test_field.tile_map[tile_y][tile_x] == 8:  # Hidden door
                     # Reveal the door (change from hidden to visible)
-                    self.test_field.tile_map[tile_y][tile_x] = 6
+                    self.test_field.tile_map[tile_y][tile_x] = 8
                     explosion = Explosion(new_x, new_y, explosion_group, 0, self.test_field)
                     explosion_group.add(explosion)
                     break  # Stop explosion in this direction
-                elif self.test_field.tile_map[tile_y][tile_x] == 5:  # Hidden key
+                elif self.test_field.tile_map[tile_y][tile_x] == 8:  # Hidden key
                     # Reveal the key (change from hidden to visible)
-                    self.test_field.tile_map[tile_y][tile_x] = 7
+                    self.test_field.tile_map[tile_y][tile_x] = 8
                     explosion = Explosion(new_x, new_y, explosion_group, 0, self.test_field)
                     explosion_group.add(explosion)
                     break  # Stop explosion in this direction

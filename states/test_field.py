@@ -14,6 +14,7 @@ class TestField(State):
     def __init__(self, game, selected_map, map_name):
         State.__init__(self, game)
 
+        
         self.selected_map = selected_map
         self.map_name = map_name
 
@@ -48,6 +49,12 @@ class TestField(State):
         self.unbreakable_wall = pygame.image.load("assets/environment/brick.png").convert_alpha()
         self.unbreakable_wall = pygame.transform.scale(self.unbreakable_wall, (30, 30))
 
+        self.blue_cave = pygame.image.load("assets/environment/blue_cave.png").convert_alpha()
+        self.blue_cave = pygame.transform.scale(self.blue_cave, (30, 30))
+        
+        self.red_cave = pygame.image.load("assets/environment/red_cave.png").convert_alpha()
+        self.red_cave = pygame.transform.scale(self.red_cave, (30, 30))
+        
         self.bomb_icon = pygame.image.load("assets/bomb.png").convert_alpha()
         self.bomb_icon = pygame.transform.scale(self.bomb_icon, (30, 30))
 
@@ -172,6 +179,8 @@ class TestField(State):
         if self.powerup_message:
             message_text = self.game.font.render(self.powerup_message, True, config.COLOR_BLACK)
             screen.blit(message_text, (config.SCREEN_WIDTH // 2 - message_text.get_width() // 2, 10))
+            
+    
 
     def draw_active_powerups(self, screen):
         # Player 1 active power-ups
@@ -222,14 +231,18 @@ class TestField(State):
             for col_index, tile in enumerate(row):
                 x = col_index * config.GRID_SIZE
                 y = row_index * config.GRID_SIZE
-                if tile == 0:  # Empty space (no wall)
+                if tile in [0,4,5]:  # Empty space (no wall)
                     rect = pygame.Rect(x, y, config.GRID_SIZE, config.GRID_SIZE)
                     color = config.COLOR_DARK_GREEN if (col_index + row_index) % 2 == 0 else config.COLOR_LIGHT_GREEN
                     pygame.draw.rect(screen, color, rect)
                 elif tile == 1:  # Unbreakable wall
                     screen.blit(self.unbreakable_wall, (x, y))
                 elif tile == 2:  # Breakable wall
-                    screen.blit(self.breakable_wall, (x, y))
+                    screen.blit(self.breakable_wall, random.randint(x, y))
+                if tile == 4:  # Blue cave
+                    screen.blit(self.blue_cave, (x, y))
+                if tile == 5:  # Red cave
+                    screen.blit(self.red_cave, (x, y))
 
     def draw_players(self, screen):
         screen.blit(self.player1.image, self.player1.rect)
