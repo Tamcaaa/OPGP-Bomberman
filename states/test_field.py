@@ -55,7 +55,8 @@ class TestField(State):
         self.available_powerups = ["bomb_powerup", "range_powerup", "freeze_powerup", "live+_powerup", "shield_powerup"]
         self.load_music()
         self.place_hidden_powerups()
-
+        self.trap_image = pygame.image.load("assets/environment/manhole.png").convert_alpha()
+        self.trap_image = pygame.transform.scale(self.trap_image, (config.GRID_SIZE, config.GRID_SIZE))
     def place_hidden_powerups(self):
         """Place power-ups under random bricks at the start of the game"""
         brick_positions = []
@@ -230,6 +231,8 @@ class TestField(State):
                     screen.blit(self.unbreakable_wall, (x, y))
                 elif tile == 2:  # Breakable wall
                     screen.blit(self.breakable_wall, (x, y))
+                elif tile == config.TRAP:  # Poklop
+                    screen.blit(self.trap_image, (x, y))
 
     def draw_players(self, screen):
         screen.blit(self.player1.image, self.player1.rect)
@@ -257,11 +260,30 @@ class TestField(State):
 
         # Update power-ups
         self.powerup_group.update()
-
+        self.check_trap_collisions()
         # Clear message after 3 seconds
         if self.message_timer > 0 and now - self.message_timer > 3000:
             self.powerup_message = ""
             self.message_timer = 0
+
+    def check_trap_collisions(self):
+        """Skontroluje, či hráči nestúpili na poklop"""
+        for player in self.players:
+            grid_x = player.rect.x // config.GRID_SIZE
+            grid_y = player.rect.y // config.GRID_SIZE
+
+            if (0 <= grid_y < len(self.tile_map) and
+                    0 <= grid_x < len(self.tile_map[0]) and
+                    self.tile_map[grid_y][grid_x] == config.TRAP):
+
+                current_time = time.time()
+                if not hasattr(player, 'last_trap_time') or current_time - player.last_trap_time > 1.0:
+                    player.health = max(0, player.health - 1)
+                    player.last_trap_time = current_time
+                    self.music_manager.play_sound("death", "death_volume")
+
+                    self.powerup_message = f"Player {player.player_id} fell in a sewer!"
+                    self.message_timer = pygame.time.get_ticks()
 
     def render(self, screen):
         screen.fill(config.COLOR_WHITE)

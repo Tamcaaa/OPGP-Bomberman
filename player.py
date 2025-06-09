@@ -23,7 +23,7 @@ class Player(pygame.sprite.Sprite):
         self.held_down_keys = []
         self.last_move_time = 0
         self.score = 0
-
+        self.last_trap_time = 0
         self.test_field = test_field
         self.music_manager = MusicManager()
         self.bomb_group = self.test_field.bomb_group
