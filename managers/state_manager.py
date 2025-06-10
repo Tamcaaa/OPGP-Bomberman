@@ -7,7 +7,8 @@ class StateManager:
             "MainMenu": "states.main_menu.MainMenu",
             "Pause": "states.pause_state.PauseState",
             "Settings": "states.settings.Settings",
-            "MapSelector": "states.map_selector.MapSelector"
+            "MapSelector": "states.map_selector.MapSelector",
+            "MultiplayerSelector": "states.multiplayer_selector.MultiplayerSelector"
         }
 
     def change_state(self, class_path: str, *args) -> None:
