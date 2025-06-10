@@ -40,9 +40,9 @@ class MainMenu(State):
         """Handle button clicks."""
         if self.singleplayer_button.is_clicked():
             pygame.mixer_music.stop()
-            self.enter_single_player()
+            self.state_manager.change_state("MapSelector")
         elif self.multiplayer_button.is_clicked():
-            print("Multiplayer")
+            self.state_manager.change_state("MultiplayerSelector")
         elif self.settings_button.is_clicked():
             self.state_manager.change_state("Settings")
 
@@ -52,10 +52,12 @@ class MainMenu(State):
     def update(self):
         pass
 
+
     def enter_single_player(self):
         """Switch to single-player state."""
         self.exit_state()  # remove MainMenu state
         self.game.state_manager.change_state("SkinSelector")
+
 
     def render(self, screen):
         """Draw the main menu screen."""
