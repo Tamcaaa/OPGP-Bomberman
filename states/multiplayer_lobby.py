@@ -23,6 +23,9 @@ class MultiplayerLobby(State):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.settimeout(0.01)
 
+        self.acknowledged_players = set()
+        self.state_change_sent = False
+
         self.player_name = player_name
         self.is_host = is_host
         self.players = []
@@ -140,6 +143,7 @@ class MultiplayerLobby(State):
             self.state_manager.change_state("MultiplayerMapSelector", self)
 
     def update(self):
+        self.handle_network_packets()
         if self.is_host:
             self.listen_for_joins()
         else:
@@ -147,24 +151,48 @@ class MultiplayerLobby(State):
         self.update_player_list()
 
     def handle_network_packets(self):
+        if self.is_host:
+            try:
+                message, address = self.socket.recvfrom(1024)
+                decoded = message.decode('utf-8')
+                if decoded.startswith("ACK_STATE_CHANGE"):
+                    self.acknowledged_players.add(address)
+            except socket.timeout:
+                pass
         try:
-            message, _ = self.socket.recvfrom(1024)
+            message, address = self.socket.recvfrom(1024)
             decoded = message.decode('utf-8')
             if decoded.startswith("STATE_CHANGE:"):
-                # Format: STATE_CHANGE:<state_name>
                 parts = decoded.split(":")
                 if len(parts) == 2:
                     _, state_name = parts
                     if state_name == "MultiplayerMapSelector":
+                        # Send ACK to host
+                        self.socket.sendto("ACK_STATE_CHANGE".encode('utf-8'), (self.host_ip, self.port))
                         self.state_manager.change_state("MultiplayerMapSelector", self)
         except socket.timeout:
             pass
 
     def broadcast_state_change(self, new_state):
-        message = f"STATE_CHANGE:{new_state}"
-        for _, address in self.players:
-            if address[1] != 1111:
-                self.socket.sendto(message.encode('utf-8'), address)
+        message = f"STATE_CHANGE:{new_state}".encode('utf-8')
+        self.state_change_sent = True
+        self.acknowledged_players = set()
+
+        # Try to send up to 5 times, every 0.5 seconds
+        for _ in range(5):
+            for username, address in self.players:
+                if address[1] == 1111:  # skip host
+                    continue
+                if address not in self.acknowledged_players:
+                    self.socket.sendto(message, address)
+
+            time.sleep(0.5)
+
+            if len(self.acknowledged_players) == len(self.players) - 1:
+                print("All clients acknowledged state change.")
+                break
+        else:
+            print("Not all clients acknowledged the state change.")
 
     def render(self, screen):
         screen.blit(self.bg_image, (0, 0))
