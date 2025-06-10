@@ -148,7 +148,15 @@ class MultiplayerLobby(State):
 
     def render(self, screen):
         screen.blit(self.bg_image, (0, 0))
+
+        # Title
         self.game.draw_text(screen, "Multiplayer Lobby", config.COLOR_BLACK, config.SCREEN_WIDTH // 2, 60)
+
+        # IP Label
+        ip_text = f"Share this IP with friends: {self.host_ip}"
+        ip_surface = pygame.font.Font(None, config.FONT_SIZE).render(ip_text, True, config.TEXT_COLOR)
+        ip_rect = ip_surface.get_rect(center=(config.SCREEN_WIDTH // 2, 100))
+        screen.blit(ip_surface, ip_rect)
 
         # Draw player list
         y_start = 150
@@ -160,10 +168,12 @@ class MultiplayerLobby(State):
                 player_name = f'{self.player_name} (You)'
             else:
                 player_name = player_name
+
             text_surface = pygame.font.Font(None, config.FONT_SIZE).render(f'{index + 1}. {player_name}', True, config.TEXT_COLOR)
             text_rect = text_surface.get_rect(center=(config.SCREEN_WIDTH // 2, y_start + index * 40))
             screen.blit(text_surface, text_rect)
 
+        # Draw buttons
         if self.is_host:
             self.start_button.draw(screen)
         self.back_button.draw(screen)
