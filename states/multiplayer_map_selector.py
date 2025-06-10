@@ -95,7 +95,7 @@ class MultiplayerMapSelector(State):
         pass
 
     def update(self):
-        pass
+        self.handle_network_packets()
 
     @staticmethod
     def draw_rounded_rect(surface, color, rect, radius, border_width=0):
