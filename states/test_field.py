@@ -348,18 +348,32 @@ class TestField(State):
             grid_x = player.rect.x // config.GRID_SIZE
             grid_y = player.rect.y // config.GRID_SIZE
 
-            if (0 <= grid_y < len(self.tile_map) and
-                    0 <= grid_x < len(self.tile_map[0]) and
-                    self.tile_map[grid_y][grid_x] == config.TRAP):
+            if (0 <= grid_y < len(self.tile_map)) and \
+                    (0 <= grid_x < len(self.tile_map[0])) and \
+                    self.tile_map[grid_y][grid_x] == config.TRAP:
 
                 current_time = time.time()
                 if not hasattr(player, 'last_trap_time') or current_time - player.last_trap_time > 1.0:
                     player.health = max(0, player.health - 1)
                     player.last_trap_time = current_time
-                    self.music_manager.play_sound("death", "death_volume")
 
-                    self.powerup_message = f"Player {player.player_id} fell in a sewer!"
-                    self.message_timer = pygame.time.get_ticks()
+                    # Ak hráč stratil všetky životy
+                    if player.health <= 0:
+                        self.music_manager.play_sound("death", "death_volume")
+                        pygame.mixer_music.stop()
+                        self.exit_state()
+
+                        # Zistiť víťaza
+                        if player.player_id == 1:
+                            winner = self.player2.player_id
+                        else:
+                            winner = self.player1.player_id
+
+                        self.game.state_manager.change_state("GameOver", winner, self.selected_map, self.map_name)
+                    else:
+                        self.music_manager.play_sound("death", "death_volume")
+                        self.powerup_message = f"Player {player.player_id} fell in a sewer!"
+                        self.message_timer = pygame.time.get_ticks()
 
     def render(self, screen):
         screen.fill(config.COLOR_WHITE)
