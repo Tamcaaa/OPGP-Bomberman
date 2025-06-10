@@ -1,3 +1,4 @@
+import ast
 import json
 import pygame
 import random
@@ -28,7 +29,7 @@ class MultiplayerMapSelector(State):
         self.lobby = multiplayer_lobby  # Keep reference to lobby for players and socket
         self.socket = self.lobby.socket
 
-        self.players = {player: PlayerSelection() for player in self.lobby.players}
+        self.players = {player_name: PlayerSelection() for player_name, _ in self.lobby.players}
         print(self.players)
 
         self.state_manager = StateManager(self.game)
@@ -64,21 +65,20 @@ class MultiplayerMapSelector(State):
             if addr[1] != 1111:
                 self.socket.sendto(message.encode('utf-8'), addr)
 
-    def move_selection(self, player_id, direction):
-        current = self.players[player_id].selection_index
-        self.players[player_id].selection_index = (current + direction) % len(self.selected_maps)
+    def move_selection(self, player_name, direction):
+        current = self.players[player_name].selection_index
+        self.players[player_name].selection_index = (current + direction) % len(self.selected_maps)
 
-        # Send packet to server
-        packet = {
-            "type": "move_selection",
-            "player_id": player_id,
-            "new_index": self.players[player_id].selection_index
-        }
-        message = json.dumps(packet).encode('utf-8')
-        self.socket.sendto(message, (self.lobby.host_ip,9999))  # self.server_address should be a (host, port) tuple
-
-        # Optionally play sound locally
-        # self.music_manager.play_sound("move_map_selector")")
+        print(current)
+        # Only clients send movement to the host
+        if not self.lobby.is_host:
+            packet = {
+                "type": "move_selection",
+                "player_id": player_name,
+                "new_index": self.players[player_name].selection_index
+            }
+            message = json.dumps(packet).encode('utf-8')
+            self.socket.sendto(message, (self.lobby.host_ip, 9999))
 
     def handle_network_packets(self):
         try:
@@ -86,13 +86,26 @@ class MultiplayerMapSelector(State):
             decoded = message.decode('utf-8')
             if decoded.startswith("MAP_SELECTED:"):
                 # Format: MAP_SELECTED:<
-                _, map_name = decoded.split(":")
-                self.selected_maps = map_name
+                _, map_names_str = decoded.split(":")
+                map_names_list = ast.literal_eval(map_names_str)
+                self.selected_maps = map_names_list
+            else:
+                if self.lobby.is_host:
+                    data = json.loads(decoded)
+                    if data["type"] == "move_selection":
+                        player_id = data["player_id"]
+                        new_index = data["new_index"]
+                        if player_id in self.players:
+                            self.players[player_id].selection_index = new_index
         except socket.timeout:
             pass
 
     def handle_events(self, event):
-        pass
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_LEFT:
+                self.move_selection(self.player_name, -1)
+            elif event.key == pygame.K_RIGHT:
+                self.move_selection(self.player_name, 1)
 
     def update(self):
         self.handle_network_packets()
@@ -143,9 +156,22 @@ class MultiplayerMapSelector(State):
             text_rect = text_surf.get_rect(center=card_rect.center)
             screen.blit(text_surf, text_rect)
 
-        # Draw connected players list on left bottom
-        y_start = config.SCREEN_HEIGHT - 150
-        for i, player in enumerate(self.lobby.players):
-            player_name = player[0]
-            player_text = self.info_font.render(f"{i + 1}. {player_name}", True, config.TEXT_COLOR)
-            screen.blit(player_text, (50, y_start + i * 30))
+        # Draw player names (with index) under each selected map
+        name_offset_y = 20
+        player_stacks = {i: [] for i in range(len(self.selected_maps))}  # index -> list of (player_name)
+
+        # Build stack lists for each map index
+        for player_name, sel in self.players.items():
+            map_index = sel.selection_index
+            player_stacks[map_index].append(player_name)
+
+        # Render stacked names under each map
+        for map_index, player_list in player_stacks.items():
+            x = start_x + map_index * (card_width + spacing)
+            for stack_index, player_name in enumerate(player_list):
+                y_text = y + card_height + 10 + stack_index * name_offset_y
+                label = f"{stack_index + 1}. {player_name}"
+                name_surf = self.info_font.render(label, True, config.TEXT_COLOR)
+                name_rect = name_surf.get_rect(center=(x + card_width // 2, y_text))
+                screen.blit(name_surf, name_rect)
+
