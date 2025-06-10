@@ -13,7 +13,6 @@ class PauseState(State):
         super().__init__(game)
         self.font = pygame.font.Font(None, 60)
         self.selected_option = 0
-
         self.map_selected = map_selected
         self.map_name = map_name
 
@@ -58,7 +57,6 @@ class PauseState(State):
         mouse_pos = pygame.mouse.get_pos()
         for i, button in enumerate(self.buttons):
             button.highlighted = button.is_hovered(mouse_pos) or i == self.selected_option
-
     def render(self, screen):
         screen.blit(self.background_image, (0, 0))
 
