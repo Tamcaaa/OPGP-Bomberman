@@ -72,6 +72,9 @@ class TestField(State):
         self.heart_image = pygame.image.load("assets/menu_items/heart.png").convert_alpha()
         self.heart_image = pygame.transform.scale(self.heart_image, (30, 30))
 
+        self.pause_icon = pygame.image.load("assets/pauseicon.png").convert_alpha()
+        self.pause_icon = pygame.transform.scale(self.pause_icon, (30, 30))
+
         self.breakable_wall = pygame.image.load("assets/environment/wall.png").convert_alpha()
         self.breakable_wall = pygame.transform.scale(self.breakable_wall, (30, 30))
 
@@ -192,6 +195,10 @@ class TestField(State):
 
         screen.blit(self.heart_image, (0, 0))
         screen.blit(self.heart_image, (config.SCREEN_WIDTH - 4 * config.GRID_SIZE, 0))
+
+        screen.blit(self.pause_icon, (config.SCREEN_WIDTH - config.GRID_SIZE - 130, 0))
+
+
 
         player1_bombs = self.game.font.render(f"x {self.player1.get_max_bombs()}", True, config.COLOR_BLACK)
         player2_bombs = self.game.font.render(f"x {self.player2.get_max_bombs()}", True, config.COLOR_BLACK)
