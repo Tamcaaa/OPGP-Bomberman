@@ -8,7 +8,9 @@ class StateManager:
             "Pause": "states.pause_state.PauseState",
             "Settings": "states.settings.Settings",
             "MapSelector": "states.map_selector.MapSelector",
-            "MultiplayerSelector": "states.multiplayer_selector.MultiplayerSelector"
+            "MultiplayerSelector": "states.multiplayer_selector.MultiplayerSelector",
+            "MultiplayerLobby": "states.multiplayer_lobby.MultiplayerLobby"
+            "InputPopup"
         }
 
     def change_state(self, class_path: str, *args) -> None:

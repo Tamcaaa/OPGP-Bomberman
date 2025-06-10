@@ -10,7 +10,7 @@ from managers.state_manager import StateManager
 class MultiplayerSelector(State):
     def __init__(self, game):
         State.__init__(self, game)
-        pygame.display.set_caption("BomberMan: MultiplayerSelector")
+        pygame.display.set_caption("BomberMan: Multiplayer Selector")
         self.bg_image = pygame.image.load(os.path.join(game.photos_dir, "bg.png"))
 
         self.music_manager = MusicManager()
@@ -39,9 +39,9 @@ class MultiplayerSelector(State):
     def handle_events(self, event):
         """Handle button clicks."""
         if self.host_button.is_clicked():
-            print("host")
+            self.state_manager.change_state("MultiplayerLobby", True)
         elif self.join_button.is_clicked():
-            print("join")
+            print("test")
         elif self.goBack_button.is_clicked():
             self.exit_state()
             self.state_manager.change_state("MainMenu")
@@ -51,7 +51,7 @@ class MultiplayerSelector(State):
 
     def render(self, screen):
         """Draw the main menu screen."""
-        pygame.display.set_caption("BomberMan: MultiplayerSelector")
+        pygame.display.set_caption("BomberMan: Multiplayer Selector")
         screen.blit(self.bg_image, (0, 0))
         self.game.draw_text(screen, "BOMBER-MAN", config.COLOR_BLACK, config.SCREEN_WIDTH // 2, config.SCREEN_HEIGHT // 4)
         self.host_button.draw(screen)
@@ -85,3 +85,5 @@ class Button:
         mouse_pos = pygame.mouse.get_pos()
         mouse_pressed = pygame.mouse.get_pressed()
         return self.rect.collidepoint(mouse_pos) and mouse_pressed[0]
+
+
