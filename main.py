@@ -35,11 +35,16 @@ class BomberManApp:
             clock.tick(60)  # FPS limit
             self.get_events()  # Handle input events
             self.update()
+            self.handle_network_packets()
             self.render()  # Render current state
 
     def update(self):
         current_stack = self.state_stack[-1]
         current_stack.update()
+
+    def handle_network_packets(self):
+        current_stack = self.state_stack[-1]
+        current_stack.handle_network_packets()
 
     def render(self):
         """Render the game state."""
