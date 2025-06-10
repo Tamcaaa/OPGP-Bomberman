@@ -99,6 +99,8 @@ class MultiplayerMapSelector(State):
                 self.selected_maps = map_names_list
             elif decoded.startswith("ACK_STATE_CHANGE"):
                 pass
+            elif decoded.startswith("STATE_CHANGE"):
+                pass
             else:
                 print(decoded)
                 data = json.loads(decoded)
