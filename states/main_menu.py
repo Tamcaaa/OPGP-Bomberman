@@ -4,6 +4,7 @@ import config
 
 from states.state import State
 from managers.music_manager import MusicManager
+from managers.state_manager import StateManager
 
 
 class MainMenu(State):
@@ -13,6 +14,7 @@ class MainMenu(State):
         self.bg_image = pygame.image.load(os.path.join(game.photos_dir, "bg.png"))
 
         self.music_manager = MusicManager()
+        self.state_manager = StateManager(game)
         self.load_music()
 
         # Create buttons
@@ -41,9 +43,7 @@ class MainMenu(State):
         elif self.multiplayer_button.is_clicked():
             print("Multiplayer")
         elif self.settings_button.is_clicked():
-            from states.settings import Settings
-            new_state = Settings(self.game)
-            new_state.enter_state()
+            self.state_manager.change_state("Settings")
 
     def load_music(self):
         self.music_manager.play_music('title', 'main_menu_volume', True)
@@ -53,9 +53,7 @@ class MainMenu(State):
 
     def enter_single_player(self):
         """Switch to single-player state."""
-        from states.map_selector import MapSelector
-        new_state = MapSelector(self.game)
-        new_state.enter_state()
+        self.state_manager.change_state("MapSelector")
 
     def render(self, screen):
         """Draw the main menu screen."""

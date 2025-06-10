@@ -4,14 +4,21 @@ import config
 
 from states.state import State
 from managers.music_manager import MusicManager
+from managers.state_manager import StateManager
 
 
 class PauseState(State):
-    def __init__(self, game):
+    def __init__(self, game, selected_map, map_name):
         super().__init__(game)
         self.font = pygame.font.Font(None, 60)
         self.small_font = pygame.font.Font(None, 36)
         self.selected_option = 0
+
+        self.selected_map = selected_map
+        self.map_name = map_name
+
+        self.music_manager = MusicManager()
+        self.state_manager = StateManager(game)
 
         self.resume_button = Button(
             config.SCREEN_WIDTH // 2 - config.BUTTON_WIDTH - 20,
@@ -36,29 +43,20 @@ class PauseState(State):
         )
 
     def handle_events(self, event):
-        """Spracovanie udalostí ako stlačenia klávesov alebo kliknutia myši."""
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_p:
-                self.exit_state()
-            elif event.key == pygame.K_UP:
-                self.selected_option = (self.selected_option - 1) % 3
-            elif event.key == pygame.K_DOWN:
-                self.selected_option = (self.selected_option + 1) % 3
-            elif event.key == pygame.K_RETURN:
-                self.select_option()
-
         if event.type == pygame.MOUSEBUTTONDOWN:
             if self.resume_button.is_clicked():
                 self.exit_state()
             elif self.restart_button.is_clicked():
-                self.game.state_manager.change_state("TestField")
                 self.exit_state()
+                self.exit_state()
+                self.state_manager.change_state("TestField", self.selected_map, self.map_name)
             elif self.exit_button.is_clicked():
-                self.game.state_manager.change_state("MainMenu")
                 self.exit_state()
+                self.exit_state()
+                pygame.mixer_music.stop()
+                self.music_manager.play_music('title', 'main_menu_volume', True)
 
     def update(self):
-        """Pauza stav nezmení nič v hre."""
         pass
 
     def render(self, screen):
@@ -92,10 +90,10 @@ class PauseState(State):
         if self.selected_option == 0:
             self.exit_state()
         elif self.selected_option == 1:
-            self.game.state_manager.change_state("TestField")
             self.exit_state()
+            self.game.state_manager.change_state("TestField")
         elif self.selected_option == 2:
-            self.game.state_manager.change_state("MainMenu")
+            self.exit_state()
             self.exit_state()
 
 

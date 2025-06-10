@@ -87,8 +87,8 @@ class TestField(State):
             if event.key in config.PLAYER2_MOVE_KEYS:
                 self.player2.held_down_keys.append(event.key)
             if event.key == pygame.K_p:
-                self.game.state_manager.change_state("Pause")
-                
+                self.game.state_manager.change_state("Pause", self.selected_map, self.map_name)
+
         elif event.type == pygame.KEYUP:
             if event.key in config.PLAYER1_MOVE_KEYS and event.key in self.player1.held_down_keys:
                 self.player1.held_down_keys.remove(event.key)
