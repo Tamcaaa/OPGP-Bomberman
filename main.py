@@ -15,7 +15,6 @@ class BomberManApp:
         self.font = pygame.font.Font(None, config.FONT_SIZE)
         self.h1_font = pygame.font.Font(None, config.H1_SIZE)
         self.state_stack = []
-        self.dt, self.prev_time = 0, 0
         self.running = False
         self.photos_dir = os.path.join("assets")
 
