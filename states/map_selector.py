@@ -260,7 +260,7 @@ class MapSelector(State):
 
             start_text = self.info_font.render("Press SPACE to start the game", True, (255, 255, 0))
             screen.blit(start_text, (
-            config.SCREEN_WIDTH // 2 - start_text.get_width() // 2, text_y + map_name_text.get_height() + 50))
+                config.SCREEN_WIDTH // 2 - start_text.get_width() // 2, text_y + map_name_text.get_height() + 50))
         else:
             # Pôvodný kód pre výber mapy
             screen.blit(self.bg_image, (0, 0))
@@ -275,6 +275,7 @@ class MapSelector(State):
             overlay.fill((0, 0, 0))
             overlay.set_alpha(int(255 * self.transition_effect))
             screen.blit(overlay, (0, 0))
+
     def update(self):
         self.update_animations()
 

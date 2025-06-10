@@ -1,10 +1,22 @@
+import json
 import pygame
-import os
-import socket
 import random
 import config
+import os
+import socket
 from states.state import State
 from maps.test_field_map import all_maps
+from collections import Counter
+from dataclasses import dataclass
+from managers.music_manager import MusicManager
+from managers.state_manager import StateManager
+
+
+@dataclass
+class PlayerSelection:
+    selection_index: int = 0
+    vote_index: int | None = None
+    vote_flash_timer: int = 0
 
 
 class MultiplayerMapSelector(State):
@@ -14,16 +26,28 @@ class MultiplayerMapSelector(State):
         self.bg_image = pygame.image.load(os.path.join("assets", "bg.png"))
 
         self.lobby = multiplayer_lobby  # Keep reference to lobby for players and socket
+        self.socket = self.lobby.socket
+
+        self.players = {player: PlayerSelection() for player in self.lobby.players}
+        print(self.players)
+
+        self.state_manager = StateManager(self.game)
 
         self.selected_maps = []
+        self.final_map = None
         self.all_maps = all_maps
 
-        # Fonts (using enhanced fonts like local selector)
+        # Fonts
         self.title_font = pygame.font.SysFont('Arial', 36, bold=True)
         self.map_font = pygame.font.SysFont('Arial', 28)
         self.info_font = pygame.font.SysFont('Arial', 22)
-        self.font = pygame.font.Font(None, config.FONT_SIZE)  # fallback for buttons, etc.
+        self.font = pygame.font.Font(None, config.FONT_SIZE)  # fallback for buttons
 
+        # Animation variables
+        self.animation_timer = 30
+        self.transition_effect = 1.0
+
+        self.player_name = self.lobby.player_name
         if self.lobby.is_host:
             self.select_random_maps()
             self.send_map_selection()
@@ -38,7 +62,23 @@ class MultiplayerMapSelector(State):
         print(message)
         for _, addr in self.lobby.players:
             if addr[1] != 1111:
-                self.lobby.socket.sendto(message.encode('utf-8'), addr)
+                self.socket.sendto(message.encode('utf-8'), addr)
+
+    def move_selection(self, player_id, direction):
+        current = self.players[player_id].selection_index
+        self.players[player_id].selection_index = (current + direction) % len(self.selected_maps)
+
+        # Send packet to server
+        packet = {
+            "type": "move_selection",
+            "player_id": player_id,
+            "new_index": self.players[player_id].selection_index
+        }
+        message = json.dumps(packet).encode('utf-8')
+        self.socket.sendto(message, (self.lobby.host_ip,9999))  # self.server_address should be a (host, port) tuple
+
+        # Optionally play sound locally
+        # self.music_manager.play_sound("move_map_selector")")
 
     def handle_network_packets(self):
         try:
@@ -52,22 +92,7 @@ class MultiplayerMapSelector(State):
             pass
 
     def handle_events(self, event):
-        if self.back_button.is_clicked():
-            self.lobby.state_manager.change_state("MultiplayerLobby")
-
-        if self.lobby.is_host:
-            if self.start_button.is_clicked() and self.selected_map:
-                # Broadcast state change to start game
-                self.lobby.broadcast_state_change("MultiplayerGame")
-                self.lobby.state_manager.change_state("MultiplayerGame")
-
-            # Check map selection clicks
-            mouse_pos = pygame.mouse.get_pos()
-            for i, map_name in enumerate(self.available_maps):
-                rect = pygame.Rect(config.SCREEN_WIDTH // 2 - 100, 150 + i * 60, 200, 50)
-                if rect.collidepoint(mouse_pos) and pygame.mouse.get_pressed()[0]:
-                    self.selected_map = map_name
-                    self.send_map_selection()
+        pass
 
     def update(self):
         pass
@@ -89,7 +114,7 @@ class MultiplayerMapSelector(State):
         screen.blit(title, (config.SCREEN_WIDTH // 2 - title.get_width() // 2, 40))
 
         # Draw map cards styled like local selector
-        total_maps = len(self.available_maps)
+        total_maps = len(self.selected_maps)
         card_width = config.SEL_CARD_WIDTH
         card_height = config.SEL_CARD_HEIGHT
         spacing = config.SEL_CARD_SPACING
@@ -97,7 +122,7 @@ class MultiplayerMapSelector(State):
         start_x = (config.SCREEN_WIDTH - total_width) // 2
         y = config.SCREEN_HEIGHT // 2 - card_height // 2
 
-        for i, map_name in enumerate(self.available_maps):
+        for i, map_name in enumerate(self.selected_maps):
             x = start_x + i * (card_width + spacing)
             card_rect = pygame.Rect(x, y, card_width, card_height)
 
@@ -108,7 +133,7 @@ class MultiplayerMapSelector(State):
             # Border color: highlight selected map
             border_color = config.SELECTOR_COLORS['map_border']
             border_width = 3
-            if map_name == self.selected_map:
+            if map_name == self.final_map:
                 border_color = config.COLOR_GREEN
                 border_width = 5
             self.draw_rounded_rect(screen, border_color, card_rect, 15, border_width)
@@ -124,31 +149,3 @@ class MultiplayerMapSelector(State):
             player_name = player[0]
             player_text = self.info_font.render(f"{i + 1}. {player_name}", True, config.TEXT_COLOR)
             screen.blit(player_text, (50, y_start + i * 30))
-
-        # Draw buttons
-        self.back_button.draw(screen)
-        if self.lobby.is_host:
-            self.start_button.draw(screen)
-
-
-class Button:
-    def __init__(self, x, y, width, height, text, action=None):
-        self.rect = pygame.Rect(x, y, width, height)
-        self.text = text
-        self.font = pygame.font.Font(None, config.FONT_SIZE)
-        self.action = action
-
-    def draw(self, screen):
-        mouse_pos = pygame.mouse.get_pos()
-        if self.rect.collidepoint(mouse_pos):
-            pygame.draw.rect(screen, config.BUTTON_HOVER_COLOR, self.rect, border_radius=config.BUTTON_RADIUS)
-        else:
-            pygame.draw.rect(screen, config.BUTTON_COLOR, self.rect, border_radius=config.BUTTON_RADIUS)
-        text_surface = self.font.render(self.text, True, config.TEXT_COLOR)
-        text_rect = text_surface.get_rect(center=self.rect.center)
-        screen.blit(text_surface, text_rect)
-
-    def is_clicked(self):
-        mouse_pos = pygame.mouse.get_pos()
-        mouse_pressed = pygame.mouse.get_pressed()
-        return self.rect.collidepoint(mouse_pos) and mouse_pressed[0]
