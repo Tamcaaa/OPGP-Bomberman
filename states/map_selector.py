@@ -215,65 +215,66 @@ class MapSelector(State):
 
     def render(self, screen):
         if self.final_map:
-            # Draw semi-transparent overlay with darker background
+            # Načítaj screenshot mapy
+            map_name, map_data = self.final_map
+            try:
+                # Predpokladáme, že screenshoty sú v priečinku assets/map_previews
+                # s názvom napr. "urban_assault_preview.png"
+                preview_image = pygame.image.load(
+                    os.path.join("assets", "map_previews", f"{map_name.lower().replace(' ', '_')}_preview.png")
+                )
+                # Prispôsob veľkosť obrazovke
+                preview_image = pygame.transform.scale(preview_image, (config.SCREEN_WIDTH, config.SCREEN_HEIGHT))
+                screen.blit(preview_image, (0, 0))
+            except:
+                # Ak sa obrázok nenačíta, zobrazíme čierne pozadie
+                screen.fill((0, 0, 0))
+
+            # Pôvodný kód pre zobrazenie textu
             overlay = pygame.Surface((config.SCREEN_WIDTH, config.SCREEN_HEIGHT), pygame.SRCALPHA)
-            # Increased alpha value for a darker overlay (from 150 to 200)
             overlay.fill((0, 0, 0, min(255, self.animation_timer * 6)))
             screen.blit(overlay, (0, 0))
 
-            # Draw final selection announcement with rounded background
-            map_name_text = self.title_font.render(f"{self.final_map[0]}", True, (0, 255, 255))
+            map_name_text = self.title_font.render(f"{map_name}", True, (0, 255, 255))
             text_x = config.SCREEN_WIDTH // 2 - map_name_text.get_width() // 2
             text_y = config.SCREEN_HEIGHT // 2 - 50
 
-            # Add glow effect with rounded corners and darker background
-            # Make a larger background for the announcement
-            announcement_bg = pygame.Surface((map_name_text.get_width() + 80, map_name_text.get_height() + 100), pygame.SRCALPHA)
+            announcement_bg = pygame.Surface((map_name_text.get_width() + 80, map_name_text.get_height() + 100),
+                                             pygame.SRCALPHA)
             bg_rect = announcement_bg.get_rect()
-            # Darker, more opaque background (50, 50, 60, 230)
             pygame.draw.rect(announcement_bg, (20, 20, 30, 230), bg_rect, border_radius=20)
             screen.blit(announcement_bg, (text_x - 40, text_y - 30))
 
-            # Add glow effect with rounded corners
-            glow_surf = pygame.Surface((map_name_text.get_width() + 20, map_name_text.get_height() + 20), pygame.SRCALPHA)
+            glow_surf = pygame.Surface((map_name_text.get_width() + 20, map_name_text.get_height() + 20),
+                                       pygame.SRCALPHA)
             glow_rect = glow_surf.get_rect()
             pygame.draw.rect(glow_surf, (0, 200, 255, 120), glow_rect, border_radius=15)
             screen.blit(glow_surf, (text_x - 10, text_y - 10))
 
-            # Draw the map name first
             screen.blit(map_name_text, (text_x, text_y))
 
-            # Draw "Selected Map" text underneath
             selected_label = self.info_font.render("Selected Map", True, (200, 200, 200))
             screen.blit(selected_label,
-                        (config.SCREEN_WIDTH // 2 - selected_label.get_width() // 2, text_y + map_name_text.get_height() + 10))
+                        (config.SCREEN_WIDTH // 2 - selected_label.get_width() // 2,
+                         text_y + map_name_text.get_height() + 10))
 
-            # Draw start instruction
             start_text = self.info_font.render("Press SPACE to start the game", True, (255, 255, 0))
-            screen.blit(start_text, (config.SCREEN_WIDTH // 2 - start_text.get_width() // 2, text_y + map_name_text.get_height() + 50))
+            screen.blit(start_text, (
+            config.SCREEN_WIDTH // 2 - start_text.get_width() // 2, text_y + map_name_text.get_height() + 50))
         else:
+            # Pôvodný kód pre výber mapy
             screen.blit(self.bg_image, (0, 0))
-
-            # Draw title with slight bounce effect
             title = self.title_font.render("SELECT YOUR BATTLEFIELD", True, config.SELECTOR_COLORS['title'])
             screen.blit(title, (config.SCREEN_WIDTH // 2 - title.get_width() // 2, 40))
-
-            # Draw map cards
             self.draw_map_cards(screen)
-
-            # Draw player selection indicators
             self.draw_player_indicators(screen)
-
-            # Draw instructions
             self.draw_instructions(screen)
 
-        # Apply transition effect
         if self.transition_effect > 0:
             overlay = pygame.Surface((config.SCREEN_WIDTH, config.SCREEN_HEIGHT))
             overlay.fill((0, 0, 0))
             overlay.set_alpha(int(255 * self.transition_effect))
             screen.blit(overlay, (0, 0))
-
     def update(self):
         self.update_animations()
 
