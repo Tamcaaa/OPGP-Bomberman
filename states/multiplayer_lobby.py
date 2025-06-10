@@ -58,21 +58,6 @@ class MultiplayerLobby(State):
 
         print(f"your local ip {self.get_local_ip()}")
 
-    def listen_for_joins(self):
-        try:
-            message, address = self.socket.recvfrom(1024)
-            decoded = message.decode('utf-8')
-            if decoded.startswith("JOIN"):
-                username = decoded.split(":")[1] if ":" in decoded else "Unknown"
-                print(f"{username} joined from {address}")
-                self.players.append((username, address))
-
-                # Send updated player list
-                player_list_str = "PLAYER_LIST:" + ",".join(f"{username}@{address}" for username, address in self.players)
-                self.socket.sendto(player_list_str.encode('utf-8'), address)
-        except socket.timeout:
-            pass
-
     @staticmethod
     def get_local_ip():
         try:
@@ -84,6 +69,28 @@ class MultiplayerLobby(State):
             return local_ip
         except Exception as e:
             return f"Could not determine local IP: {e}"
+
+    def listen_for_joins(self):
+        try:
+            message, address = self.socket.recvfrom(1024)
+            decoded = message.decode('utf-8')
+            if decoded.startswith("JOIN"):
+                username = decoded.split(":")[1] if ":" in decoded else "Unknown"
+                print(f"{username} joined from {address}")
+                self.players.append((username, address))
+
+                # Send updated player list
+                player_list_str = "PLAYER_LIST:" + ";".join(f"{username}@{address}" for username, address in self.players)
+                print(player_list_str)
+                for _, address in self.players:
+                    self.socket.sendto(player_list_str.encode('utf-8'), address)
+            if decoded.startswith("LEAVE"):
+                self.players = [p for p in self.players if p[1] != address]
+                for _, address in self.players:
+                    player_list_str = "PLAYER_LIST:" + ";".join(f"{username}@{address}" for username, address in self.players)
+                    self.socket.sendto(player_list_str.encode('utf-8'), address)
+        except socket.timeout:
+            pass
 
     def send_join_request(self):
         current_time = time.time()
@@ -108,7 +115,7 @@ class MultiplayerLobby(State):
             decoded = message.decode('utf-8')
             if decoded.startswith("PLAYER_LIST:"):
                 # Convert each "username@address" string into a tuple (username, address))
-                players = decoded.split(":")[1].split(",")
+                players = decoded.split(":")[1].split(";")
                 self.players = []
                 for p in players:
                     username, address_str = p.split("@")
@@ -118,6 +125,7 @@ class MultiplayerLobby(State):
 
     def handle_events(self, event):
         if self.back_button.is_clicked():
+            self.socket.sendto(f"LEAVE".encode('utf-8'), (self.host_ip, self.port))
             self.exit_state()
             self.socket.close()
             self.state_manager.change_state("MultiplayerSelector")
