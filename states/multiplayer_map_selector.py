@@ -11,7 +11,7 @@ class MultiplayerMapSelector(State):
     def __init__(self, game, multiplayer_lobby):
         super().__init__(game)
         pygame.display.set_caption("BomberMan: Map Selector")
-        self.bg_image = pygame.image.load(os.path.join(game.photos_dir, "map_selector_bg.png"))
+        self.bg_image = pygame.image.load(os.path.join("assets", "bg.png"))
 
         self.lobby = multiplayer_lobby  # Keep reference to lobby for players and socket
 
@@ -29,15 +29,16 @@ class MultiplayerMapSelector(State):
             self.send_map_selection()
 
     def select_random_maps(self):
-        available_maps = list(self.all_maps.items())
+        available_maps = list(self.all_maps.keys())
         count = min(3, len(available_maps))
         self.selected_maps = random.sample(available_maps, count)
 
     def send_map_selection(self):
-        message = f"MAP_SELECTED:{self.selected_map}"
+        message = f"MAP_SELECTED:{self.selected_maps}"
         print(message)
         for _, addr in self.lobby.players:
-            self.lobby.socket.sendto(message.encode('utf-8'), addr)
+            if addr[1] != 1111:
+                self.lobby.socket.sendto(message.encode('utf-8'), addr)
 
     def handle_network_packets(self):
         try:
@@ -69,7 +70,7 @@ class MultiplayerMapSelector(State):
                     self.send_map_selection()
 
     def update(self):
-        self.listen_for_map_selection()
+        pass
 
     @staticmethod
     def draw_rounded_rect(surface, color, rect, radius, border_width=0):
