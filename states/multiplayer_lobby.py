@@ -1,3 +1,4 @@
+import ast
 import os
 import time
 
@@ -53,7 +54,7 @@ class MultiplayerLobby(State):
             "Back"
         )
 
-        self.request_cooldown = 2000
+        self.request_cooldown = 0.2
         self.last_request_time = 0
 
         print(f"your local ip {self.get_local_ip()}")
@@ -81,12 +82,15 @@ class MultiplayerLobby(State):
 
                 # Send updated player list
                 player_list_str = "PLAYER_LIST:" + ";".join(f"{username}@{address}" for username, address in self.players)
-                print(player_list_str)
-                for _, address in self.players:
+                for _, address in self.players[1:]:
                     self.socket.sendto(player_list_str.encode('utf-8'), address)
-            if decoded.startswith("LEAVE"):
+            elif decoded.startswith("LEAVE"):
                 self.players = [p for p in self.players if p[1] != address]
+                print(self.players)
                 for _, address in self.players:
+                    if address[1] == 1111:
+                        return
+                    print(address)
                     player_list_str = "PLAYER_LIST:" + ";".join(f"{username}@{address}" for username, address in self.players)
                     self.socket.sendto(player_list_str.encode('utf-8'), address)
         except socket.timeout:
@@ -119,7 +123,8 @@ class MultiplayerLobby(State):
                 self.players = []
                 for p in players:
                     username, address_str = p.split("@")
-                    self.players.append((username, address_str))
+                    ip, port = ast.literal_eval(address_str)
+                    self.players.append((username, (ip, port)))
         except socket.timeout:
             pass
 
