@@ -1,4 +1,6 @@
 import os
+import time
+
 import pygame
 import config
 import socket
@@ -17,12 +19,14 @@ class MultiplayerLobby(State):
         self.music_manager = MusicManager()
         self.state_manager = StateManager(game)
 
-        self.player_name = player_name
-        self.players = ["Server Host"]
-        self.is_host = is_host
-
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.settimeout(0.01)
+
+        self.player_name = player_name
+        self.is_host = is_host
+        self.players = []
+        if self.is_host:
+            self.players = [("Server Host", ('127.0.0.1', 1111))]
 
         self.host_ip = host_ip
         self.port = 9999
@@ -30,6 +34,9 @@ class MultiplayerLobby(State):
         if self.is_host:
             self.host_ip = self.get_local_ip()
             self.socket.bind((self.host_ip, self.port))
+            self.local_port = 1111
+        else:
+            self.local_port = None
 
         # Buttons
         self.start_button = Button(
@@ -46,21 +53,22 @@ class MultiplayerLobby(State):
             "Back"
         )
 
-        print(f"your local ip{self.get_local_ip()}")
+        self.request_cooldown = 2000
+        self.last_request_time = 0
+
+        print(f"your local ip {self.get_local_ip()}")
 
     def listen_for_joins(self):
         try:
             message, address = self.socket.recvfrom(1024)
-            if not message:
-                pass
             decoded = message.decode('utf-8')
             if decoded.startswith("JOIN"):
                 username = decoded.split(":")[1] if ":" in decoded else "Unknown"
                 print(f"{username} joined from {address}")
-                self.players.append(username)
+                self.players.append((username, address))
 
                 # Send updated player list
-                player_list_str = "PLAYER_LIST:" + ",".join(self.players)
+                player_list_str = "PLAYER_LIST:" + ",".join(f"{username}@{address}" for username, address in self.players)
                 self.socket.sendto(player_list_str.encode('utf-8'), address)
         except socket.timeout:
             pass
@@ -78,16 +86,33 @@ class MultiplayerLobby(State):
             return f"Could not determine local IP: {e}"
 
     def send_join_request(self):
-        if len(self.players) > 1:
-            return
-        # Send a JOIN message to the host
-        self.socket.sendto(f"JOIN:{self.player_name}".encode('utf-8'), (self.host_ip, self.port))
+        current_time = time.time()
+        if current_time - self.last_request_time >= self.request_cooldown:
+            self.last_request_time = current_time
+            if self.local_port is None:
+                # Send a JOIN message to the host
+                self.socket.sendto(f"JOIN:{self.player_name}".encode('utf-8'), (self.host_ip, self.port))
+                self.local_port = self.socket.getsockname()[1]
+            else:
+                for player in self.players:
+                    port = player[1][1]
+                    if self.local_port == port:
+                        print("You are already in a list")
+                        break
+                else:
+                    self.socket.sendto(f"JOIN:{self.player_name}".encode('utf-8'), (self.host_ip, self.port))
+
+    def update_player_list(self):
         try:
             message, _ = self.socket.recvfrom(1024)
             decoded = message.decode('utf-8')
             if decoded.startswith("PLAYER_LIST:"):
-                player_names = decoded.split(":")[1].split(",")
-                self.players = player_names
+                # Convert each "username@address" string into a tuple (username, address))
+                players = decoded.split(":")[1].split(",")
+                self.players = []
+                for p in players:
+                    username, address_str = p.split("@")
+                    self.players.append((username, address_str))
         except socket.timeout:
             pass
 
@@ -106,6 +131,7 @@ class MultiplayerLobby(State):
             self.listen_for_joins()
         else:
             self.send_join_request()
+        self.update_player_list()
 
     def render(self, screen):
         screen.blit(self.bg_image, (0, 0))
@@ -113,14 +139,15 @@ class MultiplayerLobby(State):
 
         # Draw player list
         y_start = 150
-        for index, player_name in enumerate(self.players):
+        for index, player in enumerate(self.players):
+            player_name = player[0]
             if self.player_name == "Server Host" and player_name == "Server Host":
                 player_name = 'Server Host (You)'
             elif self.player_name == player_name:
                 player_name = f'{self.player_name} (You)'
             else:
                 player_name = player_name
-            text_surface = pygame.font.Font(None, config.FONT_SIZE).render(player_name, True, config.TEXT_COLOR)
+            text_surface = pygame.font.Font(None, config.FONT_SIZE).render(f'{index + 1}. {player_name}', True, config.TEXT_COLOR)
             text_rect = text_surface.get_rect(center=(config.SCREEN_WIDTH // 2, y_start + index * 40))
             screen.blit(text_surface, text_rect)
 
