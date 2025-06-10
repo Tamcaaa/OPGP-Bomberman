@@ -9,8 +9,8 @@ class StateManager:
             "Settings": "states.settings.Settings",
             "MapSelector": "states.map_selector.MapSelector",
             "MultiplayerSelector": "states.multiplayer_selector.MultiplayerSelector",
-            "MultiplayerLobby": "states.multiplayer_lobby.MultiplayerLobby"
-            "InputPopup"
+            "MultiplayerLobby": "states.multiplayer_lobby.MultiplayerLobby",
+            "InputPopup": "states.input_popup.InputPopup",
         }
 
     def change_state(self, class_path: str, *args) -> None:

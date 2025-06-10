@@ -9,7 +9,7 @@ from managers.state_manager import StateManager
 
 
 class MultiplayerLobby(State):
-    def __init__(self, game, is_host=False, host_ip="127.0.0.1"):
+    def __init__(self, game, is_host=False, player_name="Server Host", host_ip="127.0.0.1"):
         super().__init__(game)
         pygame.display.set_caption("BomberMan: Multiplayer Lobby")
         self.bg_image = pygame.image.load(os.path.join(game.photos_dir, "bg.png"))
@@ -17,7 +17,8 @@ class MultiplayerLobby(State):
         self.music_manager = MusicManager()
         self.state_manager = StateManager(game)
 
-        self.players = ["You (Host)"] if is_host else ["You"]
+        self.player_name = player_name
+        self.players = ["Server Host"]
         self.is_host = is_host
 
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -27,6 +28,7 @@ class MultiplayerLobby(State):
         self.port = 9999
 
         if self.is_host:
+            self.host_ip = self.get_local_ip()
             self.socket.bind((self.host_ip, self.port))
 
         # Buttons
@@ -43,6 +45,8 @@ class MultiplayerLobby(State):
             config.BUTTON_HEIGHT // 1.5,
             "Back"
         )
+
+        print(f"your local ip{self.get_local_ip()}")
 
     def listen_for_joins(self):
         try:
@@ -61,9 +65,23 @@ class MultiplayerLobby(State):
         except socket.timeout:
             pass
 
+    @staticmethod
+    def get_local_ip():
+        try:
+            # Create a dummy socket (doesn't send data)
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))  # Google's DNS
+            local_ip = s.getsockname()[0]
+            s.close()
+            return local_ip
+        except Exception as e:
+            return f"Could not determine local IP: {e}"
+
     def send_join_request(self):
+        if len(self.players) > 1:
+            return
         # Send a JOIN message to the host
-        self.socket.sendto("JOIN:Player2".encode('utf-8'), (self.host_ip, self.port))
+        self.socket.sendto(f"JOIN:{self.player_name}".encode('utf-8'), (self.host_ip, self.port))
         try:
             message, _ = self.socket.recvfrom(1024)
             decoded = message.decode('utf-8')
@@ -96,6 +114,12 @@ class MultiplayerLobby(State):
         # Draw player list
         y_start = 150
         for index, player_name in enumerate(self.players):
+            if self.player_name == "Server Host" and player_name == "Server Host":
+                player_name = 'Server Host (You)'
+            elif self.player_name == player_name:
+                player_name = f'{self.player_name} (You)'
+            else:
+                player_name = player_name
             text_surface = pygame.font.Font(None, config.FONT_SIZE).render(player_name, True, config.TEXT_COLOR)
             text_rect = text_surface.get_rect(center=(config.SCREEN_WIDTH // 2, y_start + index * 40))
             screen.blit(text_surface, text_rect)
