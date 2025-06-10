@@ -4,6 +4,7 @@ import config
 
 from states.state import State
 from managers.music_manager import MusicManager
+from managers.state_manager import StateManager
 
 
 class MainMenu(State):
@@ -14,6 +15,7 @@ class MainMenu(State):
         self.text_bomberman = pygame.image.load(os.path.join(game.photos_dir, "bomber-man-text.png"))
         
         self.music_manager = MusicManager()
+        self.state_manager = StateManager(game)
         self.load_music()
 
         # Create buttons
@@ -42,9 +44,7 @@ class MainMenu(State):
         elif self.multiplayer_button.is_clicked():
             print("Multiplayer")
         elif self.settings_button.is_clicked():
-            from states.settings import Settings
-            new_state = Settings(self.game)
-            new_state.enter_state()
+            self.state_manager.change_state("Settings")
 
     def load_music(self):
         self.music_manager.play_music('title', 'main_menu_volume', True)
