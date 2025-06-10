@@ -137,7 +137,7 @@ class MultiplayerLobby(State):
         elif self.start_button.is_clicked():
             self.broadcast_state_change("MultiplayerMapSelector")
             self.exit_state()
-            self.state_manager.change_state("MultiplayerMapSelector")
+            self.state_manager.change_state("MultiplayerMapSelector", self)
 
     def update(self):
         if self.is_host:
@@ -156,14 +156,15 @@ class MultiplayerLobby(State):
                 if len(parts) == 2:
                     _, state_name = parts
                     if state_name == "MultiplayerMapSelector":
-                        self.state_manager.change_state("MultiplayerMapSelector")
+                        self.state_manager.change_state("MultiplayerMapSelector", self)
         except socket.timeout:
             pass
 
     def broadcast_state_change(self, new_state):
         message = f"STATE_CHANGE:{new_state}"
         for _, address in self.players:
-            self.socket.sendto(message.encode('utf-8'), address)
+            if address[1] != 1111:
+                self.socket.sendto(message.encode('utf-8'), address)
 
     def render(self, screen):
         screen.blit(self.bg_image, (0, 0))
