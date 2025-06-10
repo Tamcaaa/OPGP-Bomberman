@@ -133,11 +133,11 @@ class MultiplayerLobby(State):
             self.socket.sendto(f"LEAVE".encode('utf-8'), (self.host_ip, self.port))
             self.exit_state()
             self.socket.close()
-            self.state_manager.change_state("MultiplayerSelector")
 
         elif self.start_button.is_clicked():
-            # Placeholder — logic to check if you're host, and start the game
-            print("Game starting...")
+            self.broadcast_state_change("MultiplayerMapSelector")
+            self.exit_state()
+            self.state_manager.change_state("MultiplayerMapSelector")
 
     def update(self):
         if self.is_host:
@@ -145,6 +145,25 @@ class MultiplayerLobby(State):
         else:
             self.send_join_request()
         self.update_player_list()
+
+    def handle_network_packets(self):
+        try:
+            message, _ = self.socket.recvfrom(1024)
+            decoded = message.decode('utf-8')
+            if decoded.startswith("STATE_CHANGE:"):
+                # Format: STATE_CHANGE:<state_name>
+                parts = decoded.split(":")
+                if len(parts) == 2:
+                    _, state_name = parts
+                    if state_name == "MultiplayerMapSelector":
+                        self.state_manager.change_state("MultiplayerMapSelector")
+        except socket.timeout:
+            pass
+
+    def broadcast_state_change(self, new_state):
+        message = f"STATE_CHANGE:{new_state}"
+        for _, address in self.players:
+            self.socket.sendto(message.encode('utf-8'), address)
 
     def render(self, screen):
         screen.blit(self.bg_image, (0, 0))

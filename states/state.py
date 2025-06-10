@@ -12,6 +12,9 @@ class State:
     def handle_events(self, event):
         pass
 
+    def handle_network_packets(self):
+        pass
+
     def enter_state(self):
         if len(self.game.state_stack) > 1:
             self.prev_state = self.game.state_stack[-1]
