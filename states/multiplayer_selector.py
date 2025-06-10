@@ -41,7 +41,7 @@ class MultiplayerSelector(State):
         if self.host_button.is_clicked():
             self.state_manager.change_state("MultiplayerLobby", True)
         elif self.join_button.is_clicked():
-            print("test")
+            self.state_manager.change_state("InputPopup")
         elif self.goBack_button.is_clicked():
             self.exit_state()
             self.state_manager.change_state("MainMenu")
@@ -85,5 +85,4 @@ class Button:
         mouse_pos = pygame.mouse.get_pos()
         mouse_pressed = pygame.mouse.get_pressed()
         return self.rect.collidepoint(mouse_pos) and mouse_pressed[0]
-
 
