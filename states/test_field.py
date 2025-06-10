@@ -14,6 +14,7 @@ class TestField(State):
     def __init__(self, game, selected_map, map_name):
         State.__init__(self, game)
 
+        
         self.selected_map = selected_map
         self.map_name = map_name
 
@@ -39,6 +40,35 @@ class TestField(State):
         self.message_timer = 0
 
         # Load images
+        self.cave_bg = pygame.image.load("assets/cave-bg.png").convert_alpha()
+        self.grass_bg = pygame.image.load("assets/grass-bg.png").convert_alpha()
+        self.sand_bg = pygame.image.load("assets/sand-bg.png").convert_alpha()
+        self.ruins_bg = pygame.image.load("assets/ruins_bg.png").convert_alpha()
+        self.urban_bg = pygame.image.load("assets/urban_bg.png").convert_alpha()
+        
+        self.unbreakable_stone = pygame.image.load("assets/stone-black.png").convert_alpha()
+        self.unbreakable_stone = pygame.transform.scale(self.unbreakable_stone, (30, 30))
+        
+        self.breakable_barrel = pygame.image.load("assets/environment/barrel.png").convert_alpha()
+        self.breakable_barrel = pygame.transform.scale(self.breakable_barrel, (30, 30))
+        
+        self.breakable_bush = pygame.image.load("assets/environment/bush.png").convert_alpha()
+        self.breakable_bush = pygame.transform.scale(self.breakable_bush, (30, 30))
+        
+        self.unbreakable_rock = pygame.image.load("assets/environment/black-block-rock.png").convert_alpha()
+        self.unbreakable_rock = pygame.transform.scale(self.unbreakable_rock, (30, 30))
+        self.breakable_rock = pygame.image.load("assets/environment/rock.png").convert_alpha()
+        self.breakable_rock = pygame.transform.scale(self.breakable_rock, (30, 30))
+        
+        self.breakable_diamond = pygame.image.load("assets/environment/diamond.png").convert_alpha()
+        self.breakable_diamond = pygame.transform.scale(self.breakable_diamond, (30, 30))
+        
+        self.breakable_cactus = pygame.image.load("assets/environment/cactus.png").convert_alpha()
+        self.breakable_cactus = pygame.transform.scale(self.breakable_cactus, (30, 30))
+        
+        self.unbreakable_box = pygame.image.load("assets/environment/box.png").convert_alpha()
+        self.unbreakable_box = pygame.transform.scale(self.unbreakable_box, (30, 30))
+        
         self.heart_image = pygame.image.load("assets/menu_items/heart.png").convert_alpha()
         self.heart_image = pygame.transform.scale(self.heart_image, (30, 30))
 
@@ -48,6 +78,12 @@ class TestField(State):
         self.unbreakable_wall = pygame.image.load("assets/environment/brick.png").convert_alpha()
         self.unbreakable_wall = pygame.transform.scale(self.unbreakable_wall, (30, 30))
 
+        self.blue_cave = pygame.image.load("assets/environment/blue_cave.png").convert_alpha()
+        self.blue_cave = pygame.transform.scale(self.blue_cave, (30, 30))
+        
+        self.red_cave = pygame.image.load("assets/environment/red_cave.png").convert_alpha()
+        self.red_cave = pygame.transform.scale(self.red_cave, (30, 30))
+        
         self.bomb_icon = pygame.image.load("assets/bomb.png").convert_alpha()
         self.bomb_icon = pygame.transform.scale(self.bomb_icon, (30, 30))
 
@@ -173,6 +209,8 @@ class TestField(State):
         if self.powerup_message:
             message_text = self.game.font.render(self.powerup_message, True, config.COLOR_BLACK)
             screen.blit(message_text, (config.SCREEN_WIDTH // 2 - message_text.get_width() // 2, 10))
+            
+    
 
     def draw_active_powerups(self, screen):
         # Player 1 active power-ups
@@ -209,28 +247,66 @@ class TestField(State):
             screen.blit(powerup_text, (x_pos, y_offset))
             y_offset += 20
 
-    @staticmethod
-    def draw_grid(screen):
-        for line in range((config.SCREEN_WIDTH // config.GRID_SIZE) + 1):
-            pygame.draw.line(screen, config.COLOR_BLACK, (line * config.GRID_SIZE, 30),
-                             (line * config.GRID_SIZE, config.SCREEN_HEIGHT))
-        for line in range((config.SCREEN_HEIGHT // config.GRID_SIZE) - 1):
-            pygame.draw.line(screen, config.COLOR_BLACK, (0, line * config.GRID_SIZE + 30),
-                             (config.SCREEN_WIDTH, line * config.GRID_SIZE + 30))
+
+    def draw_grid(self, screen):
+        if self.map_name == "Crystal Caves":
+            screen.blit(self.cave_bg, (0, 0))
+            pass
+        if self.map_name == "Classic":
+            screen.blit(self.grass_bg, (0, 0))
+            pass
+        if self.map_name == "Desert Maze":
+            screen.blit(self.sand_bg, (0, 0))
+            pass
+        if self.map_name == "Ancient Ruins":
+            screen.blit(self.ruins_bg, (0, 0))
+            pass
+        if self.map_name == "Urban Assault":
+            screen.blit(self.urban_bg, (0, 0))
+            pass
+        else:
+            for line in range((config.SCREEN_WIDTH // config.GRID_SIZE) + 1):
+                pygame.draw.line(screen, config.COLOR_BLACK, (line * config.GRID_SIZE, 30),
+                                 (line * config.GRID_SIZE, config.SCREEN_HEIGHT))
+            for line in range((config.SCREEN_HEIGHT // config.GRID_SIZE) - 1):
+                pygame.draw.line(screen, config.COLOR_BLACK, (0, line * config.GRID_SIZE + 30),
+                                 (config.SCREEN_WIDTH, line * config.GRID_SIZE + 30))
 
     def draw_walls(self, screen):
         for row_index, row in enumerate(self.tile_map):
             for col_index, tile in enumerate(row):
                 x = col_index * config.GRID_SIZE
                 y = row_index * config.GRID_SIZE
-                if tile == 0:  # Empty space (no wall)
-                    rect = pygame.Rect(x, y, config.GRID_SIZE, config.GRID_SIZE)
-                    color = config.COLOR_DARK_GREEN if (col_index + row_index) % 2 == 0 else config.COLOR_LIGHT_GREEN
-                    pygame.draw.rect(screen, color, rect)
+                if tile in [0, 4, 5]:  # Empty space (no wall)
+                    if self.map_name not in ["Crystal Caves", "Desert Maze", "Classic", "Ancient Ruins","Urban Assault"]:  # ✅ Only draw green tiles on other maps
+                        rect = pygame.Rect(x, y, config.GRID_SIZE, config.GRID_SIZE)
+                        color = config.COLOR_DARK_GREEN if (col_index + row_index) % 2 == 0 else config.COLOR_LIGHT_GREEN
+                        pygame.draw.rect(screen, color, rect)
+                    
                 elif tile == 1:  # Unbreakable wall
-                    screen.blit(self.unbreakable_wall, (x, y))
+                    if self.map_name == "Crystal Caves":
+                        screen.blit(self.unbreakable_stone, (x, y))
+                    elif self.map_name in ["Classic", "Desert Maze"]:
+                        screen.blit(self.unbreakable_box, (x, y))
+                    elif self.map_name == "Ancient Ruins":
+                        screen.blit(self.unbreakable_rock, (x, y))
+                    else:
+                        screen.blit(self.unbreakable_wall, (x, y))
                 elif tile == 2:  # Breakable wall
-                    screen.blit(self.breakable_wall, (x, y))
+                    if self.map_name == "Desert Maze":
+                        screen.blit(self.breakable_cactus, (x, y))
+                    elif self.map_name == "Classic":
+                        screen.blit(self.breakable_bush, (x, y))
+                    elif self.map_name == "Crystal Caves":
+                        screen.blit(self.breakable_diamond, (x, y))
+                    elif self.map_name == "Ancient Ruins":
+                        screen.blit(self.breakable_rock, (x, y))
+                    else:
+                        screen.blit(self.breakable_wall, (x, y))
+                if tile == 4:  # Blue cave
+                    screen.blit(self.blue_cave, (x, y))
+                if tile == 5:  # Red cave
+                    screen.blit(self.red_cave, (x, y))
                 elif tile == config.TRAP:  # Poklop
                     screen.blit(self.trap_image, (x, y))
 
@@ -289,11 +365,9 @@ class TestField(State):
         screen.fill(config.COLOR_WHITE)
 
         # Draw playing field
+        self.draw_grid(screen)       # ✅ This now draws either background or green grid
         self.draw_walls(screen)
-        self.draw_grid(screen)
         self.draw_menu(screen)
-
-        # Draw Players
         self.draw_players(screen)
 
         # 🔥 Update explosions

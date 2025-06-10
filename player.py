@@ -153,6 +153,13 @@ class Player(pygame.sprite.Sprite):
         if tile_type in [1, 2, 3]:  # Wall, brick, Menu
             self.image = self.images[direction]
             return
+        
+        # Teleport logic: if tile is a teleport tile, find paired teleport location
+        if tile_type in [4, 5]:  # Assuming 4 = red cave, 5 = blue cave
+            paired_pos = self.find_paired_teleport(tile_type, bound_x, bound_y)
+            if paired_pos:
+                bound_x, bound_y = paired_pos
+                
          # Check for collision with bombs
         future_rect = self.rect.copy()
         future_rect.x = bound_x
@@ -175,3 +182,20 @@ class Player(pygame.sprite.Sprite):
         if self.currentBomb > 0:
             Bomb(self, bomb_group, explosion_group, self.test_field)
             self.currentBomb -= 1  # Decrement available bombs
+    def find_paired_teleport(self, teleport_type, current_x, current_y):
+        
+        tiles = []
+    
+        for y, row in enumerate(self.test_field.tile_map):
+            for x, tile in enumerate(row):
+                if tile == teleport_type:
+                    tile_x = x * config.GRID_SIZE
+                    tile_y = y * config.GRID_SIZE
+                    if tile_x == current_x and tile_y == current_y:
+                        continue  # skip current tile
+                    tiles.append((tile_x, tile_y))
+    
+        if tiles:
+            # Return first other teleport found, assuming only one paired teleport
+            return tiles[0]
+        return None
