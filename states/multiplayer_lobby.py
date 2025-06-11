@@ -173,7 +173,7 @@ class MultiplayerLobby(State):
         if self.is_host:
             try:
                 packet, address = self.socket.recvfrom(1024)
-                packet = json.loads(packet).decode('utf-8')
+                packet = json.loads(packet.decode('utf-8'))
                 if not packet['AUTH'] == self.AUTH:
                     return
                 if packet['type'] == "ACK_STATE_CHANGE":
@@ -183,7 +183,7 @@ class MultiplayerLobby(State):
         else:
             try:
                 packet, address = self.socket.recvfrom(1024)
-                packet = json.loads(packet).decode('utf-8')
+                packet = json.loads(packet.decode('utf-8'))
                 if packet['type'] == 'STATE_CHANGE':
                     if packet['data'].get('state', 'UNKNOWN') == 'MultiplayerMapSelector':
                         # Send ACK to host
