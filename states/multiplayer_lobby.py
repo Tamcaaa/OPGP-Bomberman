@@ -60,7 +60,7 @@ class MultiplayerLobby(State):
             "Back"
         )
 
-        self.request_cooldown = 0.2
+        self.request_cooldown = 1
         self.last_request_time = 0
 
         print(f"your local ip {self.get_local_ip()}")
@@ -81,9 +81,14 @@ class MultiplayerLobby(State):
         try:
             packet, addr = self.socket.recvfrom(1024)
             packet = json.loads(packet.decode('utf-8'))
-            if not packet['AUTH'] == self.AUTH:
+            if not packet.get('AUTH',"UNKNOWN") == self.AUTH:
                 return
             if packet['type'] == 'JOIN':
+                for player in self.players:
+                    address = player[1]
+                    if addr == address:
+                        print("Player Already Connected")
+                        return
                 username = packet['data'].get('name', "UNKNOWN")
                 print(f"{username} joined from {addr}")
                 self.players.append((username, addr))
@@ -135,12 +140,12 @@ class MultiplayerLobby(State):
         try:
             packet, addr = self.socket.recvfrom(1024)
             packet = json.loads(packet.decode('utf-8'))
-            if packet['AUTH'] == self.AUTH:
-                if packet['type'] == "PLAYER_LIST":
-                    self.players = []
-                    for p in packet['data']['player_list']:
-                        username, addr = p
-                        self.players.append((username, addr))
+            print(packet)
+            if packet['type'] == "PLAYER_LIST":
+                self.players = []
+                for p in packet['data']['player_list']:
+                    username, addr = p
+                    self.players.append((username, addr))
         except socket.timeout:
             pass
         except json.JSONDecodeError as e:
@@ -174,7 +179,7 @@ class MultiplayerLobby(State):
             try:
                 packet, address = self.socket.recvfrom(1024)
                 packet = json.loads(packet.decode('utf-8'))
-                if not packet['AUTH'] == self.AUTH:
+                if not packet.get('AUTH','UNKNOWN') == self.AUTH:
                     return
                 if packet['type'] == "ACK_STATE_CHANGE":
                     self.acknowledged_players.add(address)
