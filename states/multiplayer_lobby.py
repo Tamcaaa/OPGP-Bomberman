@@ -1,10 +1,8 @@
-import ast
 import json
 import os
 import time
 
 import pygame
-from pyexpat.errors import messages
 
 import config
 import socket
@@ -81,26 +79,32 @@ class MultiplayerLobby(State):
 
     def listen_for_joins(self):
         try:
-            message, address = self.socket.recvfrom(1024)
-            decoded = message.decode('utf-8')
-            if decoded.startswith("JOIN"):
-                username = decoded.split(":")[1] if ":" in decoded else "Unknown"
-                print(f"{username} joined from {address}")
-                self.players.append((username, address))
+            packet, addr = self.socket.recvfrom(1024)
+            packet = json.loads(packet.decode('utf-8'))
+            if not packet['AUTH'] == self.AUTH:
+                return
+            if packet['type'] == 'JOIN':
+                username = packet['data'].get('name', "UNKNOWN")
+                print(f"{username} joined from {addr}")
+                self.players.append((username, addr))
 
                 # Send updated player list
-                player_list_str = "PLAYER_LIST:" + ";".join(f"{username}@{address}" for username, address in self.players)
+                player_list_packet = {
+                    'type': 'PLAYER_LIST',
+                    'data': {'player_list': self.players}
+                }
                 for _, address in self.players[1:]:
-                    self.socket.sendto(player_list_str.encode('utf-8'), address)
-            elif decoded.startswith("LEAVE"):
-                self.players = [p for p in self.players if p[1] != address]
-                print(self.players)
+                    self.socket.sendto(json.dumps(player_list_packet).encode('utf-8'), address)
+            elif packet['type'] == 'LEAVE':
+                self.players = [p for p in self.players if p[1] != addr]
                 for _, address in self.players:
                     if address[1] == 1111:
                         return
-                    print(address)
-                    player_list_str = "PLAYER_LIST:" + ";".join(f"{username}@{address}" for username, address in self.players)
-                    self.socket.sendto(player_list_str.encode('utf-8'), address)
+                    player_list_packet = {
+                        'type': 'PLAYER_LIST',
+                        'data': {'player_list': self.players}
+                    }
+                    self.socket.sendto(json.dumps(player_list_packet).encode('utf-8'), address)
         except socket.timeout:
             pass
 
@@ -129,26 +133,26 @@ class MultiplayerLobby(State):
 
     def update_player_list(self):
         try:
-            packet,addr = self.socket.recvfrom(1024)
+            packet, addr = self.socket.recvfrom(1024)
             packet = json.loads(packet.decode('utf-8'))
-            print(packet)
-            return
-            if decoded.startswith("PLAYER_LIST:"):
-                # Convert each "username@address" string into a tuple (username, address))
-                players = decoded.split(":")[1].split(";")
-                self.players = []
-                for p in players:
-                    username, address_str = p.split("@")
-                    ip, port = ast.literal_eval(address_str)
-                    self.players.append((username, (ip, port)))
+            if packet['AUTH'] == self.AUTH:
+                if packet['type'] == "PLAYER_LIST":
+                    self.players = []
+                    for p in packet['data']['player_list']:
+                        username, addr = p
+                        self.players.append((username, addr))
         except socket.timeout:
             pass
         except json.JSONDecodeError as e:
-            print(f"Invalid JSON received from {addr}: {e}")
+            print(f"Invalid JSON received from: {e}")
 
     def handle_events(self, event):
         if self.back_button.is_clicked():
-            self.socket.sendto(f"LEAVE".encode('utf-8'), (self.host_ip, self.port))
+            leave_packet = {
+                'AUTH': self.AUTH,
+                'type': 'LEAVE'
+            }
+            self.socket.sendto(json.dumps(leave_packet).encode('utf-8'), (self.host_ip, self.port))
             self.exit_state()
             self.socket.close()
 
@@ -168,28 +172,36 @@ class MultiplayerLobby(State):
     def handle_network_packets(self):
         if self.is_host:
             try:
-                message, address = self.socket.recvfrom(1024)
-                decoded = message.decode('utf-8')
-                if decoded.startswith("ACK_STATE_CHANGE"):
+                packet, address = self.socket.recvfrom(1024)
+                packet = json.loads(packet).decode('utf-8')
+                if not packet['AUTH'] == self.AUTH:
+                    return
+                if packet['type'] == "ACK_STATE_CHANGE":
                     self.acknowledged_players.add(address)
             except socket.timeout:
                 pass
-        try:
-            message, address = self.socket.recvfrom(1024)
-            decoded = message.decode('utf-8')
-            if decoded.startswith("STATE_CHANGE:"):
-                parts = decoded.split(":")
-                if len(parts) == 2:
-                    _, state_name = parts
-                    if state_name == "MultiplayerMapSelector":
+        else:
+            try:
+                packet, address = self.socket.recvfrom(1024)
+                packet = json.loads(packet).decode('utf-8')
+                if packet['type'] == 'STATE_CHANGE':
+                    if packet['data'].get('state', 'UNKNOWN') == 'MultiplayerMapSelector':
                         # Send ACK to host
-                        self.socket.sendto("ACK_STATE_CHANGE".encode('utf-8'), (self.host_ip, self.port))
+                        ack_packet = {
+                            'AUTH': self.AUTH,
+                            'type': 'ACK_STATE_CHANGE'
+                        }
+                        self.socket.sendto(json.dumps(ack_packet).encode('utf-8'), (self.host_ip, self.port))
                         self.state_manager.change_state("MultiplayerMapSelector", self)
-        except socket.timeout:
-            pass
+            except socket.timeout:
+                pass
 
     def broadcast_state_change(self, new_state):
-        message = f"STATE_CHANGE:{new_state}".encode('utf-8')
+        state_change_packet = {
+            'type': 'STATE_CHANGE',
+            'data': {'state': new_state}
+        }
+        message = json.dumps(state_change_packet).encode('utf-8')
         self.state_change_sent = True
         self.acknowledged_players = set()
 
@@ -232,7 +244,8 @@ class MultiplayerLobby(State):
             else:
                 player_name = player_name
 
-            text_surface = pygame.font.Font(None, config.FONT_SIZE).render(f'{index + 1}. {player_name}', True, config.TEXT_COLOR)
+            text_surface = pygame.font.Font(None, config.FONT_SIZE).render(f'{index + 1}. {player_name}', True,
+                                                                           config.TEXT_COLOR)
             text_rect = text_surface.get_rect(center=(config.SCREEN_WIDTH // 2, y_start + index * 40))
             screen.blit(text_surface, text_rect)
 
