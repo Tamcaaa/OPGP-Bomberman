@@ -1,8 +1,11 @@
 import ast
+import json
 import os
 import time
 
 import pygame
+from pyexpat.errors import messages
+
 import config
 import socket
 
@@ -16,6 +19,8 @@ class MultiplayerLobby(State):
         super().__init__(game)
         pygame.display.set_caption("BomberMan: Multiplayer Lobby")
         self.bg_image = pygame.image.load(os.path.join(game.photos_dir, "bg.png"))
+
+        self.AUTH = "PLEASEWORK"
 
         self.music_manager = MusicManager()
         self.state_manager = StateManager(game)
@@ -102,24 +107,32 @@ class MultiplayerLobby(State):
     def send_join_request(self):
         current_time = time.time()
         if current_time - self.last_request_time >= self.request_cooldown:
+            packet = {
+                "AUTH": self.AUTH,
+                "type": "JOIN",
+                'data': {"name": self.player_name},
+            }
+            message = json.dumps(packet).encode('utf-8')
             self.last_request_time = current_time
             if self.local_port is None:
-                # Send a JOIN message to the host
-                self.socket.sendto(f"JOIN:{self.player_name}".encode('utf-8'), (self.host_ip, self.port))
+                # Send a JOIN packet to the host
+                self.socket.sendto(message, (self.host_ip, self.port))
                 self.local_port = self.socket.getsockname()[1]
             else:
                 for player in self.players:
                     port = player[1][1]
                     if self.local_port == port:
-                        print("You are already in a list")
                         break
                 else:
-                    self.socket.sendto(f"JOIN:{self.player_name}".encode('utf-8'), (self.host_ip, self.port))
+                    print("Trying to connect")
+                    self.socket.sendto(message, (self.host_ip, self.port))
 
     def update_player_list(self):
         try:
-            message, _ = self.socket.recvfrom(1024)
-            decoded = message.decode('utf-8')
+            packet,addr = self.socket.recvfrom(1024)
+            packet = json.loads(packet.decode('utf-8'))
+            print(packet)
+            return
             if decoded.startswith("PLAYER_LIST:"):
                 # Convert each "username@address" string into a tuple (username, address))
                 players = decoded.split(":")[1].split(";")
@@ -130,6 +143,8 @@ class MultiplayerLobby(State):
                     self.players.append((username, (ip, port)))
         except socket.timeout:
             pass
+        except json.JSONDecodeError as e:
+            print(f"Invalid JSON received from {addr}: {e}")
 
     def handle_events(self, event):
         if self.back_button.is_clicked():
