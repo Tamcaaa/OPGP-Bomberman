@@ -72,6 +72,9 @@ class TestField(State):
         self.heart_image = pygame.image.load("assets/menu_items/heart.png").convert_alpha()
         self.heart_image = pygame.transform.scale(self.heart_image, (30, 30))
 
+        self.pause_icon = pygame.image.load("assets/pauseicon.png").convert_alpha()
+        self.pause_icon = pygame.transform.scale(self.pause_icon, (30, 30))
+
         self.breakable_wall = pygame.image.load("assets/environment/wall.png").convert_alpha()
         self.breakable_wall = pygame.transform.scale(self.breakable_wall, (30, 30))
 
@@ -124,7 +127,7 @@ class TestField(State):
             if event.key in config.PLAYER2_MOVE_KEYS:
                 self.player2.held_down_keys.append(event.key)
             if event.key == pygame.K_p:
-                self.game.state_manager.change_state("Pause")
+                self.game.state_manager.change_state("Pause",self.selected_map,self.map_name)
                 
         elif event.type == pygame.KEYUP:
             if event.key in config.PLAYER1_MOVE_KEYS and event.key in self.player1.held_down_keys:
@@ -192,6 +195,10 @@ class TestField(State):
 
         screen.blit(self.heart_image, (0, 0))
         screen.blit(self.heart_image, (config.SCREEN_WIDTH - 4 * config.GRID_SIZE, 0))
+
+        screen.blit(self.pause_icon, (config.SCREEN_WIDTH - config.GRID_SIZE - 130, 0))
+
+
 
         player1_bombs = self.game.font.render(f"x {self.player1.get_max_bombs()}", True, config.COLOR_BLACK)
         player2_bombs = self.game.font.render(f"x {self.player2.get_max_bombs()}", True, config.COLOR_BLACK)
@@ -348,18 +355,32 @@ class TestField(State):
             grid_x = player.rect.x // config.GRID_SIZE
             grid_y = player.rect.y // config.GRID_SIZE
 
-            if (0 <= grid_y < len(self.tile_map) and
-                    0 <= grid_x < len(self.tile_map[0]) and
-                    self.tile_map[grid_y][grid_x] == config.TRAP):
+            if (0 <= grid_y < len(self.tile_map)) and \
+                    (0 <= grid_x < len(self.tile_map[0])) and \
+                    self.tile_map[grid_y][grid_x] == config.TRAP:
 
                 current_time = time.time()
                 if not hasattr(player, 'last_trap_time') or current_time - player.last_trap_time > 1.0:
                     player.health = max(0, player.health - 1)
                     player.last_trap_time = current_time
-                    self.music_manager.play_sound("death", "death_volume")
 
-                    self.powerup_message = f"Player {player.player_id} fell in a sewer!"
-                    self.message_timer = pygame.time.get_ticks()
+                    # Ak hráč stratil všetky životy
+                    if player.health <= 0:
+                        self.music_manager.play_sound("death", "death_volume")
+                        pygame.mixer_music.stop()
+                        self.exit_state()
+
+                        # Zistiť víťaza
+                        if player.player_id == 1:
+                            winner = self.player2.player_id
+                        else:
+                            winner = self.player1.player_id
+
+                        self.game.state_manager.change_state("GameOver", winner, self.selected_map, self.map_name)
+                    else:
+                        self.music_manager.play_sound("death", "death_volume")
+                        self.powerup_message = f"Player {player.player_id} fell in a sewer!"
+                        self.message_timer = pygame.time.get_ticks()
 
     def render(self, screen):
         screen.fill(config.COLOR_WHITE)

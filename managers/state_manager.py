@@ -5,7 +5,13 @@ class StateManager:
             "GameOver": "states.game_over.GameOver",
             "TestField": "states.test_field.TestField",
             "MainMenu": "states.main_menu.MainMenu",
-            "Pause": "states.pause_state.PauseState"
+            "Pause": "states.pause_state.PauseState",
+            "Settings": "states.settings.Settings",
+            "MapSelector": "states.map_selector.MapSelector",
+            "MultiplayerSelector": "states.multiplayer_selector.MultiplayerSelector",
+            "MultiplayerLobby": "states.multiplayer_lobby.MultiplayerLobby",
+            "InputPopup": "states.input_popup.InputPopup",
+            "MultiplayerMapSelector": "states.multiplayer_map_selector.MultiplayerMapSelector",
         }
 
     def change_state(self, class_path: str, *args) -> None:

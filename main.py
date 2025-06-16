@@ -3,6 +3,8 @@ import os
 import pygame
 import time
 from managers.state_manager import StateManager
+from states.state import State
+from managers.music_manager import MusicManager
 
 
 class BomberManApp:
@@ -15,7 +17,6 @@ class BomberManApp:
         self.font = pygame.font.Font(None, config.FONT_SIZE)
         self.h1_font = pygame.font.Font(None, config.H1_SIZE)
         self.state_stack = []
-        self.dt, self.prev_time = 0, 0
         self.running = False
         self.photos_dir = os.path.join("assets")
 
