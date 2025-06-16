@@ -194,6 +194,8 @@ class MapSelector(State):
                 vote_text = self.info_font.render("P2 Vote", True, vote_color)
                 screen.blit(vote_text, (x + config.SEL_CARD_WIDTH - 20 - vote_text.get_width(), vote_y))
 
+
+
     def draw_instructions(self, screen):
         # Player 1 instructions
         if self.players[1].vote_index is None:
@@ -215,66 +217,73 @@ class MapSelector(State):
 
     def render(self, screen):
         if self.final_map:
-            # Načítaj screenshot mapy
             map_name, map_data = self.final_map
+        
+            # Try to load preview image
             try:
-                # Predpokladáme, že screenshoty sú v priečinku assets/map_previews
-                # s názvom napr. "urban_assault_preview.png"
                 preview_image = pygame.image.load(
                     os.path.join("assets", "map_previews", f"{map_name.lower().replace(' ', '_')}_preview.png")
                 )
-                # Prispôsob veľkosť obrazovke
                 preview_image = pygame.transform.scale(preview_image, (config.SCREEN_WIDTH, config.SCREEN_HEIGHT))
                 screen.blit(preview_image, (0, 0))
             except:
-                # Ak sa obrázok nenačíta, zobrazíme čierne pozadie
                 screen.fill((0, 0, 0))
-
-            # Pôvodný kód pre zobrazenie textu
+        
+            # Fade-in overlay
             overlay = pygame.Surface((config.SCREEN_WIDTH, config.SCREEN_HEIGHT), pygame.SRCALPHA)
             overlay.fill((0, 0, 0, min(255, self.animation_timer * 6)))
             screen.blit(overlay, (0, 0))
-
+        
+            # Text setup
             map_name_text = self.title_font.render(f"{map_name}", True, (0, 255, 255))
             text_x = config.SCREEN_WIDTH // 2 - map_name_text.get_width() // 2
-            text_y = config.SCREEN_HEIGHT // 2 - 50
-
-            announcement_bg = pygame.Surface((map_name_text.get_width() + 80, map_name_text.get_height() + 100),
-                                             pygame.SRCALPHA)
-            bg_rect = announcement_bg.get_rect()
-            pygame.draw.rect(announcement_bg, (20, 20, 30, 230), bg_rect, border_radius=20)
-            screen.blit(announcement_bg, (text_x - 40, text_y - 30))
-
-            glow_surf = pygame.Surface((map_name_text.get_width() + 20, map_name_text.get_height() + 20),
-                                       pygame.SRCALPHA)
-            glow_rect = glow_surf.get_rect()
-            pygame.draw.rect(glow_surf, (0, 200, 255, 120), glow_rect, border_radius=15)
-            screen.blit(glow_surf, (text_x - 10, text_y - 10))
-
+            text_y = config.SCREEN_HEIGHT // 2 - 70
+        
+            # Glowing box around text
+            glow_surface = pygame.Surface((map_name_text.get_width() + 60, map_name_text.get_height() + 40), pygame.SRCALPHA)
+            glow_rect = glow_surface.get_rect(center=(config.SCREEN_WIDTH // 2, text_y + map_name_text.get_height() // 2 + 10))
+            pygame.draw.rect(glow_surface, (0, 180, 255, 100), glow_surface.get_rect(), border_radius=20)
+            screen.blit(glow_surface, glow_rect.topleft)
+        
+            # Dark rounded background box
+            box_width = map_name_text.get_width() + 100
+            box_height = map_name_text.get_height() + 130
+            box_surface = pygame.Surface((box_width, box_height), pygame.SRCALPHA)
+            pygame.draw.rect(box_surface, (15, 15, 30, 240), box_surface.get_rect(), border_radius=20)
+            screen.blit(box_surface, (config.SCREEN_WIDTH // 2 - box_width // 2, text_y - 40))
+        
+            # Final glowing map name
             screen.blit(map_name_text, (text_x, text_y))
-
-            selected_label = self.info_font.render("Selected Map", True, (200, 200, 200))
-            screen.blit(selected_label,
-                        (config.SCREEN_WIDTH // 2 - selected_label.get_width() // 2,
-                         text_y + map_name_text.get_height() + 10))
-
-            start_text = self.info_font.render("Press SPACE to start the game", True, (255, 255, 0))
+        
+            # Subtext
+            selected_label = self.info_font.render("Map Selected!", True, (200, 200, 200))
+            screen.blit(selected_label, (
+                config.SCREEN_WIDTH // 2 - selected_label.get_width() // 2,
+                text_y + map_name_text.get_height() + 10
+            ))
+        
+            start_text = self.info_font.render("Press SPACE to start", True, (255, 255, 0))
             screen.blit(start_text, (
-            config.SCREEN_WIDTH // 2 - start_text.get_width() // 2, text_y + map_name_text.get_height() + 50))
+                config.SCREEN_WIDTH // 2 - start_text.get_width() // 2,
+                text_y + map_name_text.get_height() + 50
+            ))
+        
         else:
-            # Pôvodný kód pre výber mapy
+            # Voting screen fallback
             screen.blit(self.bg_image, (0, 0))
             title = self.title_font.render("SELECT YOUR BATTLEFIELD", True, config.SELECTOR_COLORS['title'])
             screen.blit(title, (config.SCREEN_WIDTH // 2 - title.get_width() // 2, 40))
             self.draw_map_cards(screen)
             self.draw_player_indicators(screen)
             self.draw_instructions(screen)
-
+        
+        # Fade transition
         if self.transition_effect > 0:
             overlay = pygame.Surface((config.SCREEN_WIDTH, config.SCREEN_HEIGHT))
             overlay.fill((0, 0, 0))
             overlay.set_alpha(int(255 * self.transition_effect))
             screen.blit(overlay, (0, 0))
+
     def update(self):
         self.update_animations()
 

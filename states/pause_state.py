@@ -18,19 +18,22 @@ class PauseState(State):
         self.map_name = map_name
 
         # Výpočty pre zarovnanie
-        center_x = config.SCREEN_WIDTH // 2 - config.BUTTON_WIDTH // 2
-        center_y = config.SCREEN_HEIGHT // 2
-        spacing = 20
+        left_x = 200
+        bottom_y = config.SCREEN_HEIGHT - 100  
+        spacing = 15
         total_height = 5 * config.BUTTON_HEIGHT + 4 * spacing
-        start_y = center_y - total_height // 2
+        start_y = bottom_y - total_height
 
         self.buttons = [
-            Button(center_x, start_y + i * (config.BUTTON_HEIGHT + spacing),
+            Button(left_x, start_y + i * (config.BUTTON_HEIGHT + spacing),
                    config.BUTTON_WIDTH, config.BUTTON_HEIGHT, text)
             for i, text in enumerate(["Resume", "Restart", "Map Select", "Settings", "Main Menu"])
         ]
 
-        self.background_image = pygame.image.load(os.path.join("assets", "pause.png")).convert_alpha()
+        self.background_image = pygame.transform.scale(
+            pygame.image.load(os.path.join("assets", "pause.png")).convert_alpha(),
+            (config.SCREEN_WIDTH, config.SCREEN_HEIGHT)
+        )
         pygame.mixer.music.pause()
 
     def handle_events(self, event):
@@ -58,10 +61,6 @@ class PauseState(State):
 
     def render(self, screen):
         screen.blit(self.background_image, (0, 0))
-
-        title = self.font.render("PAUSED", True, config.TEXT_COLOR)
-        title_rect = title.get_rect(center=(config.SCREEN_WIDTH // 2, config.SCREEN_HEIGHT // 4))
-        screen.blit(title, title_rect)
 
         for button in self.buttons:
             button.draw(screen)

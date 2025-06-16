@@ -1,5 +1,6 @@
 import pygame
 import config
+import os
 from states.state import State
 
 
@@ -12,11 +13,15 @@ class Settings(State):
         self.volume = game.settings.get("volume", 0.5)
         self.last_volume = self.volume if self.volume > 0.0 else 0.5
 
-        # Načítanie ikoniek
+        # Load background image like PauseState
+        self.background_image = pygame.transform.scale(
+            pygame.image.load(os.path.join("assets", "bg.png")).convert_alpha(),
+            (config.SCREEN_WIDTH, config.SCREEN_HEIGHT)
+        )
+
+        # Load sound icons
         self.sound_on_img = pygame.image.load("assets/not_muted.png").convert_alpha()
         self.sound_off_img = pygame.image.load("assets/mute.png").convert_alpha()
-
-        # Môžeš si zmeniť veľkosť ikonky, ak treba
         self.sound_on_img = pygame.transform.scale(self.sound_on_img, (20, 20))
         self.sound_off_img = pygame.transform.scale(self.sound_off_img, (20, 20))
 
@@ -29,21 +34,21 @@ class Settings(State):
         self.editing_player = None
         self.editing_action = None
 
-        # Buttons
+        # Buttons with PauseState style
         self.back_button = Button(20, config.SCREEN_HEIGHT - 70, 150, 50, "Back")
 
-        # Tlačidlo zvuku teraz s obrázkom
+        # Mute button - keep icon, but wrap in Button for hover effect
         current_img = self.sound_on_img if self.volume > 0.0 else self.sound_off_img
-        self.mute_button = Button(385, 442, 40, 40, image=current_img)
+        self.mute_button = IconButton(385, 442, 40, 40, current_img)
 
-        # Volume slider
-        self.slider_x = 420
-        self.slider_y = 450
+        # Volume slider setup
+        self.slider_x = 450
+        self.slider_y = 460
         self.slider_width = 120
         self.slider_height = 8
         self.slider_handle_radius = 6
 
-        # Key binding buttons
+        # Key binding buttons with PauseState Button style
         self.key_bind_buttons = {}
         actions = ["Up", "Left", "Down", "Right", "Bomb"]
         start_x_p1 = 250
@@ -52,18 +57,16 @@ class Settings(State):
         button_width = 200
         button_height = 40
         spacing = 50
-        
+
         for i, action in enumerate(actions):
             y = start_y + i * spacing
-        
-            # Player 1 buttons (zarovnané vľavo)
+
             btn_p1 = Button(
                 start_x_p1, y, button_width, button_height,
                 f"P1 {action}: {pygame.key.name(self.key_bindings['player1'][i])}"
             )
             self.key_bind_buttons[f"player1_{i}"] = btn_p1
-        
-            # Player 2 buttons (zarovnané vpravo)
+
             btn_p2 = Button(
                 start_x_p2, y, button_width, button_height,
                 f"P2 {action}: {pygame.key.name(self.key_bindings['player2'][i])}"
@@ -94,7 +97,6 @@ class Settings(State):
             elif self.mute_button.is_clicked():
                 self.toggle_mute()
             else:
-                # Check if slider clicked
                 mouse_x, mouse_y = pygame.mouse.get_pos()
                 if (self.slider_y <= mouse_y <= self.slider_y + self.slider_height and
                         self.slider_x <= mouse_x <= self.slider_x + self.slider_width):
@@ -144,13 +146,14 @@ class Settings(State):
         config.PLAYER_CONFIG[2]['move_keys'] = config.PLAYER2_MOVE_KEYS
 
     def render(self, screen):
-        screen.fill((30, 30, 30))
+        # Draw background image for consistent style
+        screen.blit(self.background_image, (0, 0))
 
-        # Buttons
+        # Draw buttons with hover effect
         self.back_button.draw(screen)
         self.mute_button.draw(screen)
 
-        # Volume slider
+        # Draw volume slider
         pygame.draw.rect(screen, (200, 200, 200), (self.slider_x, self.slider_y, self.slider_width, self.slider_height))
         filled_width = int(self.volume * self.slider_width)
         pygame.draw.rect(screen, (255, 0, 0), (self.slider_x, self.slider_y, filled_width, self.slider_height))
@@ -161,16 +164,19 @@ class Settings(State):
         vol_text = self.font.render(f"Volume: {int(self.volume * 100)}%", True, config.TEXT_COLOR)
         screen.blit(vol_text, (self.slider_x, self.slider_y - 30))
 
-        # Key binding buttons
+        # Draw key binding buttons with hover highlight
         for button in self.key_bind_buttons.values():
             button.draw(screen)
 
         # Key bindings labels
-        bindings_title = self.font.render("Key Bindings", True, config.TEXT_COLOR)
-        screen.blit(bindings_title, (420, 40))
-        screen.blit(self.font.render("Player 1", True, config.TEXT_COLOR), (300, 80))
-        screen.blit(self.font.render("Player 2", True, config.TEXT_COLOR), (550, 80))
+        bindings_title_font = pygame.font.Font(None, 60) 
+        bindings_title = bindings_title_font.render("Key Bindings", True, config.TEXT_COLOR)
+        screen.blit(bindings_title, (350, 40))
+        
+        screen.blit(self.font.render("Player 1", True, config.TEXT_COLOR), (320, 110))
+        screen.blit(self.font.render("Player 2", True, config.TEXT_COLOR), (570, 110))
 
+        # If editing key, show instruction text
         if self.editing_key is not None:
             action_names = ["Up", "Left", "Down", "Right", "Bomb"]
             editing_text = self.font.render(
@@ -181,23 +187,51 @@ class Settings(State):
             screen.blit(editing_text, (500, 400))
 
 
+# Button class like in PauseState with hover highlight & rounded corners
 class Button:
-    def __init__(self, x, y, width=None, height=None, text=None, image=None):
+    def __init__(self, x, y, width, height, text, action=None):
+        self.rect = pygame.Rect(x, y, width, height)
         self.text = text
-        self.image = image
         self.font = pygame.font.Font(None, config.FONT_SIZE)
-        
-        if self.image:
-            self.rect = self.image.get_rect(topleft=(x, y))
-        else:
-            self.rect = pygame.Rect(x, y, width, height)
+        self.action = action
+        self.highlighted = False
 
     def draw(self, screen):
-        if self.image:
-            screen.blit(self.image, self.rect)
-        elif self.text:
-            text_surface = self.font.render(self.text, True, config.TEXT_COLOR)
-            screen.blit(text_surface, text_surface.get_rect(center=self.rect.center))
+        mouse_pos = pygame.mouse.get_pos()
+        color = config.BUTTON_HOVER_COLOR if self.rect.collidepoint(mouse_pos) or self.highlighted else config.BUTTON_COLOR
+        pygame.draw.rect(screen, color, self.rect, border_radius=config.BUTTON_RADIUS)
+
+        text_surface = self.font.render(self.text, True, config.TEXT_COLOR)
+        text_rect = text_surface.get_rect(center=self.rect.center)
+        screen.blit(text_surface, text_rect)
+
+    def is_hovered(self, pos=None):
+        if pos is None:
+            pos = pygame.mouse.get_pos()
+        return self.rect.collidepoint(pos)
 
     def is_clicked(self):
-        return self.rect.collidepoint(pygame.mouse.get_pos()) and pygame.mouse.get_pressed()[0]
+        mouse_pos = pygame.mouse.get_pos()
+        mouse_pressed = pygame.mouse.get_pressed()
+        return self.rect.collidepoint(mouse_pos) and mouse_pressed[0]
+
+
+# IconButton for mute toggle, wraps an image with hover effect rectangle
+class IconButton:
+    def __init__(self, x, y, width, height, image):
+        self.rect = pygame.Rect(x, y, width, height)
+        self.image = image
+        self.highlighted = False
+
+    def draw(self, screen):
+        mouse_pos = pygame.mouse.get_pos()
+        color = config.BUTTON_HOVER_COLOR if self.rect.collidepoint(mouse_pos) or self.highlighted else config.BUTTON_COLOR
+        pygame.draw.rect(screen, color, self.rect, border_radius=config.BUTTON_RADIUS)
+        # Center the image inside the button rect
+        img_rect = self.image.get_rect(center=self.rect.center)
+        screen.blit(self.image, img_rect)
+
+    def is_clicked(self):
+        mouse_pos = pygame.mouse.get_pos()
+        mouse_pressed = pygame.mouse.get_pressed()
+        return self.rect.collidepoint(mouse_pos) and mouse_pressed[0]
