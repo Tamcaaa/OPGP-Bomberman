@@ -299,7 +299,8 @@ class MapSelector(State):
                 if self.players[2].vote_index is None:
                     self.confirm_vote(2)
 
-            # If space is pressed and the final map is selected, exit the loop
+
+
             if event.key == pygame.K_SPACE and self.final_map:
                 self.exit_state()
                 map_name = self.final_map[0]
