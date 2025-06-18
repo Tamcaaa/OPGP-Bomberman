@@ -1,5 +1,7 @@
 import ast
 import json
+import time
+
 import pygame
 import random
 import config
@@ -42,6 +44,7 @@ class MultiplayerMapSelector(State):
         self.title_font = pygame.font.SysFont('Arial', 36, bold=True)
         self.map_font = pygame.font.SysFont('Arial', 28)
         self.info_font = pygame.font.SysFont('Arial', 22)
+        self.instruction_font = pygame.font.SysFont('Arial', 20)
         self.font = pygame.font.Font(None, config.FONT_SIZE)  # fallback for buttons
 
         # Animation variables
@@ -49,6 +52,7 @@ class MultiplayerMapSelector(State):
         self.transition_effect = 1.0
 
         self.player_name = self.lobby.player_name
+
         if self.lobby.is_host:
             self.select_random_maps()
             self.send_map_selection()
@@ -72,7 +76,7 @@ class MultiplayerMapSelector(State):
         print(f"[MOVE] {player_name} moved from {current} to {self.players[player_name].selection_index}")
 
         packet = {
-            "type": "move_selection",
+            "type": "MOVE_SELECTION",
             "player_id": player_name,
             "new_index": self.players[player_name].selection_index
         }
@@ -104,7 +108,7 @@ class MultiplayerMapSelector(State):
             else:
                 print(decoded)
                 data = json.loads(decoded)
-                if data["type"] == "move_selection":
+                if data["type"] == "MOVE_SELECTION":
                     player_id = data["player_id"]
                     new_index = data["new_index"]
                     if player_id in self.players:
@@ -112,9 +116,62 @@ class MultiplayerMapSelector(State):
         except socket.timeout:
             pass
 
+    def confirm_vote(self):
+        player = self.players[self.player_name]
+        player.vote_index = player.selection_index
+        player.vote_flash_timer = 30
+        if all(p.vote_index is not None for p in self.players.values()):
+            self.determine_final_map()
+
+    def determine_final_map(self):
+        votes = [p.vote_index for p in self.players.values() if p.vote_index is not None]
+        vote_counter = Counter(votes)
+        max_votes = max(vote_counter.values())
+        top_maps = [index for index, count in vote_counter.items() if count == max_votes]
+        winning_index = random.choice(top_maps) if len(top_maps) > 1 else top_maps[0]
+        self.final_map = self.selected_maps[winning_index]
+
+    def cancel_vote(self):
+        player = self.players[self.player_name]
+        player.vote_index = None
+
+    def broadcast_state_change(self, new_state):
+        message = f"STATE_CHANGE:{new_state}".encode('utf-8')
+        self.state_change_sent = True
+        self.acknowledged_players = set()
+
+        # Try to send up to 5 times, every 0.5 seconds
+        for _ in range(5):
+            for username, address in self.players:
+                if address[1] == 1111:  # skip host
+                    continue
+                if address not in self.acknowledged_players:
+                    self.socket.sendto(message, address)
+
+            time.sleep(0.5)
+
+            if len(self.acknowledged_players) == len(self.players) - 1:
+                print("All clients acknowledged state change.")
+                break
+        else:
+            print("Not all clients acknowledged the state change.")
+
     def handle_events(self, event):
         if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_LEFT:
+            # If space is pressed and the final map is selected, exit the loop
+            if self.lobby.is_host:
+                if event.key == pygame.K_SPACE and self.final_map:
+                    self.exit_state()
+                    self.state_manager.change_state("MultiplayerTestField",self.lobby, self.final_map)
+
+            if event.key == pygame.K_RETURN:
+                if self.players[self.player_name].vote_index is None:
+                    self.confirm_vote()
+                else:
+                    self.cancel_vote()
+            elif self.players[self.player_name].vote_index is not None:
+                return
+            elif event.key == pygame.K_LEFT:
                 self.move_selection(self.player_name, -1)
             elif event.key == pygame.K_RIGHT:
                 self.move_selection(self.player_name, 1)
@@ -130,14 +187,17 @@ class MultiplayerMapSelector(State):
         if border_width != 0:
             pygame.draw.rect(surface, color, rect, border_width, border_radius=radius)
 
-    def render(self, screen):
-        # Background
-        screen.blit(self.bg_image, (0, 0))
+    def draw_instructions(self, screen):
+        # Player instructions
+        if self.players[self.player_name].vote_index is None:
+            instruction_text = "← → to move, ENTER to vote"
+        else:
+            instruction_text = "Vote confirmed! ENTER to cancel vote"
 
-        # Title text
-        title = self.title_font.render("SELECT YOUR BATTLEFIELD", True, config.SELECTOR_COLORS['title'])
-        screen.blit(title, (config.SCREEN_WIDTH // 2 - title.get_width() // 2, 40))
+        p1_instr = self.instruction_font.render(instruction_text, True, config.TEXT_COLOR)
+        screen.blit(p1_instr, (50, config.SCREEN_HEIGHT - 80))
 
+    def draw_map_cards(self, screen):
         # Draw map cards styled like local selector
         total_maps = len(self.selected_maps)
         card_width = config.SEL_CARD_WIDTH
@@ -184,6 +244,50 @@ class MultiplayerMapSelector(State):
                 for stack_index, player_name in enumerate(player_list):
                     y_text = y + card_height + 10 + stack_index * name_offset_y
                     label = f"{stack_index + 1}. {player_name}"
-                    name_surf = self.info_font.render(label, True, config.TEXT_COLOR)
+                    name_surf = self.info_font.render(label, True, config.TEXT_COLOR if self.players[player_name].vote_index is None else
+                    config.COLOR_LIGHT_GREEN)
                     name_rect = name_surf.get_rect(center=(x + card_width // 2, y_text))
                     screen.blit(name_surf, name_rect)
+
+    def render(self, screen):
+        if self.final_map:
+            map_name = self.final_map
+            try:
+                preview_path = os.path.join("assets", "map_previews", f"{map_name.lower().replace(' ', '_')}_preview.png")
+
+                preview_image = pygame.image.load(preview_path)
+                preview_image = pygame.transform.scale(preview_image, (config.SCREEN_WIDTH, config.SCREEN_HEIGHT))
+                screen.blit(preview_image, (0, 0))
+            except (pygame.error, FileNotFoundError, AttributeError, TypeError, ValueError) as e:
+                print(f"[{type(e).__name__}] Error loading or processing preview image: {e}")
+                screen.fill((0, 0, 0))
+
+            map_name_text = self.title_font.render(f"{map_name}", True, (0, 255, 255))
+            text_x = config.SCREEN_WIDTH // 2 - map_name_text.get_width() // 2
+            text_y = config.SCREEN_HEIGHT // 2 - 50
+
+            announcement_bg = pygame.Surface((map_name_text.get_width() + 80, map_name_text.get_height() + 100),
+                                             pygame.SRCALPHA)
+            bg_rect = announcement_bg.get_rect()
+            pygame.draw.rect(announcement_bg, (20, 20, 30, 230), bg_rect, border_radius=20)
+            screen.blit(announcement_bg, (text_x - 40, text_y - 30))
+
+            screen.blit(map_name_text, (text_x, text_y))
+
+            selected_label = self.info_font.render("Selected Map", True, (200, 200, 200))
+            screen.blit(selected_label,
+                        (config.SCREEN_WIDTH // 2 - selected_label.get_width() // 2,
+                         text_y + map_name_text.get_height() + 10))
+            if self.lobby.is_host:
+                start_text = self.info_font.render("Press SPACE to start the game", True, (255, 255, 0))
+                screen.blit(start_text, (
+                    config.SCREEN_WIDTH // 2 - start_text.get_width() // 2, text_y + map_name_text.get_height() + 50))
+        else:
+            screen.blit(self.bg_image, (0, 0))
+
+            # Title text
+            title = self.title_font.render("SELECT YOUR BATTLEFIELD", True, config.SELECTOR_COLORS['title'])
+            screen.blit(title, (config.SCREEN_WIDTH // 2 - title.get_width() // 2, 40))
+
+            self.draw_instructions(screen)
+            self.draw_map_cards(screen)
