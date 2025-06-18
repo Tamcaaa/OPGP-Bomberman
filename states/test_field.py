@@ -196,8 +196,6 @@ class TestField(State):
         screen.blit(self.heart_image, (0, 0))
         screen.blit(self.heart_image, (config.SCREEN_WIDTH - 4 * config.GRID_SIZE, 0))
 
-        screen.blit(self.pause_icon, (config.SCREEN_WIDTH - config.GRID_SIZE - 130, 0))
-
 
 
         player1_bombs = self.game.font.render(f"x {self.player1.get_max_bombs()}", True, config.COLOR_BLACK)
@@ -285,7 +283,7 @@ class TestField(State):
                 x = col_index * config.GRID_SIZE
                 y = row_index * config.GRID_SIZE
                 if tile in [0, 4, 5]:  # Empty space (no wall)
-                    if self.map_name not in ["Crystal Caves", "Desert Maze", "Classic", "Ancient Ruins","Urban Assault"]:  # ✅ Only draw green tiles on other maps
+                    if self.map_name not in ["Crystal Caves", "Desert Maze", "Classic", "Ancient Ruins","Urban Assault"]:  #  Only draw green tiles on other maps
                         rect = pygame.Rect(x, y, config.GRID_SIZE, config.GRID_SIZE)
                         color = config.COLOR_DARK_GREEN if (col_index + row_index) % 2 == 0 else config.COLOR_LIGHT_GREEN
                         pygame.draw.rect(screen, color, rect)
