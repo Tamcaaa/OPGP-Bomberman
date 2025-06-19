@@ -4,6 +4,9 @@ import time
 
 import pygame
 import random
+
+from dulwich.diff_tree import TreeChange
+
 import config
 import os
 import socket
@@ -32,7 +35,6 @@ class MultiplayerMapSelector(State):
         self.socket = self.lobby.socket
 
         self.players = {player_name: PlayerSelection() for player_name, _ in self.lobby.players}
-        print(self.players)
 
         self.state_manager = StateManager(self.game)
 
@@ -63,11 +65,13 @@ class MultiplayerMapSelector(State):
         self.selected_maps = random.sample(available_maps, count)
 
     def send_map_selection(self):
-        message = f"MAP_SELECTED:{self.selected_maps}"
-        print(message)
+        packet_map_selection = {
+            'type': 'MAP_SELECTION',
+            'data': {'map_list': self.selected_maps},
+        }
         for _, addr in self.lobby.players:
             if addr[1] != 1111:
-                self.socket.sendto(message.encode('utf-8'), addr)
+                self.socket.sendto(json.dumps(packet_map_selection).encode('utf-8'), addr)
 
     def move_selection(self, player_name, direction):
         current = self.players[player_name].selection_index
@@ -94,25 +98,16 @@ class MultiplayerMapSelector(State):
 
     def handle_network_packets(self):
         try:
-            message, _ = self.lobby.socket.recvfrom(1024)
-            decoded = message.decode('utf-8')
-            if decoded.startswith("MAP_SELECTED:"):
-                # Format: MAP_SELECTED:<
-                _, map_names_str = decoded.split(":")
-                map_names_list = ast.literal_eval(map_names_str)
-                self.selected_maps = map_names_list
-            elif decoded.startswith("ACK_STATE_CHANGE"):
-                pass
-            elif decoded.startswith("STATE_CHANGE"):
-                pass
-            else:
-                print(decoded)
-                data = json.loads(decoded)
-                if data["type"] == "MOVE_SELECTION":
-                    player_id = data["player_id"]
-                    new_index = data["new_index"]
-                    if player_id in self.players:
-                        self.players[player_id].selection_index = new_index
+            packet, _ = self.lobby.socket.recvfrom(1024)
+            packet = json.loads(packet.decode('utf-8'))
+            if packet['type'] == 'MOVE_SELECTION':
+                player_id = packet['player_id']
+                new_index = packet['new_index']
+                if player_id in self.players:
+                    self.players[player_id].selection_index = new_index
+            elif packet['type'] == 'MAP_SELECTION':
+                map_list = packet['data']['map_list']
+                self.selected_maps = map_list
         except socket.timeout:
             pass
 
@@ -152,18 +147,20 @@ class MultiplayerMapSelector(State):
 
             if len(self.acknowledged_players) == len(self.players) - 1:
                 print("All clients acknowledged state change.")
-                break
+                return True
+
         else:
             print("Not all clients acknowledged the state change.")
+            return False
 
     def handle_events(self, event):
         if event.type == pygame.KEYDOWN:
             # If space is pressed and the final map is selected, exit the loop
             if self.lobby.is_host:
                 if event.key == pygame.K_SPACE and self.final_map:
-                    self.exit_state()
-                    self.state_manager.change_state("MultiplayerTestField",self.lobby, self.final_map)
-
+                    if self.broadcast_state_change('MultiplayerTestField'):
+                        self.exit_state()
+                        self.state_manager.change_state("MultiplayerTestField", self.lobby, self.final_map)
             if event.key == pygame.K_RETURN:
                 if self.players[self.player_name].vote_index is None:
                     self.confirm_vote()
@@ -244,7 +241,8 @@ class MultiplayerMapSelector(State):
                 for stack_index, player_name in enumerate(player_list):
                     y_text = y + card_height + 10 + stack_index * name_offset_y
                     label = f"{stack_index + 1}. {player_name}"
-                    name_surf = self.info_font.render(label, True, config.TEXT_COLOR if self.players[player_name].vote_index is None else
+                    name_surf = self.info_font.render(label, True, config.TEXT_COLOR if self.players[
+                                                                                            player_name].vote_index is None else
                     config.COLOR_LIGHT_GREEN)
                     name_rect = name_surf.get_rect(center=(x + card_width // 2, y_text))
                     screen.blit(name_surf, name_rect)
@@ -253,7 +251,8 @@ class MultiplayerMapSelector(State):
         if self.final_map:
             map_name = self.final_map
             try:
-                preview_path = os.path.join("assets", "map_previews", f"{map_name.lower().replace(' ', '_')}_preview.png")
+                preview_path = os.path.join("assets", "map_previews",
+                                            f"{map_name.lower().replace(' ', '_')}_preview.png")
 
                 preview_image = pygame.image.load(preview_path)
                 preview_image = pygame.transform.scale(preview_image, (config.SCREEN_WIDTH, config.SCREEN_HEIGHT))
