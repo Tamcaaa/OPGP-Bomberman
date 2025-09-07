@@ -37,11 +37,21 @@ class Player(pygame.sprite.Sprite):
         self.freeze_timer = 0
         self.iframe_timer = 0
 
+        #animation
+        self.idle_index = 0
+        self.last_idle_update = time.time()
+        self.idle_fps = 3  # 3 images per second
+        self.current_direction = "down"  # Keep track of last movement direction
+        self.moving = False  
+
         # Dict of all images of player
-        self.images = {
-            key: pygame.transform.scale(img.convert_alpha(), (config.GRID_SIZE, config.GRID_SIZE))
-            for key, img in self.player_config["images"].items()
-        }
+        self.images = {}
+        for key, img in self.player_config["images"].items():
+            if key == "idle":
+                # Scale each image in the list
+                self.images[key] = [pygame.transform.scale(i.convert_alpha(), (config.GRID_SIZE, config.GRID_SIZE)) for i in img]
+            else:
+                self.images[key] = pygame.transform.scale(img.convert_alpha(), (config.GRID_SIZE, config.GRID_SIZE))
 
         self.image = self.images["down"]  # Default direction image
         self.rect = self.image.get_rect()
@@ -175,7 +185,10 @@ class Player(pygame.sprite.Sprite):
         self.rect.x = bound_x
         self.rect.y = bound_y
 
-        self.image = self.images[direction]  # Update sprite direction
+        self.moving = True
+        self.current_direction = direction
+        self.image = self.images[direction]
+  # Update sprite direction
 
     def deploy_bomb(self, bomb_group, explosion_group):
         """Deploy a bomb at the player's current position"""
@@ -199,3 +212,15 @@ class Player(pygame.sprite.Sprite):
             # Return first other teleport found, assuming only one paired teleport
             return tiles[0]
         return None
+    
+    def update_idle_animation(self):
+        """Update idle animation if player is not moving"""
+        if self.moving:
+            return  # Skip if player moved this frame
+
+        now = time.time()
+        if now - self.last_idle_update >= 1 / self.idle_fps:
+            self.idle_index = (self.idle_index + 1) % len(self.images["idle"])
+            self.last_idle_update = now
+            # Show idle image in the last moved direction
+            self.image = self.images["idle"][self.idle_index]
