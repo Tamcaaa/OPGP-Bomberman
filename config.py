@@ -45,18 +45,27 @@ SPAWN_POINTS = {"spawn1": (0, 30),
 DEFAULT_PLAYER1_MOVE_KEYS = [pygame.K_w, pygame.K_a, pygame.K_s, pygame.K_d, pygame.K_SPACE]
 DEFAULT_PLAYER2_MOVE_KEYS = [pygame.K_UP, pygame.K_LEFT, pygame.K_DOWN, pygame.K_RIGHT, pygame.K_KP0]
 
-# Aktuální nastavení, které lze měnit
 PLAYER1_MOVE_KEYS = DEFAULT_PLAYER1_MOVE_KEYS.copy()
 PLAYER2_MOVE_KEYS = DEFAULT_PLAYER2_MOVE_KEYS.copy()
 
 # Player images
 PLAYER1_IMAGES = {
+    "idle": [
+        pygame.image.load("assets/player_color/p_1_idle_0.png"),
+        pygame.image.load("assets/player_color/p_1_idle_1.png"),
+        pygame.image.load("assets/player_color/p_1_idle_2.png")
+    ],
     "down": pygame.image.load("assets/player_color/p_1_down.png"),
     "up": pygame.image.load("assets/player_color/p_1_up.png"),
     "left": pygame.image.load("assets/player_color/p_1_left.png"),
     "right": pygame.image.load("assets/player_color/p_1_right.png")
 }
 PLAYER2_IMAGES = {
+    "idle": [
+        pygame.image.load("assets/player_color/p_1_idle_0.png"),
+        pygame.image.load("assets/player_color/p_1_idle_1.png"),
+        pygame.image.load("assets/player_color/p_1_idle_2.png")
+    ],
     "down": pygame.image.load("assets/player_color/p_2_down.png"),
     "up": pygame.image.load("assets/player_color/p_2_up.png"),
     "left": pygame.image.load("assets/player_color/p_2_left.png"),

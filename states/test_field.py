@@ -196,8 +196,6 @@ class TestField(State):
         screen.blit(self.heart_image, (0, 0))
         screen.blit(self.heart_image, (config.SCREEN_WIDTH - 4 * config.GRID_SIZE, 0))
 
-        screen.blit(self.pause_icon, (config.SCREEN_WIDTH - config.GRID_SIZE - 130, 0))
-
 
 
         player1_bombs = self.game.font.render(f"x {self.player1.get_max_bombs()}", True, config.COLOR_BLACK)
@@ -285,7 +283,7 @@ class TestField(State):
                 x = col_index * config.GRID_SIZE
                 y = row_index * config.GRID_SIZE
                 if tile in [0, 4, 5]:  # Empty space (no wall)
-                    if self.map_name not in ["Crystal Caves", "Desert Maze", "Classic", "Ancient Ruins","Urban Assault"]:  # ✅ Only draw green tiles on other maps
+                    if self.map_name not in ["Crystal Caves", "Desert Maze", "Classic", "Ancient Ruins","Urban Assault"]:  #  Only draw green tiles on other maps
                         rect = pygame.Rect(x, y, config.GRID_SIZE, config.GRID_SIZE)
                         color = config.COLOR_DARK_GREEN if (col_index + row_index) % 2 == 0 else config.COLOR_LIGHT_GREEN
                         pygame.draw.rect(screen, color, rect)
@@ -332,19 +330,31 @@ class TestField(State):
 
     def update(self):
         now = pygame.time.get_ticks()
+
+        # Reset moving flags at the start of the frame
+        self.player1.moving = False
+        self.player2.moving = False
+
+        # Handle player inputs
         self.player1.handle_queued_keys(now)
         self.player2.handle_queued_keys(now)
 
+        # Update idle animations (only cycles if player did not move)
+        self.player1.update_idle_animation()
+        self.player2.update_idle_animation()
+
+        # Check for explosions, power-ups, and other effects
         self.handle_explosions()
         self.check_powerup_collisions()
-
         self.player1.update_powerups()
         self.player2.update_powerups()
 
-        # Update power-ups
+        # Update power-ups group
         self.powerup_group.update()
+
         self.check_trap_collisions()
-        # Clear message after 3 seconds
+
+        # Clear power-up message after 3 seconds
         if self.message_timer > 0 and now - self.message_timer > 3000:
             self.powerup_message = ""
             self.message_timer = 0
