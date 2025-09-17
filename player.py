@@ -38,28 +38,38 @@ class Player(pygame.sprite.Sprite):
         self.iframe_timer = 0
 
         #animation
-        self.idle_index = 0
-        self.last_idle_update = time.time()
-        self.idle_fps = 3  # 3 images per second
-        self.current_direction = "down"  # Keep track of last movement direction
-        self.moving = False  
+        self.current_direction = "down"
+        self.moving = False
+        self.frame_index = 0
+        self.last_anim_update = pygame.time.get_ticks()
 
-        # Dict of all images of player
+        # Walking animation slower
+        self.anim_fps = 4          
+        self.frame_duration = 1000 // self.anim_fps 
+
+        # Idle system
+        self.idle_start = pygame.time.get_ticks()
+        self.afk_delay = 2000      
+        
+        # Load images
         self.images = {}
-        for key, img in self.player_config["images"].items():
-            if key == "idle":
-                # Scale each image in the list
-                self.images[key] = [pygame.transform.scale(i.convert_alpha(), (config.GRID_SIZE, config.GRID_SIZE)) for i in img]
+        for key, frames in self.player_config["images"].items():
+            if isinstance(frames, list):
+                self.images[key] = [
+                    pygame.transform.scale(f.convert_alpha(), (config.GRID_SIZE, config.GRID_SIZE))
+                    for f in frames
+                ]
             else:
-                self.images[key] = pygame.transform.scale(img.convert_alpha(), (config.GRID_SIZE, config.GRID_SIZE))
+                self.images[key] = [
+                    pygame.transform.scale(frames.convert_alpha(), (config.GRID_SIZE, config.GRID_SIZE))
+                ]
 
-        self.image = self.images["down"]  # Default direction image
+        self.image = self.images["down"][0]
         self.rect = self.image.get_rect()
         if isinstance(starting_location, str):
             self.rect.topleft = config.SPAWN_POINTS[starting_location]
         else:
             self.rect.topleft = starting_location
-        self.move_timer = 0  # Timer for movement delay
 
     def check_hit(self):
         """Check if player is hit by an explosion"""
@@ -125,17 +135,13 @@ class Player(pygame.sprite.Sprite):
         return self.maxBombs
 
     def handle_queued_keys(self, now):
-        # Získání kláves z konfigurace
-        move_keys = self.player_config['move_keys']
+        now = pygame.time.get_ticks()
+        move_keys = self.move_keys
 
-        if time.time() < self.freeze_timer:
-            move_delay = config.MOVE_COOLDOWN * 2.0  # slower
-        else:
-            move_delay = config.MOVE_COOLDOWN
+        move_delay = config.MOVE_COOLDOWN * 2 if now < self.freeze_timer else config.MOVE_COOLDOWN
 
         if now - self.last_move_time >= move_delay and self.held_down_keys:
-            self.queued_keys.append(self.held_down_keys[-1])
-            key = self.queued_keys.pop(0)
+            key = self.held_down_keys[-1]
             if key == move_keys[0]:  # Up
                 self.move(0, -1, "up")
             elif key == move_keys[2]:  # Down
@@ -146,6 +152,7 @@ class Player(pygame.sprite.Sprite):
                 self.move(1, 0, "right")
             elif key == move_keys[4]:  # Bomb
                 self.deploy_bomb(self.bomb_group, self.explosion_group)
+
             self.last_move_time = now
 
     def move(self, dx, dy, direction):
@@ -156,39 +163,35 @@ class Player(pygame.sprite.Sprite):
         bound_x = max(0, min(new_x, config.SCREEN_WIDTH - config.GRID_SIZE))
         bound_y = max(0, min(new_y, config.SCREEN_HEIGHT - config.GRID_SIZE))
 
-        # Check for collision with walls and bricks
+        # Collision with walls/bricks
         tile_type = self.test_field.tile_map[bound_y // config.GRID_SIZE][bound_x // config.GRID_SIZE]
-
-        # Prevent walking into walls and bricks
-        if tile_type in [1, 2, 3]:  # Wall, brick, Menu
-            self.image = self.images[direction]
+        if tile_type in [1, 2, 3]:
+            self.moving = False
+            self.current_direction = direction
             return
-        
-        # Teleport logic: if tile is a teleport tile, find paired teleport location
-        if tile_type in [4, 5]:  # Assuming 4 = red cave, 5 = blue cave
-            paired_pos = self.find_paired_teleport(tile_type, bound_x, bound_y)
-            if paired_pos:
-                bound_x, bound_y = paired_pos
-                
-         # Check for collision with bombs
+
+        # Teleport
+        if tile_type in [4, 5]:
+            paired = self.find_paired_teleport(tile_type, bound_x, bound_y)
+            if paired:
+                bound_x, bound_y = paired
+
+        # Bomb collision
         future_rect = self.rect.copy()
-        future_rect.x = bound_x
-        future_rect.y = bound_y
+        future_rect.topleft = (bound_x, bound_y)
         for bomb in self.bomb_group:
             if not bomb.passable and bomb.rect.colliderect(future_rect):
-                self.image = self.images[direction]
-                return  # Block movement if colliding with any bomb
-    
+                self.moving = False
+                self.current_direction = direction
+                return
 
-        self.music_manager.play_sound("walk", "walk_volume")
-        # Boundary correction
-        self.rect.x = bound_x
-        self.rect.y = bound_y
-
+        # Move
+        self.rect.topleft = (bound_x, bound_y)
         self.moving = True
         self.current_direction = direction
-        self.image = self.images[direction]
-  # Update sprite direction
+        self.idle_start = pygame.time.get_ticks() 
+        self.music_manager.play_sound("walk", "walk_volume")
+
 
     def deploy_bomb(self, bomb_group, explosion_group):
         """Deploy a bomb at the player's current position"""
@@ -213,14 +216,29 @@ class Player(pygame.sprite.Sprite):
             return tiles[0]
         return None
     
-    def update_idle_animation(self):
-        """Update idle animation if player is not moving"""
+    def update_animation(self):
+        now = pygame.time.get_ticks()
+        
         if self.moving:
-            return  # Skip if player moved this frame
-
-        now = time.time()
-        if now - self.last_idle_update >= 1 / self.idle_fps:
-            self.idle_index = (self.idle_index + 1) % len(self.images["idle"])
-            self.last_idle_update = now
-            # Show idle image in the last moved direction
-            self.image = self.images["idle"][self.idle_index]
+            anim_key = self.current_direction
+            frame_duration = 1000 / self.anim_fps
+            self.idle_start = now  # reset idle timer when moving
+        else:
+            if now - self.idle_start > self.afk_delay:
+                anim_key = "idle"
+                frame_duration = 1000 / 2  # slow idle fps
+            else:
+                # show last walking frame while waiting for idle
+                anim_key = self.current_direction
+                frame_duration = 1000 / self.anim_fps
+                # don't reset frame_index
+                pass
+                
+        frames = self.images[anim_key]
+        
+        if now - self.last_anim_update >= frame_duration:
+            self.frame_index = (self.frame_index + 1) % len(frames)
+            self.last_anim_update = now
+        
+        self.image = frames[self.frame_index]
+            

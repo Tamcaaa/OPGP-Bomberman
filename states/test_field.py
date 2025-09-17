@@ -339,9 +339,9 @@ class TestField(State):
         self.player1.handle_queued_keys(now)
         self.player2.handle_queued_keys(now)
 
-        # Update idle animations (only cycles if player did not move)
-        self.player1.update_idle_animation()
-        self.player2.update_idle_animation()
+        # ✅ Update animations (idle + walking handled automatically)
+        self.player1.update_animation()
+        self.player2.update_animation()
 
         # Check for explosions, power-ups, and other effects
         self.handle_explosions()
