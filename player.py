@@ -14,16 +14,16 @@ class Player(pygame.sprite.Sprite):
         if self.player_id not in config.PLAYER_CONFIG:
             raise ValueError(f"Invalid player id {self.player_id}")
 
-        self.health = 3
-        self.max_bomb_limit = 4
-        self.currentBomb = 1
-        self.maxBombs = 1
-        self.power = 1  # Explosion range
+        self.health = config.HEALTH
+        self.max_bomb_limit = config.MAX_BOMB_LIMIT
+        self.currentBomb = config.CURRENTBOMB
+        self.maxBombs = config.MAXBOMBS
+        self.power = config.POWER  # Explosion range
         self.queued_keys = []
         self.held_down_keys = []
-        self.last_move_time = 0
-        self.score = 0
-        self.last_trap_time = 0
+        self.last_move_time = config.LAST_MOVE_TIME
+        self.score = config.SCORE
+        self.last_trap_time = config.LAST_TRAP_TIME
         self.test_field = test_field
         self.music_manager = MusicManager()
         self.bomb_group = self.test_field.bomb_group
@@ -33,23 +33,23 @@ class Player(pygame.sprite.Sprite):
         self.move_keys = self.player_config["move_keys"]
 
         # Power-up effects
-        self.active_powerups = {}  # Track active power-ups and their timers
-        self.freeze_timer = 0
-        self.iframe_timer = 0
+        self.active_powerups = {}
+        self.freeze_timer = config.FREEZE_TIMER
+        self.iframe_timer = config.IFRAME_TIMER
 
         #animation
-        self.current_direction = "down"
+        self.current_direction = "idle"
         self.moving = False
-        self.frame_index = 0
+        self.frame_index = config.FRAME_INDEX
         self.last_anim_update = pygame.time.get_ticks()
 
         # Walking animation slower
-        self.anim_fps = 4          
+        self.anim_fps = config.ANIM_FPS          
         self.frame_duration = 1000 // self.anim_fps 
 
         # Idle system
         self.idle_start = pygame.time.get_ticks()
-        self.afk_delay = 2000      
+        self.afk_delay = config.AFK_DELAY    
         
         # Load images
         self.images = {}
