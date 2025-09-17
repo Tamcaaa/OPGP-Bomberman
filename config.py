@@ -55,21 +55,53 @@ PLAYER1_IMAGES = {
         pygame.image.load("assets/player_color/p_1_idle_1.png"),
         pygame.image.load("assets/player_color/p_1_idle_2.png")
     ],
-    "down": pygame.image.load("assets/player_color/p_1_down.png"),
-    "up": pygame.image.load("assets/player_color/p_1_up.png"),
-    "left": pygame.image.load("assets/player_color/p_1_left.png"),
-    "right": pygame.image.load("assets/player_color/p_1_right.png")
+    "down":[
+        pygame.image.load("assets/player_color/p_1_down_0.png"),
+        pygame.image.load("assets/player_color/p_1_down_1.png"),
+        pygame.image.load("assets/player_color/p_1_down_2.png")
+    ],
+    "up": [
+        pygame.image.load("assets/player_color/p_1_up_0.png"),
+        pygame.image.load("assets/player_color/p_1_up_1.png"),
+        pygame.image.load("assets/player_color/p_1_up_2.png")
+    ],
+    "left": [
+        pygame.image.load("assets/player_color/p_1_left_0.png"),
+        pygame.image.load("assets/player_color/p_1_left_1.png"),
+        pygame.image.load("assets/player_color/p_1_left_2.png")
+    ],
+    "right": [
+        pygame.image.load("assets/player_color/p_1_right_0.png"),
+        pygame.image.load("assets/player_color/p_1_right_1.png"),
+        pygame.image.load("assets/player_color/p_1_right_2.png")
+    ]
 }
 PLAYER2_IMAGES = {
     "idle": [
-        pygame.image.load("assets/player_color/p_1_idle_0.png"),
-        pygame.image.load("assets/player_color/p_1_idle_1.png"),
-        pygame.image.load("assets/player_color/p_1_idle_2.png")
+        pygame.image.load("assets/player_color/p_2_idle_0.png"),
+        pygame.image.load("assets/player_color/p_2_idle_1.png"),
+        pygame.image.load("assets/player_color/p_2_idle_2.png")
     ],
-    "down": pygame.image.load("assets/player_color/p_2_down.png"),
-    "up": pygame.image.load("assets/player_color/p_2_up.png"),
-    "left": pygame.image.load("assets/player_color/p_2_left.png"),
-    "right": pygame.image.load("assets/player_color/p_2_right.png")
+    "down":[
+        pygame.image.load("assets/player_color/p_2_down_0.png"),
+        pygame.image.load("assets/player_color/p_2_down_1.png"),
+        pygame.image.load("assets/player_color/p_2_down_2.png")
+    ],
+    "up": [
+        pygame.image.load("assets/player_color/p_2_up_0.png"),
+        pygame.image.load("assets/player_color/p_2_up_1.png"),
+        pygame.image.load("assets/player_color/p_2_up_2.png")
+    ],
+    "left": [
+        pygame.image.load("assets/player_color/p_2_left_0.png"),
+        pygame.image.load("assets/player_color/p_2_left_1.png"),
+        pygame.image.load("assets/player_color/p_2_left_2.png")
+    ],
+    "right": [
+        pygame.image.load("assets/player_color/p_2_right_0.png"),
+        pygame.image.load("assets/player_color/p_2_right_1.png"),
+        pygame.image.load("assets/player_color/p_2_right_2.png")
+    ]
 }
 
 PLAYER_CONFIG = {
