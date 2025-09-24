@@ -264,10 +264,7 @@ class MapSelector(State):
         
             start_text = self.info_font.render("Press SPACE to start", True, (255, 255, 0))
             screen.blit(start_text, (
-                config.SCREEN_WIDTH // 2 - start_text.get_width() // 2,
-                text_y + map_name_text.get_height() + 50
-            ))
-        
+            config.SCREEN_WIDTH // 2 - start_text.get_width() // 2, text_y + map_name_text.get_height() + 50))
         else:
             # Voting screen fallback
             screen.blit(self.bg_image, (0, 0))
@@ -307,7 +304,8 @@ class MapSelector(State):
                 if self.players[2].vote_index is None:
                     self.confirm_vote(2)
 
-            # If space is pressed and the final map is selected, exit the loop
+
+
             if event.key == pygame.K_SPACE and self.final_map:
                 self.exit_state()
                 map_name = self.final_map[0]
