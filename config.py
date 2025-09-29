@@ -9,7 +9,7 @@ BUTTON_RADIUS = 4
 GRID_SIZE = 30
 GRID_WIDTH, GRID_HEIGHT = SCREEN_WIDTH // GRID_SIZE, SCREEN_HEIGHT // GRID_SIZE
 MOVE_COOLDOWN = 120
-TRAP = 8
+
 
 MUSIC_VOLUME = {
     "main_menu_volume": 0.25,
@@ -129,7 +129,29 @@ POWERUP_DURATIONS = {
 }
 # ------------------------------------------------------------------Player------------------------------------------------------------------
 PLAYER_MAX_HEALTH = 5
+HEALTH = 3
+MAX_BOMB_LIMIT = 4
+CURRENTBOMB = 1
+MAXBOMBS = 1
+POWER = 1 
+LAST_MOVE_TIME = 0
+SCORE = 0
+LAST_TRAP_TIME = 0 
+TRAP = 8
+# ------------------------------------------------------------------Power-up effects------------------------------------------------------------------
+FREEZE_TIMER = 0
+IFRAME_TIMER = 0
+# ----------------------------------------------------------------------Animations--------------------------------------------------------------------
+FRAME_INDEX = 0
+# Walking animation slower
+ANIM_FPS = 4          
+# Idle system
+AFK_DELAY = 1000
+
+
+
 # ---------------------------------------------------------------Map_Selector---------------------------------------------------------------
+
 SELECTOR_COLORS = {
     'title': (255, 255, 255),
     'text': (255, 255, 255),
