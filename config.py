@@ -2,7 +2,7 @@ import pygame
 
 # CONSTANTS
 SCREEN_WIDTH, SCREEN_HEIGHT = 960, 540
-FONT_SIZE = 24
+FONT_SIZE = 30
 H1_SIZE = 54
 BUTTON_WIDTH, BUTTON_HEIGHT = 120, 30
 BUTTON_RADIUS = 4
@@ -24,6 +24,7 @@ MUSIC_VOLUME = {
 # Colors
 COLOR_WHITE = (255, 255, 255)
 COLOR_BLACK = (0, 0, 0)
+COLOR_BEIGE = (211, 161, 105)
 COLOR_GREEN = (0, 128, 0)
 COLOR_DARK_GREEN = (80, 160, 0)
 COLOR_LIGHT_GREEN = (144, 208, 80)
@@ -31,7 +32,7 @@ COLOR_LIGHT_BLUE = (70, 130, 180)
 BACKGROUND_COLOR = (162, 235, 154)
 BUTTON_COLOR = (88, 94, 149)
 BUTTON_HOVER_COLOR = (0, 100, 200)
-TEXT_COLOR = (255, 255, 255)
+TEXT_COLOR = (95, 68, 46)
 
 # ----------------------------------------------------------------Main_menu-----------------------------------------------------------------
 
