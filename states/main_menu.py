@@ -54,9 +54,8 @@ class MainMenu(State):
 
     def enter_single_player(self):
         """Switch to single-player state."""
-        from states.map_selector import MapSelector
-        new_state = MapSelector(self.game)
-        new_state.enter_state()
+        self.exit_state()  # remove MainMenu state
+        self.game.state_manager.change_state("SkinSelector")
 
     def render(self, screen):
         """Draw the main menu screen."""

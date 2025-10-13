@@ -6,11 +6,12 @@ from managers.music_manager import MusicManager
 
 
 class Player(pygame.sprite.Sprite):
-    def __init__(self, player_id: int, starting_location: str | tuple, test_field):
+    def __init__(self, player_id: int, starting_location: str | tuple, test_field, skin=None):
         super().__init__()
 
         self.player_id = player_id
-
+        self.skin = skin 
+        
         if self.player_id not in config.PLAYER_CONFIG:
             raise ValueError(f"Invalid player id {self.player_id}")
 
