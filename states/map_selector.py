@@ -14,10 +14,13 @@ class PlayerSelection:
     vote_index: int | None = None
 
 class MapSelector(State):
-    def __init__(self, game):
+    def __init__(self, game, selected_skins=None):
         super().__init__(game)
+        self.selected_skins = selected_skins or {}
         pygame.display.set_caption("BomberMan: Map Selection")
-
+        self.bg = pygame.image.load(os.path.join(game.photos_dir, "battlefield-bg.png"))
+        self.text = pygame.image.load(os.path.join(game.photos_dir, "battlefield.png"))
+        
         self.selected_maps = []
         self.final_map = None
         self.music_manager = MusicManager()
@@ -31,12 +34,9 @@ class MapSelector(State):
         self.all_maps = all_maps
 
         # Fonts
-        self.title_font = pygame.font.SysFont('Arial', 36, bold=True)
+        self.title_font = pygame.font.Font("CaveatBrush-Regular.ttf", 46)
         self.map_font = pygame.font.SysFont('Arial', 26)
-        self.info_font = pygame.font.SysFont('Arial', 20)
-
-        # Background
-        self.bg_color = (30, 30, 40)  # Dark modern background
+        self.info_font = pygame.font.Font("CaveatBrush-Regular.ttf", 25)
 
         # UI parameters
         self.card_width = 250
@@ -76,7 +76,7 @@ class MapSelector(State):
 
         # Card background
         rect = pygame.Rect(x, y, self.card_width, self.card_height)
-        pygame.draw.rect(screen, (50, 50, 60), rect, border_radius=self.card_radius)
+        pygame.draw.rect(screen, config.COLOR_BEIGE, rect, border_radius=self.card_radius)
 
         # Selected border
         for pid, color in [(1, (200, 50, 50)), (2, (50, 150, 250))]:
@@ -85,7 +85,7 @@ class MapSelector(State):
                 pygame.draw.rect(screen, color, rect, 4, border_radius=self.card_radius)
 
         # Map name text
-        text_surf = self.map_font.render(map_name, True, (255, 255, 255))
+        text_surf = self.map_font.render(map_name, True, config.TEXT_COLOR)
         screen.blit(text_surf, (x + self.card_width//2 - text_surf.get_width()//2, y + 10))
 
         # Map preview if available
@@ -98,19 +98,20 @@ class MapSelector(State):
             pass
 
     def render(self, screen):
-        screen.fill(self.bg_color)
+        screen.blit(self.bg, (0, 0))
+        
+        battlefield_img = pygame.image.load(os.path.join("assets", "battlefield.png")) 
+        
+        screen.blit(battlefield_img, (config.SCREEN_WIDTH//2 - battlefield_img.get_width()//2, 40))
 
-        # Title
-        title = self.title_font.render("Select Your Battlefield", True, (200, 200, 255))
-        screen.blit(title, (config.SCREEN_WIDTH//2 - title.get_width()//2, 40))
 
         # Draw map cards
         for i, (name, _) in enumerate(self.selected_maps):
             self.draw_card(screen, i, name)
 
         # Instructions
-        p1_instr = "Player 1: ← → to move, ENTER to vote" if self.players[1].vote_index is None else "Player 1: Vote confirmed!"
-        p2_instr = "Player 2: A D to move, RIGHT SHIFT to vote" if self.players[2].vote_index is None else "Player 2: Vote confirmed!"
+        p1_instr = "Player 1: <- -> to move, ENTER to vote" if self.players[1].vote_index is None else "Vote confirmed!"
+        p2_instr = "Player 2: A D to move, RIGHT SHIFT to vote" if self.players[2].vote_index is None else "Vote confirmed!"
 
         screen.blit(self.info_font.render(p1_instr, True, (200, 50, 50)), (50, config.SCREEN_HEIGHT - 80))
         screen.blit(self.info_font.render(p2_instr, True, (50, 150, 250)),
@@ -155,4 +156,4 @@ class MapSelector(State):
             if event.key == pygame.K_SPACE and self.final_map:
                 map_name = self.final_map[0]
                 selected_map = self.final_map[1]
-                self.state_manager.change_state("TestField", selected_map, map_name)
+                self.state_manager.change_state("TestField",selected_map,map_name,selected_skins=self.selected_skins)

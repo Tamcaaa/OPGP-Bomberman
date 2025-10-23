@@ -11,12 +11,14 @@ from power_up import PowerUp
 
 
 class TestField(State):
-    def __init__(self, game, selected_map, map_name):
+    def __init__(self, game, selected_map, map_name, selected_skins=None):
         State.__init__(self, game)
 
         
         self.selected_map = selected_map
         self.map_name = map_name
+        self.selected_skins = selected_skins or {}
+
 
         pygame.display.set_caption(f"BomberMan: {map_name}")
         self.game = game
@@ -31,8 +33,8 @@ class TestField(State):
         # Hidden power-ups map - stores which bricks have power-ups underneath
         self.hidden_powerups = {}  # Format: {(x, y): powerup_type}
 
-        self.player1 = Player(1, "spawn1", self)
-        self.player2 = Player(2, "spawn4", self)
+        self.player1 = Player(1, "spawn1", self, skin=self.selected_skins.get(1))
+        self.player2 = Player(2, "spawn4", self, skin=self.selected_skins.get(2))
         self.players = [self.player1, self.player2]
 
         # Feedback message for power-ups
@@ -96,6 +98,7 @@ class TestField(State):
         self.place_hidden_powerups()
         self.trap_image = pygame.image.load("assets/environment/manhole.png").convert_alpha()
         self.trap_image = pygame.transform.scale(self.trap_image, (config.GRID_SIZE, config.GRID_SIZE))
+        
     def place_hidden_powerups(self):
         """Place power-ups under random bricks at the start of the game"""
         brick_positions = []

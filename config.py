@@ -2,7 +2,7 @@ import pygame
 
 # CONSTANTS
 SCREEN_WIDTH, SCREEN_HEIGHT = 960, 540
-FONT_SIZE = 24
+FONT_SIZE = 30
 H1_SIZE = 54
 BUTTON_WIDTH, BUTTON_HEIGHT = 120, 30
 BUTTON_RADIUS = 4
@@ -24,6 +24,7 @@ MUSIC_VOLUME = {
 # Colors
 COLOR_WHITE = (255, 255, 255)
 COLOR_BLACK = (0, 0, 0)
+COLOR_BEIGE = (211, 161, 105)
 COLOR_GREEN = (0, 128, 0)
 COLOR_DARK_GREEN = (80, 160, 0)
 COLOR_LIGHT_GREEN = (144, 208, 80)
@@ -31,9 +32,17 @@ COLOR_LIGHT_BLUE = (70, 130, 180)
 BACKGROUND_COLOR = (162, 235, 154)
 BUTTON_COLOR = (88, 94, 149)
 BUTTON_HOVER_COLOR = (0, 100, 200)
-TEXT_COLOR = (255, 255, 255)
+TEXT_COLOR = (95, 68, 46)
+# ----------------------------------------------------------------Player_colors-------------------------------------------------------------
+WHITE_PLAYER = (255, 255, 255)
+BLACK_PLAYER = (103, 103, 103)
+RED_PLAYER = (227, 48, 14)
+BLUE_PLAYER = (14, 117, 227)
+GREEN_PLAYER = (95, 199, 18)
+YELLOW_PLAYER = (237, 220, 0)
 
-# ----------------------------------------------------------------Main_menu-----------------------------------------------------------------
+# ----------------------------------------------------------------Skin_selector-----------------------------------------------------------------
+WIDTH_BETWEEN_PLAYER = 340
 
 # ----------------------------------------------------------------Test_field----------------------------------------------------------------
 PLAYER_IFRAMES = 0.75
@@ -78,29 +87,29 @@ PLAYER1_IMAGES = {
 }
 PLAYER2_IMAGES = {
     "idle": [
-        pygame.image.load("assets/player_color/p_2_idle_0.png"),
-        pygame.image.load("assets/player_color/p_2_idle_1.png"),
-        pygame.image.load("assets/player_color/p_2_idle_2.png")
+        pygame.image.load("assets/player_color/p_1_idle_0.png"),
+        pygame.image.load("assets/player_color/p_1_idle_1.png"),
+        pygame.image.load("assets/player_color/p_1_idle_2.png")
     ],
     "down":[
-        pygame.image.load("assets/player_color/p_2_down_0.png"),
-        pygame.image.load("assets/player_color/p_2_down_1.png"),
-        pygame.image.load("assets/player_color/p_2_down_2.png")
+        pygame.image.load("assets/player_color/p_1_down_0.png"),
+        pygame.image.load("assets/player_color/p_1_down_1.png"),
+        pygame.image.load("assets/player_color/p_1_down_2.png")
     ],
     "up": [
-        pygame.image.load("assets/player_color/p_2_up_0.png"),
-        pygame.image.load("assets/player_color/p_2_up_1.png"),
-        pygame.image.load("assets/player_color/p_2_up_2.png")
+        pygame.image.load("assets/player_color/p_1_up_0.png"),
+        pygame.image.load("assets/player_color/p_1_up_1.png"),
+        pygame.image.load("assets/player_color/p_1_up_2.png")
     ],
     "left": [
-        pygame.image.load("assets/player_color/p_2_left_0.png"),
-        pygame.image.load("assets/player_color/p_2_left_1.png"),
-        pygame.image.load("assets/player_color/p_2_left_2.png")
+        pygame.image.load("assets/player_color/p_1_left_0.png"),
+        pygame.image.load("assets/player_color/p_1_left_1.png"),
+        pygame.image.load("assets/player_color/p_1_left_2.png")
     ],
     "right": [
-        pygame.image.load("assets/player_color/p_2_right_0.png"),
-        pygame.image.load("assets/player_color/p_2_right_1.png"),
-        pygame.image.load("assets/player_color/p_2_right_2.png")
+        pygame.image.load("assets/player_color/p_1_right_0.png"),
+        pygame.image.load("assets/player_color/p_1_right_1.png"),
+        pygame.image.load("assets/player_color/p_1_right_2.png")
     ]
 }
 
