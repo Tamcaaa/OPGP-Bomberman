@@ -156,4 +156,4 @@ class MapSelector(State):
             if event.key == pygame.K_SPACE and self.final_map:
                 map_name = self.final_map[0]
                 selected_map = self.final_map[1]
-                self.state_manager.change_state("TestField", selected_map, map_name)
+                self.state_manager.change_state("TestField",selected_map,map_name,selected_skins=self.selected_skins)

@@ -72,6 +72,9 @@ class Player(pygame.sprite.Sprite):
         else:
             self.rect.topleft = starting_location
 
+        # Apply skin color
+        self.apply_skin()
+
     def check_hit(self):
         """Check if player is hit by an explosion"""
         now = time.time()
@@ -84,6 +87,25 @@ class Player(pygame.sprite.Sprite):
             self.health -= 1
             return True
         return False
+    
+    def apply_skin(self):
+        """Aplikuje farebný skin na všetky snímky hráča."""
+        if not self.skin:
+            return
+
+        for key, frames in self.player_config["images"].items():
+            tinted_frames = []
+            for frame in frames if isinstance(frames, list) else [frames]:
+                # Základná transformácia
+                frame_surf = pygame.transform.scale(frame.convert_alpha(), (config.GRID_SIZE, config.GRID_SIZE))
+                # Skopíruj a aplikuj farbu
+                tinted = frame_surf.copy()
+                tinted.fill(self.skin, special_flags=pygame.BLEND_MULT)
+                tinted_frames.append(tinted)
+            self.images[key] = tinted_frames
+
+        # Aktualizuj aktuálnu snímku podľa aktuálneho smeru a indexu
+        self.image = self.images[self.current_direction][self.frame_index]
 
     def activate_powerup(self, powerup_type, duration=10):
         """Activate a power-up effect"""
@@ -218,28 +240,26 @@ class Player(pygame.sprite.Sprite):
         return None
     
     def update_animation(self):
+        """Aktualizuje animácie hráča s aplikovaním skinu na každý frame."""
         now = pygame.time.get_ticks()
         
         if self.moving:
             anim_key = self.current_direction
             frame_duration = 1000 / self.anim_fps
-            self.idle_start = now  # reset idle timer when moving
+            self.idle_start = now
         else:
             if now - self.idle_start > self.afk_delay:
                 anim_key = "idle"
-                frame_duration = 1000 / 2  # slow idle fps
+                frame_duration = 1000 / 2
             else:
-                # show last walking frame while waiting for idle
                 anim_key = self.current_direction
                 frame_duration = 1000 / self.anim_fps
-                # don't reset frame_index
-                pass
-                
+        
         frames = self.images[anim_key]
         
         if now - self.last_anim_update >= frame_duration:
             self.frame_index = (self.frame_index + 1) % len(frames)
             self.last_anim_update = now
         
+        # Použi skinned verziu snímky
         self.image = frames[self.frame_index]
-            

@@ -98,6 +98,7 @@ class TestField(State):
         self.place_hidden_powerups()
         self.trap_image = pygame.image.load("assets/environment/manhole.png").convert_alpha()
         self.trap_image = pygame.transform.scale(self.trap_image, (config.GRID_SIZE, config.GRID_SIZE))
+        
     def place_hidden_powerups(self):
         """Place power-ups under random bricks at the start of the game"""
         brick_positions = []
