@@ -8,10 +8,12 @@ from dataclasses import dataclass
 from managers.music_manager import MusicManager
 from managers.state_manager import StateManager
 
+
 @dataclass
 class PlayerSelection:
     selection_index: int = 0
     vote_index: int | None = None
+
 
 class MapSelector(State):
     def __init__(self, game, selected_skins=None):
@@ -20,7 +22,7 @@ class MapSelector(State):
         pygame.display.set_caption("BomberMan: Map Selection")
         self.bg = pygame.image.load(os.path.join(game.photos_dir, "battlefield-bg.png"))
         self.text = pygame.image.load(os.path.join(game.photos_dir, "battlefield.png"))
-        
+
         self.selected_maps = []
         self.final_map = None
         self.music_manager = MusicManager()
@@ -86,24 +88,23 @@ class MapSelector(State):
 
         # Map name text
         text_surf = self.map_font.render(map_name, True, config.TEXT_COLOR)
-        screen.blit(text_surf, (x + self.card_width//2 - text_surf.get_width()//2, y + 10))
+        screen.blit(text_surf, (x + self.card_width // 2 - text_surf.get_width() // 2, y + 10))
 
         # Map preview if available
         try:
             preview_img = pygame.image.load(os.path.join("assets", "map_previews",
-                                                        f"{map_name.lower().replace(' ', '_')}_preview.png"))
-            preview_img = pygame.transform.scale(preview_img, (self.card_width-20, self.card_height-50))
-            screen.blit(preview_img, (x+10, y+40))
+                                                         f"{map_name.lower().replace(' ', '_')}_preview.png"))
+            preview_img = pygame.transform.scale(preview_img, (self.card_width - 20, self.card_height - 50))
+            screen.blit(preview_img, (x + 10, y + 40))
         except:
             pass
 
     def render(self, screen):
         screen.blit(self.bg, (0, 0))
-        
-        battlefield_img = pygame.image.load(os.path.join("assets", "battlefield.png")) 
-        
-        screen.blit(battlefield_img, (config.SCREEN_WIDTH//2 - battlefield_img.get_width()//2, 40))
 
+        battlefield_img = pygame.image.load(os.path.join("assets", "battlefield.png"))
+
+        screen.blit(battlefield_img, (config.SCREEN_WIDTH // 2 - battlefield_img.get_width() // 2, 40))
 
         # Draw map cards
         for i, (name, _) in enumerate(self.selected_maps):
@@ -111,7 +112,8 @@ class MapSelector(State):
 
         # Instructions
         p1_instr = "Player 1: <- -> to move, ENTER to vote" if self.players[1].vote_index is None else "Vote confirmed!"
-        p2_instr = "Player 2: A D to move, RIGHT SHIFT to vote" if self.players[2].vote_index is None else "Vote confirmed!"
+        p2_instr = "Player 2: A D to move, RIGHT SHIFT to vote" if self.players[
+                                                                       2].vote_index is None else "Vote confirmed!"
 
         screen.blit(self.info_font.render(p1_instr, True, (200, 50, 50)), (50, config.SCREEN_HEIGHT - 80))
         screen.blit(self.info_font.render(p2_instr, True, (50, 150, 250)),
@@ -120,62 +122,6 @@ class MapSelector(State):
         # Final map overlay
         if self.final_map:
             map_name = self.final_map[0]
-            # Načítaj screenshot mapy
-            map_name, map_data = self.final_map
-            try:
-                # Predpokladáme, že screenshoty sú v priečinku assets/map_previews
-                # s názvom napr. "urban_assault_preview.png"
-                preview_image = pygame.image.load(
-                    os.path.join("assets", "map_previews", f"{map_name.lower().replace(' ', '_')}_preview.png")
-                )
-                # Prispôsob veľkosť obrazovke
-                preview_image = pygame.transform.scale(preview_image, (config.SCREEN_WIDTH, config.SCREEN_HEIGHT))
-                screen.blit(preview_image, (0, 0))
-            except:
-                # Ak sa obrázok nenačíta, zobrazíme čierne pozadie
-                screen.fill((0, 0, 0))
-
-            # Pôvodný kód pre zobrazenie textu
-            overlay = pygame.Surface((config.SCREEN_WIDTH, config.SCREEN_HEIGHT), pygame.SRCALPHA)
-            overlay.fill((0, 0, 0, min(255, self.animation_timer * 6)))
-            screen.blit(overlay, (0, 0))
-
-            map_name_text = self.title_font.render(f"{map_name}", True, (0, 255, 255))
-            text_x = config.SCREEN_WIDTH // 2 - map_name_text.get_width() // 2
-            text_y = config.SCREEN_HEIGHT // 2 - 50
-
-            announcement_bg = pygame.Surface((map_name_text.get_width() + 80, map_name_text.get_height() + 100),
-                                             pygame.SRCALPHA)
-            bg_rect = announcement_bg.get_rect()
-            pygame.draw.rect(announcement_bg, (20, 20, 30, 230), bg_rect, border_radius=20)
-            screen.blit(announcement_bg, (text_x - 40, text_y - 30))
-
-            glow_surf = pygame.Surface((map_name_text.get_width() + 20, map_name_text.get_height() + 20),
-                                       pygame.SRCALPHA)
-            glow_rect = glow_surf.get_rect()
-            pygame.draw.rect(glow_surf, (0, 200, 255, 120), glow_rect, border_radius=15)
-            screen.blit(glow_surf, (text_x - 10, text_y - 10))
-
-            screen.blit(map_name_text, (text_x, text_y))
-
-            selected_label = self.info_font.render("Selected Map", True, (200, 200, 200))
-            screen.blit(selected_label,
-                        (config.SCREEN_WIDTH // 2 - selected_label.get_width() // 2,
-                         text_y + map_name_text.get_height() + 10))
-
-            start_text = self.info_font.render("Press SPACE to start the game", True, (255, 255, 0))
-            screen.blit(start_text, (
-                config.SCREEN_WIDTH // 2 - start_text.get_width() // 2, text_y + map_name_text.get_height() + 50))
-        else:
-            # Pôvodný kód pre výber mapy
-            screen.blit(self.bg_image, (0, 0))
-            title = self.title_font.render("SELECT YOUR BATTLEFIELD", True, config.SELECTOR_COLORS['title'])
-            screen.blit(title, (config.SCREEN_WIDTH // 2 - title.get_width() // 2, 40))
-            self.draw_map_cards(screen)
-            self.draw_player_indicators(screen)
-            self.draw_instructions(screen)
-
-        if self.transition_effect > 0:
             overlay = pygame.Surface((config.SCREEN_WIDTH, config.SCREEN_HEIGHT))
             overlay.fill((0, 0, 0))
             overlay.set_alpha(200)
@@ -183,10 +129,12 @@ class MapSelector(State):
 
             # Centered text
             text_surf = self.title_font.render(f"{map_name} Selected!", True, (0, 255, 255))
-            screen.blit(text_surf, (config.SCREEN_WIDTH//2 - text_surf.get_width()//2, config.SCREEN_HEIGHT//2 - 50))
+            screen.blit(text_surf,
+                        (config.SCREEN_WIDTH // 2 - text_surf.get_width() // 2, config.SCREEN_HEIGHT // 2 - 50))
 
             start_text = self.info_font.render("Press SPACE to start", True, (255, 255, 0))
-            screen.blit(start_text, (config.SCREEN_WIDTH//2 - start_text.get_width()//2, config.SCREEN_HEIGHT//2 + 20))
+            screen.blit(start_text,
+                        (config.SCREEN_WIDTH // 2 - start_text.get_width() // 2, config.SCREEN_HEIGHT // 2 + 20))
 
     def update(self):
         pass  # Minimal/no animations
@@ -212,4 +160,4 @@ class MapSelector(State):
             if event.key == pygame.K_SPACE and self.final_map:
                 map_name = self.final_map[0]
                 selected_map = self.final_map[1]
-                self.state_manager.change_state("TestField",selected_map,map_name,selected_skins=self.selected_skins)
+                self.state_manager.change_state("TestField", selected_map, map_name, selected_skins=self.selected_skins)
