@@ -39,7 +39,7 @@ class MultiplayerSelector(State):
     def handle_events(self, event):
         """Handle button clicks."""
         if self.host_button.is_clicked():
-            self.state_manager.change_state("MultiplayerLobby", True)
+            self.state_manager.change_state("MultiplayerLobby","Server Host",None, True)
         elif self.join_button.is_clicked():
             self.state_manager.change_state("InputPopup")
         elif self.goBack_button.is_clicked():

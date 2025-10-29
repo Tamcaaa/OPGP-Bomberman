@@ -5,8 +5,6 @@ import time
 import pygame
 import random
 
-from dulwich.diff_tree import TreeChange
-
 import config
 import os
 import socket
@@ -22,7 +20,6 @@ from managers.state_manager import StateManager
 class PlayerSelection:
     selection_index: int = 0
     vote_index: int | None = None
-    vote_flash_timer: int = 0
 
 
 class MultiplayerMapSelector(State):
@@ -94,28 +91,71 @@ class MultiplayerMapSelector(State):
                     self.socket.sendto(message, addr)
         else:
             # Clients only send to host
-            self.socket.sendto(message, (self.lobby.host_ip, 9999))
+            self.socket.sendto(message, (self.lobby.address_to_join, 9999))
 
     def handle_network_packets(self):
         try:
             packet, _ = self.lobby.socket.recvfrom(1024)
-            packet = json.loads(packet.decode('utf-8'))
-            if packet['type'] == 'MOVE_SELECTION':
+            raw_data = packet.decode('utf-8')
+            print(f"[NETWORK] Received packet: {raw_data}")
+            packet = json.loads(raw_data)
+            packet_type = packet.get('type')
+            print(f"[NETWORK] Packet type: {packet_type}")
+
+            if packet_type == 'MOVE_SELECTION':
                 player_id = packet['player_id']
                 new_index = packet['new_index']
                 if player_id in self.players:
                     self.players[player_id].selection_index = new_index
-            elif packet['type'] == 'MAP_SELECTION':
-                map_list = packet['data']['map_list']
-                self.selected_maps = map_list
+                else:
+                    print(f"[WARN] Unknown player in MOVE_SELECTION: {player_id}")
+
+            elif packet_type == 'MAP_SELECTION':
+                self.selected_maps = packet['data']['map_list']
+
+            elif packet_type == 'CONFIRM_SELECTION':
+                player_id = packet['player_id']
+                vote_index = packet['vote_index']
+                if player_id in self.players:
+                    self.players[player_id].vote_index = vote_index
+                    print(f"[VOTE] {player_id} voted for map index {vote_index}")
+                    if all(p.vote_index is not None for p in
+                           self.players.values()) and self.player_name == "Server Host":
+                        self.determine_final_map()
+                else:
+                    print(f"[WARN] Unknown player in CONFIRM_SELECTION: {player_id}")
+            elif packet_type == 'CANCEL_SELECTION':
+                player_id = packet['player_id']
+                if player_id in self.players:
+                    self.players[player_id].vote_index = None
+                    print(f"[VOTE] {player_id} canceled their vote")
+                else:
+                    print(f"[WARN] Unknown player in CANCEL_SELECTION: {player_id}")
+            elif packet_type == 'FINAL_MAP_SELECTION':
+                self.final_map = packet['final_map']
+
+
+
+        except json.JSONDecodeError as e:
+            print(f"[ERROR] JSON decode failed: {e}")
         except socket.timeout:
             pass
+        except Exception as e:
+            print(f"[EXCEPTION] Network handler crashed: {e}")
 
     def confirm_vote(self):
         player = self.players[self.player_name]
         player.vote_index = player.selection_index
-        player.vote_flash_timer = 30
-        if all(p.vote_index is not None for p in self.players.values()):
+        packet = {
+            "type": "CONFIRM_SELECTION",
+            "player_id": self.player_name,
+            "vote_index": player.vote_index
+        }
+        message = json.dumps(packet).encode("utf-8")
+        for name, addr in self.lobby.players:
+            if name != self.player_name:
+                self.socket.sendto(message, addr)
+        if all(p.vote_index is not None for p in self.players.values()) and self.player_name == "Server Host":
             self.determine_final_map()
 
     def determine_final_map(self):
@@ -125,27 +165,43 @@ class MultiplayerMapSelector(State):
         top_maps = [index for index, count in vote_counter.items() if count == max_votes]
         winning_index = random.choice(top_maps) if len(top_maps) > 1 else top_maps[0]
         self.final_map = self.selected_maps[winning_index]
+        packet = {
+            "type": "FINAL_MAP_SELECTION",
+            "final_map": self.selected_maps[winning_index]
+        }
+        message = json.dumps(packet).encode("utf-8")
+        for name, addr in self.lobby.players:
+            if name != self.player_name:
+                self.socket.sendto(message, addr)
 
     def cancel_vote(self):
         player = self.players[self.player_name]
         player.vote_index = None
+        packet = {
+            "type": "CANCEL_SELECTION",
+            "player_id": self.player_name,
+        }
+        message = json.dumps(packet).encode("utf-8")
+        for name, addr in self.lobby.players:
+            if name != self.player_name:
+                print(self.lobby.players)
+                self.socket.sendto(message, addr)
 
     def broadcast_state_change(self, new_state):
         message = f"STATE_CHANGE:{new_state}".encode('utf-8')
-        self.state_change_sent = True
-        self.acknowledged_players = set()
+        acknowledged_players = set()
 
         # Try to send up to 5 times, every 0.5 seconds
         for _ in range(5):
             for username, address in self.players:
                 if address[1] == 1111:  # skip host
                     continue
-                if address not in self.acknowledged_players:
+                if address not in acknowledged_players:
                     self.socket.sendto(message, address)
 
             time.sleep(0.5)
 
-            if len(self.acknowledged_players) == len(self.players) - 1:
+            if len(acknowledged_players) == len(self.players) - 1:
                 print("All clients acknowledged state change.")
                 return True
 
@@ -281,6 +337,11 @@ class MultiplayerMapSelector(State):
                 start_text = self.info_font.render("Press SPACE to start the game", True, (255, 255, 0))
                 screen.blit(start_text, (
                     config.SCREEN_WIDTH // 2 - start_text.get_width() // 2, text_y + map_name_text.get_height() + 50))
+            else:
+                wait_text = self.info_font.render("Wait for Host to start the game", True, (255, 255, 0))
+                screen.blit(wait_text, (
+                    config.SCREEN_WIDTH // 2 - wait_text.get_width() // 2, text_y + map_name_text.get_height() + 50))
+
         else:
             screen.blit(self.bg_image, (0, 0))
 

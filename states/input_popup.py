@@ -37,7 +37,7 @@ class InputPopup(State):
         if self.username_text.strip() and self.address_text.strip():
             self.result = (self.username_text.strip(), self.address_text.strip())
             self.exit_state()
-            self.state_manager.change_state("MultiplayerLobby", False, *self.result)
+            self.state_manager.change_state("MultiplayerLobby",*self.result)
 
     def go_back(self):
         self.exit_state()
