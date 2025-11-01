@@ -161,7 +161,7 @@ class Settings(State):
         pygame.draw.circle(screen, (255, 0, 0), (handle_x, self.slider_y + self.slider_height // 2), self.slider_handle_radius)
 
         # Volume label
-        vol_text = self.font.render(f"Volume: {int(self.volume * 100)}%", True, config.TEXT_COLOR)
+        vol_text = self.font.render(f"Volume: {int(self.volume * 100)}%", True, config.COLOR_BEIGE)
         screen.blit(vol_text, (self.slider_x, self.slider_y - 30))
 
         # Draw key binding buttons with hover highlight
@@ -198,7 +198,7 @@ class Button:
 
     def draw(self, screen):
         mouse_pos = pygame.mouse.get_pos()
-        color = config.BUTTON_HOVER_COLOR if self.rect.collidepoint(mouse_pos) or self.highlighted else config.BUTTON_COLOR
+        color = config.BUTTON_HOVER_COLOR if self.rect.collidepoint(mouse_pos) or self.highlighted else config.COLOR_BEIGE
         pygame.draw.rect(screen, color, self.rect, border_radius=config.BUTTON_RADIUS)
 
         text_surface = self.font.render(self.text, True, config.TEXT_COLOR)
@@ -225,7 +225,7 @@ class IconButton:
 
     def draw(self, screen):
         mouse_pos = pygame.mouse.get_pos()
-        color = config.BUTTON_HOVER_COLOR if self.rect.collidepoint(mouse_pos) or self.highlighted else config.BUTTON_COLOR
+        color = config.BUTTON_HOVER_COLOR if self.rect.collidepoint(mouse_pos) or self.highlighted else config.COLOR_BEIGE
         pygame.draw.rect(screen, color, self.rect, border_radius=config.BUTTON_RADIUS)
         # Center the image inside the button rect
         img_rect = self.image.get_rect(center=self.rect.center)
