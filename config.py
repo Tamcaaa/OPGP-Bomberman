@@ -38,10 +38,17 @@ TEXT_COLOR = (95, 68, 46)
 # ----------------------------------------------------------------Player_colors-------------------------------------------------------------
 WHITE_PLAYER = (255, 255, 255)
 BLACK_PLAYER = (103, 103, 103)
-RED_PLAYER = (227, 48, 14)
-BLUE_PLAYER = (14, 117, 227)
-GREEN_PLAYER = (95, 199, 18)
-YELLOW_PLAYER = (237, 220, 0)
+RED_PLAYER = (197, 17, 17)
+BLUE_PLAYER = (18, 62, 209)
+DARK_GREEN_PLAYER = (17, 127, 45)
+LIGHT_GREEN_PLAYER = (80, 239, 57)
+YELLOW_PLAYER = (245, 245, 87)
+PINK_PLAYER = (237, 84, 186)
+ORANGE_PLAYER = (239, 125, 13)
+PURPLE_PLAYER = (107, 47, 187)
+BROWN_PLAYER = (113, 73, 30)
+CYAN_PLAYER = (56, 254, 220)
+
 
 # ----------------------------------------------------------------Skin_selector-----------------------------------------------------------------
 WIDTH_BETWEEN_PLAYER = 340
