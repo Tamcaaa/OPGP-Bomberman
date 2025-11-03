@@ -2,6 +2,7 @@ import pygame
 import config
 from states.state import State
 from managers.state_manager import StateManager
+from custom_classes.button import Button
 
 
 class InputPopup(State):
@@ -30,8 +31,14 @@ class InputPopup(State):
 
         # Buttons
         button_y = config.SCREEN_HEIGHT // 3 + 150
-        self.join_button = Button(config.SCREEN_WIDTH // 2 + 10, button_y, 100, 40, "Join", self.submit)
-        self.back_button = Button(config.SCREEN_WIDTH // 2 - 110, button_y, 100, 40, "Back", self.go_back)
+        self.join_button = Button(config.SCREEN_WIDTH // 2 - 110, button_y, 100, 40, "Join",
+                                  self.submit,
+                                  font='CaveatBrush-Regular.ttf',
+                                  button_color=config.COLOR_BEIGE)
+        self.back_button = Button(config.SCREEN_WIDTH // 2 + 10, button_y, 100, 40, "Back",
+                                  self.go_back,
+                                  font='CaveatBrush-Regular.ttf',
+                                  button_color=config.COLOR_BEIGE)
 
     def submit(self):
         if self.username_text.strip() and self.address_text.strip():
@@ -100,26 +107,3 @@ class InputPopup(State):
         # Draw buttons
         self.join_button.draw(screen)
         self.back_button.draw(screen)
-
-
-class Button:
-    def __init__(self, x, y, width, height, text, action=None):
-        self.rect = pygame.Rect(x, y, width, height)
-        self.text = text
-        self.font = pygame.font.Font(None, config.FONT_SIZE)
-        self.action = action
-
-    def draw(self, screen):
-        mouse_pos = pygame.mouse.get_pos()
-        if self.rect.collidepoint(mouse_pos):
-            pygame.draw.rect(screen, config.BUTTON_HOVER_COLOR, self.rect, border_radius=config.BUTTON_RADIUS)
-        else:
-            pygame.draw.rect(screen, config.BUTTON_COLOR, self.rect, border_radius=config.BUTTON_RADIUS)
-        text_surface = self.font.render(self.text, True, config.TEXT_COLOR)
-        text_rect = text_surface.get_rect(center=self.rect.center)
-        screen.blit(text_surface, text_rect)
-
-    def is_clicked(self):
-        mouse_pos = pygame.mouse.get_pos()
-        mouse_pressed = pygame.mouse.get_pressed()
-        return self.rect.collidepoint(mouse_pos) and mouse_pressed[0]

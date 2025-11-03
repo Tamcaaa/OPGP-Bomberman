@@ -1,7 +1,4 @@
-import ast
 import json
-import time
-
 import pygame
 import random
 
@@ -12,7 +9,6 @@ from states.state import State
 from maps.test_field_map import all_maps
 from collections import Counter
 from dataclasses import dataclass
-from managers.music_manager import MusicManager
 from managers.state_manager import StateManager
 
 
@@ -133,6 +129,11 @@ class MultiplayerMapSelector(State):
                     print(f"[WARN] Unknown player in CANCEL_SELECTION: {player_id}")
             elif packet_type == 'FINAL_MAP_SELECTION':
                 self.final_map = packet['final_map']
+            elif packet_type == 'STATE_CHANGE':
+                self.exit_state()
+                self.state_manager.change_state(packet['data']['state'], self.lobby, self.final_map)
+
+
 
 
 
@@ -167,7 +168,7 @@ class MultiplayerMapSelector(State):
         self.final_map = self.selected_maps[winning_index]
         packet = {
             "type": "FINAL_MAP_SELECTION",
-            "final_map": self.selected_maps[winning_index]
+            "final_map": self.final_map
         }
         message = json.dumps(packet).encode("utf-8")
         for name, addr in self.lobby.players:
@@ -188,35 +189,26 @@ class MultiplayerMapSelector(State):
                 self.socket.sendto(message, addr)
 
     def broadcast_state_change(self, new_state):
-        message = f"STATE_CHANGE:{new_state}".encode('utf-8')
+        packet = {
+            'type': 'STATE_CHANGE',
+            'data': {'state': new_state}
+        }
         acknowledged_players = set()
-
-        # Try to send up to 5 times, every 0.5 seconds
-        for _ in range(5):
-            for username, address in self.players:
-                if address[1] == 1111:  # skip host
-                    continue
-                if address not in acknowledged_players:
-                    self.socket.sendto(message, address)
-
-            time.sleep(0.5)
-
-            if len(acknowledged_players) == len(self.players) - 1:
-                print("All clients acknowledged state change.")
-                return True
-
-        else:
-            print("Not all clients acknowledged the state change.")
-            return False
+        message = json.dumps(packet).encode('utf-8')
+        for username, address in self.lobby.players:
+            if address[1] == 9999:  # skip host
+                continue
+            elif address not in acknowledged_players:
+                self.socket.sendto(message, address)
 
     def handle_events(self, event):
         if event.type == pygame.KEYDOWN:
             # If space is pressed and the final map is selected, exit the loop
             if self.lobby.is_host:
                 if event.key == pygame.K_SPACE and self.final_map:
-                    if self.broadcast_state_change('MultiplayerTestField'):
-                        self.exit_state()
-                        self.state_manager.change_state("MultiplayerTestField", self.lobby, self.final_map)
+                    self.broadcast_state_change('MultiplayerTestField')
+                    self.exit_state()
+                    self.state_manager.change_state("MultiplayerTestField", self.lobby, self.final_map)
             if event.key == pygame.K_RETURN:
                 if self.players[self.player_name].vote_index is None:
                     self.confirm_vote()

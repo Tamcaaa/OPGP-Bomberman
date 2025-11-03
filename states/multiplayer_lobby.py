@@ -1,14 +1,13 @@
 import json
 import os
-import time
 import socket
-from multiprocessing.connection import address_type
 from typing import List, Tuple, Any
 
 import pygame
 
 import config
 from states.state import State
+from custom_classes.button import Button
 from managers.music_manager import MusicManager
 from managers.state_manager import StateManager
 
@@ -44,16 +43,18 @@ class MultiplayerLobby(State):
         self.start_button = Button(
             config.SCREEN_WIDTH // 2 - config.BUTTON_WIDTH // 2,
             config.SCREEN_HEIGHT - 120,
-            config.BUTTON_WIDTH,
-            config.BUTTON_HEIGHT,
-            "Start Game"
-        )
+            config.BUTTON_WIDTH + 10,
+            config.BUTTON_HEIGHT + 10,
+            'Start Game',
+            font='CaveatBrush-Regular.ttf',
+            button_color = config.COLOR_BEIGE)
         self.back_button = Button(
             20, 20,
-            config.BUTTON_WIDTH // 1.5,
-            config.BUTTON_HEIGHT // 1.5,
-            "Back"
-        )
+            config.BUTTON_WIDTH // 1.2,
+            config.BUTTON_HEIGHT,
+            "Back",
+            font='CaveatBrush-Regular.ttf',
+            button_color = config.COLOR_BEIGE)
 
         if self.is_host:
             self.port = 9999
@@ -226,31 +227,3 @@ class MultiplayerLobby(State):
         if self.is_host:
             self.start_button.draw(screen)
         self.back_button.draw(screen)
-
-
-class Button:
-    def __init__(self, x, y, width, height, text, action=None):
-        """Initialize button with position, size, and text."""
-        self.rect = pygame.Rect(x, y, width, height)
-        self.text = text
-        self.font = pygame.font.Font(None, config.FONT_SIZE)
-        self.action = action
-
-    def draw(self, screen):
-        """Draw the button on screen."""
-        mouse_pos = pygame.mouse.get_pos()
-        if self.rect.collidepoint(mouse_pos):
-            pygame.draw.rect(screen, config.BUTTON_HOVER_COLOR, self.rect, border_radius=config.BUTTON_RADIUS)
-        else:
-            pygame.draw.rect(screen, config.BUTTON_COLOR, self.rect, border_radius=config.BUTTON_RADIUS)
-
-        # Render the text on the button
-        text_surface = self.font.render(self.text, True, config.TEXT_COLOR)
-        text_rect = text_surface.get_rect(center=self.rect.center)
-        screen.blit(text_surface, text_rect)
-
-    def is_clicked(self):
-        """Check if the button is clicked."""
-        mouse_pos = pygame.mouse.get_pos()
-        mouse_pressed = pygame.mouse.get_pressed()
-        return self.rect.collidepoint(mouse_pos) and mouse_pressed[0]

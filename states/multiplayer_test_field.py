@@ -8,18 +8,18 @@ import random
 
 from states.state import State
 from player import Player
+from maps.test_field_map import all_maps
 from managers.music_manager import MusicManager
 from power_up import PowerUp
 
 
 class MultiplayerTestField(State):
-    def __init__(self, game, selected_map, map_name):
+    def __init__(self, game, lobby, map_name):
         State.__init__(self, game)
 
-        self.selected_map = selected_map
+        self.lobby = lobby
         self.map_name = map_name
-
-        pygame.display.set_caption(f"BomberMan: {map_name}")
+        pygame.display.set_caption(f"BomberMan: {self.map_name}")
         self.game = game
         self.music_manager = MusicManager()
 
@@ -53,9 +53,39 @@ class MultiplayerTestField(State):
         self.bomb_icon = pygame.image.load("assets/bomb.png").convert_alpha()
         self.bomb_icon = pygame.transform.scale(self.bomb_icon, (30, 30))
 
-        self.tile_map = copy.deepcopy(selected_map)
+        self.tile_map = copy.deepcopy(all_maps[self.map_name])
         self.available_powerups = ["bomb_powerup", "range_powerup", "freeze_powerup", "live+_powerup", "shield_powerup"]
-        self.load_music()
-        self.place_hidden_powerups()
         self.trap_image = pygame.image.load("assets/environment/manhole.png").convert_alpha()
         self.trap_image = pygame.transform.scale(self.trap_image, (config.GRID_SIZE, config.GRID_SIZE))
+
+    def draw_grid(self, screen):
+        if self.map_name == "Crystal Caves":
+            screen.blit(self.cave_bg, (0, 0))
+            pass
+        if self.map_name == "Classic":
+            screen.blit(self.grass_bg, (0, 0))
+            pass
+        if self.map_name == "Desert Maze":
+            screen.blit(self.sand_bg, (0, 0))
+            pass
+        if self.map_name == "Ancient Ruins":
+            screen.blit(self.ruins_bg, (0, 0))
+            pass
+        if self.map_name == "Urban Assault":
+            screen.blit(self.urban_bg, (0, 0))
+            pass
+        else:
+            for line in range((config.SCREEN_WIDTH // config.GRID_SIZE) + 1):
+                pygame.draw.line(screen, config.COLOR_BLACK, (line * config.GRID_SIZE, 30),
+                                 (line * config.GRID_SIZE, config.SCREEN_HEIGHT))
+            for line in range((config.SCREEN_HEIGHT // config.GRID_SIZE) - 1):
+                pygame.draw.line(screen, config.COLOR_BLACK, (0, line * config.GRID_SIZE + 30),
+                                 (config.SCREEN_WIDTH, line * config.GRID_SIZE + 30))
+
+
+
+
+
+
+    def render(self, screen):
+        screen.fill((0, 0, 0))

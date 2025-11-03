@@ -2,6 +2,7 @@ import pygame
 import config
 import os
 from states.state import State
+from custom_classes.button import Button
 
 
 class Settings(State):
@@ -35,7 +36,9 @@ class Settings(State):
         self.editing_action = None
 
         # Buttons with PauseState style
-        self.back_button = Button(20, config.SCREEN_HEIGHT - 70, 150, 50, "Back")
+        self.back_button = Button(20, config.SCREEN_HEIGHT - 70, 150, 50, "Back",
+                                  font='CaveatBrush-Regular.ttf',
+                                  button_color=config.COLOR_BEIGE)
 
         # Mute button - keep icon, but wrap in Button for hover effect
         current_img = self.sound_on_img if self.volume > 0.0 else self.sound_off_img
@@ -63,13 +66,17 @@ class Settings(State):
 
             btn_p1 = Button(
                 start_x_p1, y, button_width, button_height,
-                f"P1 {action}: {pygame.key.name(self.key_bindings['player1'][i])}"
+                f"P1 {action}: {pygame.key.name(self.key_bindings['player1'][i])}",
+                font='CaveatBrush-Regular.ttf',
+                button_color=config.COLOR_BEIGE
             )
             self.key_bind_buttons[f"player1_{i}"] = btn_p1
 
             btn_p2 = Button(
                 start_x_p2, y, button_width, button_height,
-                f"P2 {action}: {pygame.key.name(self.key_bindings['player2'][i])}"
+                f"P2 {action}: {pygame.key.name(self.key_bindings['player2'][i])}",
+                font='CaveatBrush-Regular.ttf',
+                button_color=config.COLOR_BEIGE
             )
             self.key_bind_buttons[f"player2_{i}"] = btn_p2
 
@@ -185,36 +192,6 @@ class Settings(State):
                 True, config.COLOR_GREEN
             )
             screen.blit(editing_text, (500, 400))
-
-
-# Button class like in PauseState with hover highlight & rounded corners
-class Button:
-    def __init__(self, x, y, width, height, text, action=None):
-        self.rect = pygame.Rect(x, y, width, height)
-        self.text = text
-        self.font = pygame.font.Font(None, config.FONT_SIZE)
-        self.action = action
-        self.highlighted = False
-
-    def draw(self, screen):
-        mouse_pos = pygame.mouse.get_pos()
-        color = config.BUTTON_HOVER_COLOR if self.rect.collidepoint(mouse_pos) or self.highlighted else config.COLOR_BEIGE
-        pygame.draw.rect(screen, color, self.rect, border_radius=config.BUTTON_RADIUS)
-
-        text_surface = self.font.render(self.text, True, config.TEXT_COLOR)
-        text_rect = text_surface.get_rect(center=self.rect.center)
-        screen.blit(text_surface, text_rect)
-
-    def is_hovered(self, pos=None):
-        if pos is None:
-            pos = pygame.mouse.get_pos()
-        return self.rect.collidepoint(pos)
-
-    def is_clicked(self):
-        mouse_pos = pygame.mouse.get_pos()
-        mouse_pressed = pygame.mouse.get_pressed()
-        return self.rect.collidepoint(mouse_pos) and mouse_pressed[0]
-
 
 # IconButton for mute toggle, wraps an image with hover effect rectangle
 class IconButton:
