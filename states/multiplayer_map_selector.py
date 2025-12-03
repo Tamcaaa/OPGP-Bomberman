@@ -132,11 +132,6 @@ class MultiplayerMapSelector(State):
             elif packet_type == 'STATE_CHANGE':
                 self.exit_state()
                 self.state_manager.change_state(packet['data']['state'], self.lobby, self.final_map)
-
-
-
-
-
         except json.JSONDecodeError as e:
             print(f"[ERROR] JSON decode failed: {e}")
         except socket.timeout:
@@ -204,12 +199,12 @@ class MultiplayerMapSelector(State):
     def handle_events(self, event):
         if event.type == pygame.KEYDOWN:
             # If space is pressed and the final map is selected, exit the loop
-            if self.lobby.is_host:
-                if event.key == pygame.K_SPACE and self.final_map:
+            if self.final_map:
+                if event.key == pygame.K_SPACE and self.lobby.is_host:
                     self.broadcast_state_change('MultiplayerTestField')
                     self.exit_state()
                     self.state_manager.change_state("MultiplayerTestField", self.lobby, self.final_map)
-            if event.key == pygame.K_RETURN:
+            elif event.key == pygame.K_RETURN:
                 if self.players[self.player_name].vote_index is None:
                     self.confirm_vote()
                 else:
