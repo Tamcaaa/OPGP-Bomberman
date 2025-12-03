@@ -21,10 +21,7 @@ class Player(pygame.sprite.Sprite):
         self.bomb_group = self.test_field.bomb_group
         self.explosion_group = self.test_field.explosion_group
 
-        if self.player_id not in config.PLAYER_CONFIG:
-            raise ValueError(f"Invalid player id {self.player_id}")
-
-        # Gameplay premenné
+        # ---------------- Gameplay Vars ----------------
         self.health = config.HEALTH
         self.max_bomb_limit = config.MAX_BOMB_LIMIT
         self.currentBomb = config.CURRENTBOMB
@@ -36,12 +33,12 @@ class Player(pygame.sprite.Sprite):
         self.score = config.SCORE
         self.last_trap_time = config.LAST_TRAP_TIME
 
-        # Power-upy
+        # ---------------- PowerUps ----------------
         self.active_powerups: dict[str, float] = {}
         self.freeze_timer = config.FREEZE_TIMER
         self.iframe_timer = config.IFRAME_TIMER
 
-        # Animácie
+        # ---------------- Animations ----------------
         self.player_config = config.PLAYER_CONFIG[self.player_id]
         self.move_keys = self.player_config["move_keys"]
         self.current_direction = "idle"
@@ -51,7 +48,7 @@ class Player(pygame.sprite.Sprite):
         self.anim_fps = config.ANIM_FPS
         self.frame_duration = 1000 // self.anim_fps
 
-        # Idle systém
+        # ---------------- Idle Systems ----------------
         self.idle_start = pygame.time.get_ticks()
         self.afk_delay = config.AFK_DELAY
 
