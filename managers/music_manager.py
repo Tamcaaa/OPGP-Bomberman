@@ -6,9 +6,8 @@ import pygame
 class MusicManager:
     def __init__(self):
         self.music = {
-            "title": "assets/sounds/title.mid",
+            "title": "assets/sounds/title.mp3",
             "game_over": "assets/sounds/game_over.mp3",
-            "win": "assets/sounds/win.mid",
             "level": "assets/sounds/level.mp3",
         }
         self.sounds = {
