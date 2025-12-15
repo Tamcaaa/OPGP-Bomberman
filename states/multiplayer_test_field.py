@@ -122,36 +122,25 @@ class MultiplayerTestField(State):
             local_player.handle_queued_keys(now)
             # Send updated position to host / broadcast
             self.send_position()
+    # ---------------- Render ---------------
+    def draw_menu(self, screen):
+        num_players = len(self.players)
+        if num_players == 0:
+            return
+        spacing = config.SCREEN_WIDTH // num_players
+        for index, (name, player) in enumerate(self.players.items()):
+            x_base = index * spacing
+            # Heart
+            screen.blit(self.images['heart_image'], (x_base, 0))
+            # Lives
+            lives_text = self.game.font.render(f"x {player.get_health()}", True, config.COLOR_BLACK)
+            screen.blit(lives_text, (x_base + config.GRID_SIZE, 10))
+            # Bomb icon
+            screen.blit(self.images['bomb_icon'], (x_base + config.GRID_SIZE * 2, 0))
+            # Bomb count
+            bombs_text = self.game.font.render(f"x {player.get_max_bombs()}", True, config.COLOR_BLACK)
+            screen.blit(bombs_text, (x_base + config.GRID_SIZE * 3, 10))
 
-    # ---------------- Render ----------------
-        def draw_menu(self, screen):
-            player1_lives_text = self.game.font.render(f"x {self.players[0].get_health()}", True, config.COLOR_BLACK)
-            player2_lives_text = self.game.font.render(f"x {self.players[1].get_health()}", True, config.COLOR_BLACK)
-
-            screen.blit(player1_lives_text, (config.GRID_SIZE, 10))
-            screen.blit(player2_lives_text, (config.SCREEN_WIDTH - 3 * config.GRID_SIZE, 10))
-
-            screen.blit(self.images['heart_image'], (0, 0))
-            screen.blit(self.images['heart_image'], (config.SCREEN_WIDTH - 4 * config.GRID_SIZE, 0))
-
-
-
-            player1_bombs = self.game.font.render(f"x {self.players[0].get_max_bombs()}", True, config.COLOR_BLACK)
-            player2_bombs = self.game.font.render(f"x {self.players[1].get_max_bombs()}", True, config.COLOR_BLACK)
-
-            screen.blit(self.images['bomb_icon'], (config.GRID_SIZE * 2, 0))
-            screen.blit(self.images['bomb_icon'], (config.SCREEN_WIDTH - 2 * config.GRID_SIZE, 0))
-
-            screen.blit(player1_bombs, (config.GRID_SIZE * 3, 10))
-            screen.blit(player2_bombs, (config.SCREEN_WIDTH - config.GRID_SIZE, 10))
-
-            # Display active power-ups for each player
-            self.draw_active_powerups(screen)
-
-            # Display power-up message if active
-            if self.powerup_message:
-                message_text = self.game.font.render(self.powerup_message, True, config.COLOR_BLACK)
-                screen.blit(message_text, (config.SCREEN_WIDTH // 2 - message_text.get_width() // 2, 10))
     def draw_grid(self, screen):
         if self.map_name == "Crystal Caves":
             screen.blit(self.images['cave_bg'], (0, 0))
@@ -219,6 +208,7 @@ class MultiplayerTestField(State):
 
         self.draw_grid(screen)
         self.draw_walls(screen)
+        self.draw_menu(screen)
 
         # Draw players
         if self.players:
