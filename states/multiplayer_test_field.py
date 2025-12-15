@@ -10,8 +10,9 @@ from pyexpat.errors import messages
 from states.state import State
 from player import Player
 from managers.music_manager import MusicManager
-from maps.test_field_map import test_map
+from maps.test_field_map import all_maps
 import config
+from image_loader import load_images
 
 class MultiplayerTestField(State):
     def __init__(self, game, multiplayer_lobby, map_name):
@@ -23,13 +24,15 @@ class MultiplayerTestField(State):
         self.socket = self.lobby.socket
 
         # Load map
-        self.tile_map = copy.deepcopy(test_map)
+        self.tile_map = copy.deepcopy(all_maps[map_name])
 
         # Sprite groups
         self.bomb_group = pygame.sprite.Group()
         self.explosion_group = pygame.sprite.Group()
         self.powerup_group = pygame.sprite.Group()
 
+        # Load images
+        self.images = load_images()
 
         self.players = {}
         self.player_name = self.lobby.player_name
@@ -121,19 +124,102 @@ class MultiplayerTestField(State):
             self.send_position()
 
     # ---------------- Render ----------------
-    def draw_grid(self,screen):
-        for line in range((config.SCREEN_WIDTH // config.GRID_SIZE) + 1):
-            pygame.draw.line(screen, config.COLOR_BLACK, (line * config.GRID_SIZE, 30),
-                             (line * config.GRID_SIZE, config.SCREEN_HEIGHT))
-        for line in range((config.SCREEN_HEIGHT // config.GRID_SIZE) - 1):
-            pygame.draw.line(screen, config.COLOR_BLACK, (0, line * config.GRID_SIZE + 30),
-                             (config.SCREEN_WIDTH, line * config.GRID_SIZE + 30))
+        def draw_menu(self, screen):
+            player1_lives_text = self.game.font.render(f"x {self.players[0].get_health()}", True, config.COLOR_BLACK)
+            player2_lives_text = self.game.font.render(f"x {self.players[1].get_health()}", True, config.COLOR_BLACK)
+
+            screen.blit(player1_lives_text, (config.GRID_SIZE, 10))
+            screen.blit(player2_lives_text, (config.SCREEN_WIDTH - 3 * config.GRID_SIZE, 10))
+
+            screen.blit(self.images['heart_image'], (0, 0))
+            screen.blit(self.images['heart_image'], (config.SCREEN_WIDTH - 4 * config.GRID_SIZE, 0))
+
+
+
+            player1_bombs = self.game.font.render(f"x {self.players[0].get_max_bombs()}", True, config.COLOR_BLACK)
+            player2_bombs = self.game.font.render(f"x {self.players[1].get_max_bombs()}", True, config.COLOR_BLACK)
+
+            screen.blit(self.images['bomb_icon'], (config.GRID_SIZE * 2, 0))
+            screen.blit(self.images['bomb_icon'], (config.SCREEN_WIDTH - 2 * config.GRID_SIZE, 0))
+
+            screen.blit(player1_bombs, (config.GRID_SIZE * 3, 10))
+            screen.blit(player2_bombs, (config.SCREEN_WIDTH - config.GRID_SIZE, 10))
+
+            # Display active power-ups for each player
+            self.draw_active_powerups(screen)
+
+            # Display power-up message if active
+            if self.powerup_message:
+                message_text = self.game.font.render(self.powerup_message, True, config.COLOR_BLACK)
+                screen.blit(message_text, (config.SCREEN_WIDTH // 2 - message_text.get_width() // 2, 10))
+    def draw_grid(self, screen):
+        if self.map_name == "Crystal Caves":
+            screen.blit(self.images['cave_bg'], (0, 0))
+            pass
+        if self.map_name == "Classic":
+            screen.blit(self.images['grass_bg'], (0, 0))
+            pass
+        if self.map_name == "Desert Maze":
+            screen.blit(self.images['sand_bg'], (0, 0))
+            pass
+        if self.map_name == "Ancient Ruins":
+            screen.blit(self.images['ruins_bg'], (0, 0))
+            pass
+        if self.map_name == "Urban Assault":
+            screen.blit(self.images['urban_bg'], (0, 0))
+            pass
+        else:
+            for line in range((config.SCREEN_WIDTH // config.GRID_SIZE) + 1):
+                pygame.draw.line(screen, config.COLOR_BLACK, (line * config.GRID_SIZE, 30),
+                                 (line * config.GRID_SIZE, config.SCREEN_HEIGHT))
+            for line in range((config.SCREEN_HEIGHT // config.GRID_SIZE) - 1):
+                pygame.draw.line(screen, config.COLOR_BLACK, (0, line * config.GRID_SIZE + 30),
+                                 (config.SCREEN_WIDTH, line * config.GRID_SIZE + 30))
+    def draw_walls(self, screen):
+            for row_index, row in enumerate(self.tile_map):
+                for col_index, tile in enumerate(row):
+                    x = col_index * config.GRID_SIZE
+                    y = row_index * config.GRID_SIZE
+                    if tile in [0, 4, 5]:  # Empty space (no wall)
+                        if self.map_name not in ["Crystal Caves", "Desert Maze", "Classic", "Ancient Ruins","Urban Assault"]:  #  Only draw green tiles on other maps
+                            rect = pygame.Rect(x, y, config.GRID_SIZE, config.GRID_SIZE)
+                            color = config.COLOR_DARK_GREEN if (col_index + row_index) % 2 == 0 else config.COLOR_LIGHT_GREEN
+                            pygame.draw.rect(screen, color, rect)
+                        
+                    elif tile == 1:  # Unbreakable wall
+                        if self.map_name == "Crystal Caves":
+                            screen.blit(self.images['unbreakable_stone'], (x, y))
+                        elif self.map_name in ["Classic", "Desert Maze"]:
+                            screen.blit(self.images['unbreakable_box'], (x, y))
+                        elif self.map_name == "Ancient Ruins":
+                            screen.blit(self.images['unbreakable_rock'], (x, y))
+                        else:
+                            screen.blit(self.images['unbreakable_wall'], (x, y))
+                    elif tile == 2:  # Breakable wall
+                        if self.map_name == "Desert Maze":
+                            screen.blit(self.images['breakable_cactus'], (x, y))
+                        elif self.map_name == "Classic":
+                            screen.blit(self.images['breakable_bush'], (x, y))
+                        elif self.map_name == "Crystal Caves":
+                            screen.blit(self.images['breakable_diamond'], (x, y))
+                        elif self.map_name == "Ancient Ruins":
+                            screen.blit(self.images['breakable_rock'], (x, y))
+                        else:
+                            screen.blit(self.images['breakable_wall'], (x, y))
+                    if tile == 4:  # Blue cave
+                        screen.blit(self.images['blue_cave'], (x, y))
+                    if tile == 5:  # Red cave
+                        screen.blit(self.images['red_cave'], (x, y))
+                    elif tile == config.TRAP:  # Poklop
+                        screen.blit(self.images['trap_image'], (x, y))
 
 
     def render(self, screen):
         screen.fill(config.COLOR_WHITE)
 
         self.draw_grid(screen)
+        self.draw_walls(screen)
+
         # Draw players
         if self.players:
             for player in self.players.values():
