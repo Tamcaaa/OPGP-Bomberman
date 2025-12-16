@@ -1,5 +1,7 @@
 from operator import index
 
+
+import random
 import pygame
 import json
 import copy
@@ -7,6 +9,7 @@ import time
 
 from pyexpat.errors import messages
 
+from power_up import PowerUp
 from states.state import State
 from player import Player
 from managers.music_manager import MusicManager
@@ -31,6 +34,10 @@ class MultiplayerTestField(State):
         self.explosion_group = pygame.sprite.Group()
         self.powerup_group = pygame.sprite.Group()
 
+        # Hidden power-ups map - stores which bricks have power-ups underneath
+        self.hidden_powerups = {}  # Format: {(x, y): powerup_type}
+        self.place_hidden_powerups()
+
         # Load images
         self.images = load_images()
 
@@ -44,6 +51,7 @@ class MultiplayerTestField(State):
                 spawn = "spawn1" if player_name == self.player_name else "spawn4"
                 self.players[player_name] = Player(1 if spawn == "spawn1" else 2, spawn, self)
             self.send_player_list()
+
 
 
     # ---------------- Network ----------------
@@ -122,6 +130,41 @@ class MultiplayerTestField(State):
             local_player.handle_queued_keys(now)
             # Send updated position to host / broadcast
             self.send_position()
+
+    # --------------- Game Logic ----------------
+    def destroy_tile(self, x, y):
+        # Only handle brick tiles (2)
+        if self.tile_map[y][x] == 2:
+            # Check if there's a power-up hidden under this brick
+            if (x, y) in self.hidden_powerups:
+                powerup_type = self.hidden_powerups[(x, y)]
+                powerup = PowerUp(x, y, powerup_type)
+                powerup.reveal()
+                self.powerup_group.add(powerup)
+                del self.hidden_powerups[(x, y)]
+
+            # Update the map (brick is destroyed)
+            self.tile_map[y][x] = 0
+
+    def place_hidden_powerups(self):
+        brick_positions = []
+
+        for y in range(len(self.tile_map)):
+            for x in range(len(self.tile_map[y])):
+                if self.tile_map[y][x] == 2:
+                    brick_positions.append((x, y,))
+
+        # Determine how many power-ups to place (e.g., 40% of bricks)
+        num_powerups = int(len(brick_positions) * config.POWERUP_SPAWNING_RATE)
+
+        # Randomly select bricks to hide power-ups under
+        selected_bricks = random.sample(brick_positions, min(num_powerups, len(brick_positions)))
+
+        # Place power-ups under selected bricks
+        for x, y in selected_bricks:
+            powerup_type = random.choice(config.POWERUP_TYPES)
+            self.hidden_powerups[(x, y)] = powerup_type  # Only store type here
+
     # ---------------- Render ---------------
     def draw_menu(self, screen):
         num_players = len(self.players)
@@ -215,5 +258,16 @@ class MultiplayerTestField(State):
             for player in self.players.values():
                 player.update_animation()
                 screen.blit(player.image, player.rect)
+
+        # 🔥 Update explosions
+        self.bomb_group.update(self.explosion_group)
+        self.explosion_group.update()
+
+        # 🎮 Draw visible power-ups (not hidden ones)
+        self.powerup_group.draw(screen)
+
+        # 🎨 Draw objects
+        self.bomb_group.draw(screen)
+        self.explosion_group.draw(screen)
 
 
