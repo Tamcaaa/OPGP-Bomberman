@@ -62,11 +62,11 @@ class MultiplayerTestField(State):
             packet, _ = self.socket.recvfrom(1024)
             data = json.loads(packet.decode("utf-8"))
             if data.get("type") == "PLAYER_UPDATE":
-                player_id = data["player_id"]
+                player_username = data["player_username"]
                 x = data["x"]
                 y = data["y"]
-                if player_id in self.players and player_id != self.player_name:
-                    self.players[player_id].rect.topleft = (x, y)
+                if player_username in self.players and player_username != self.player_name:
+                    self.players[player_username].rect.topleft = (x, y)
             elif data.get('type') == 'PLAYER_LIST':
                 for player_name, spawn in data['list'].items():
                     self.players[player_name] = Player(1 if player_name == self.player_name else 2,spawn, self,username=player_name)
@@ -83,7 +83,7 @@ class MultiplayerTestField(State):
         player = self.players[self.player_name]
         packet = {
             "type": "PLAYER_UPDATE",
-            "player_id": self.player_name,
+            "player_username": self.player_name,
             "x": player.rect.x,
             "y": player.rect.y
         }
@@ -104,9 +104,14 @@ class MultiplayerTestField(State):
             for name, addr in self.lobby.players:
                 if name != self.player_name:
                     self.socket.sendto(message, addr)
-                    
+
     def send_bomb_placement(self, bomb_packet):
         message = json.dumps(bomb_packet).encode("utf-8")
+        for name, addr in self.lobby.players:
+            if name != self.player_name:
+                self.socket.sendto(message, addr)
+    def send_packet(self, packet):
+        message = json.dumps(packet).encode("utf-8")
         for name, addr in self.lobby.players:
             if name != self.player_name:
                 self.socket.sendto(message, addr)
@@ -133,7 +138,6 @@ class MultiplayerTestField(State):
             local_player = self.players[self.player_name]
             now = pygame.time.get_ticks()
             local_player.handle_queued_keys(now)
-            self.send_position()
     # --------------- Game Logic ----------------
     def destroy_tile(self, x, y):
         # Only handle brick tiles (2)

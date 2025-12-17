@@ -4,3 +4,4 @@ Ping system to check if server or client is alive
 Make a basic send packet class (its annoying to always type the same thing)
 The back button doesn't work if host is leaving
 self.action in button is useless????? wtf
+Add bomb x,y coordinates to BOMB_UPDATE packet in player.deploy_bomb()

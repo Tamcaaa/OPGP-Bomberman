@@ -264,6 +264,15 @@ class Player(pygame.sprite.Sprite):
         self.idle_start = pygame.time.get_ticks()
         self.music_manager.play_sound("walk", "walk_volume")
 
+        packet = {
+            "type": "PLAYER_UPDATE",
+            "player_username": self.username,
+            "x": self.rect.x,
+            "y": self.rect.y
+        }
+        self.test_field.send_packet(packet)
+
+
     def deploy_bomb(self, bomb_group, explosion_group):
         """Deploy a bomb at the player's current position."""
         if self.currentBomb > 0:
