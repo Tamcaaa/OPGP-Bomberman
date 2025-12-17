@@ -16,13 +16,14 @@ from managers.music_manager import MusicManager
 from maps.test_field_map import all_maps
 import config
 from image_loader import load_images
+from bomb import Bomb
 
 class MultiplayerTestField(State):
     def __init__(self, game, multiplayer_lobby, map_name):
         super().__init__(game)
-        pygame.display.set_caption(f"BomberMan: {map_name}")
 
         self.lobby = multiplayer_lobby
+        pygame.display.set_caption(f"BomberMan: {map_name} User: {self.lobby.player_name}")
         self.map_name = map_name
         self.socket = self.lobby.socket
 
@@ -49,7 +50,7 @@ class MultiplayerTestField(State):
             self.players = {}
             for player_name, _ in self.lobby.players:
                 spawn = "spawn1" if player_name == self.player_name else "spawn4"
-                self.players[player_name] = Player(1 if spawn == "spawn1" else 2, spawn, self)
+                self.players[player_name] = Player(1 if spawn == "spawn1" else 2, spawn, self,username=player_name)
             self.send_player_list()
 
 
@@ -68,22 +69,17 @@ class MultiplayerTestField(State):
                     self.players[player_id].rect.topleft = (x, y)
             elif data.get('type') == 'PLAYER_LIST':
                 for player_name, spawn in data['list'].items():
-                    self.players[player_name] = Player(1 if player_name == self.player_name else 2,spawn, self)
-            elif data.get("type") == "BOMB_UPDATE":
-                bomb_data = data["bombs"] 
-                for bomb_info in bomb_data:
-                    x = bomb_info["x"]
-                    y = bomb_info["y"]
-                    player_id = bomb_info["player_id"]
-                    if player_id in self.players:
-                        player = self.players[player_id]
-                        player.deploy_bomb(player.bomb_group,player.explosion_group)
+                    self.players[player_name] = Player(1 if player_name == self.player_name else 2,spawn, self,username=player_name)
+            elif data.get('type') == 'BOMB_UPDATE':
+                player_username = data['player_username']
+                Bomb(self.players[player_username], self.bomb_group, self.explosion_group,self)
+
         except (BlockingIOError,TimeoutError) as e:
             # No data received
             pass
 
     def send_position(self):
-        """Send local player position to host or broadcast"""
+        # Send local player position to other players
         player = self.players[self.player_name]
         packet = {
             "type": "PLAYER_UPDATE",
@@ -108,26 +104,12 @@ class MultiplayerTestField(State):
             for name, addr in self.lobby.players:
                 if name != self.player_name:
                     self.socket.sendto(message, addr)
-    def send_bomb_group(self):
-        """Send bomb placements to host or broadcast"""
-        bomb_data = []
-        for bomb in self.bomb_group.sprites():
-            bomb_data.append({
-                "x": bomb.rect.x,
-                "y": bomb.rect.y,
-                "player_id": bomb.player.player_name
-            })
-        packet = {
-            "type": "BOMB_UPDATE",
-            "bombs": bomb_data
-        }
-        message = json.dumps(packet).encode("utf-8")
-
-        # Broadcast to all clients
+                    
+    def send_bomb_placement(self, bomb_packet):
+        message = json.dumps(bomb_packet).encode("utf-8")
         for name, addr in self.lobby.players:
             if name != self.player_name:
                 self.socket.sendto(message, addr)
-
     # ---------------- Input ----------------
     def handle_events(self, event):
         player = self.players[self.player_name]
@@ -152,8 +134,6 @@ class MultiplayerTestField(State):
             now = pygame.time.get_ticks()
             local_player.handle_queued_keys(now)
             self.send_position()
-        if self.bomb_group.sprites():
-            self.send_bomb_group()
     # --------------- Game Logic ----------------
     def destroy_tile(self, x, y):
         # Only handle brick tiles (2)
