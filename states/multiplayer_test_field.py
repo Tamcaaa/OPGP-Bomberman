@@ -69,6 +69,15 @@ class MultiplayerTestField(State):
             elif data.get('type') == 'PLAYER_LIST':
                 for player_name, spawn in data['list'].items():
                     self.players[player_name] = Player(1 if player_name == self.player_name else 2,spawn, self)
+            elif data.get("type") == "BOMB_UPDATE":
+                bomb_data = data["bombs"] 
+                for bomb_info in bomb_data:
+                    x = bomb_info["x"]
+                    y = bomb_info["y"]
+                    player_id = bomb_info["player_id"]
+                    if player_id in self.players:
+                        player = self.players[player_id]
+                        player.deploy_bomb(player.bomb_group,player.explosion_group)
         except (BlockingIOError,TimeoutError) as e:
             # No data received
             pass
@@ -83,15 +92,10 @@ class MultiplayerTestField(State):
             "y": player.rect.y
         }
         message = json.dumps(packet).encode("utf-8")
+        for name, addr in self.lobby.players:
+            if name != self.player_name:
+                self.socket.sendto(message, addr)
 
-        if self.lobby.is_host:
-            # Broadcast to all clients
-            for name, addr in self.lobby.players:
-                if name != self.player_name:
-                    self.socket.sendto(message, addr)
-        else:
-            # Send only to host
-            self.socket.sendto(message, (self.lobby.address_to_join, 9999))
     def send_player_list(self):
         indexes = {key:('spawn1' if key == 'Server Host' else 'spawn4') for key in self.players.keys()}
         packet = {
@@ -104,6 +108,25 @@ class MultiplayerTestField(State):
             for name, addr in self.lobby.players:
                 if name != self.player_name:
                     self.socket.sendto(message, addr)
+    def send_bomb_group(self):
+        """Send bomb placements to host or broadcast"""
+        bomb_data = []
+        for bomb in self.bomb_group.sprites():
+            bomb_data.append({
+                "x": bomb.rect.x,
+                "y": bomb.rect.y,
+                "player_id": bomb.player.player_name
+            })
+        packet = {
+            "type": "BOMB_UPDATE",
+            "bombs": bomb_data
+        }
+        message = json.dumps(packet).encode("utf-8")
+
+        # Broadcast to all clients
+        for name, addr in self.lobby.players:
+            if name != self.player_name:
+                self.socket.sendto(message, addr)
 
     # ---------------- Input ----------------
     def handle_events(self, event):
@@ -128,9 +151,9 @@ class MultiplayerTestField(State):
             local_player = self.players[self.player_name]
             now = pygame.time.get_ticks()
             local_player.handle_queued_keys(now)
-            # Send updated position to host / broadcast
             self.send_position()
-
+        if self.bomb_group.sprites():
+            self.send_bomb_group()
     # --------------- Game Logic ----------------
     def destroy_tile(self, x, y):
         # Only handle brick tiles (2)
@@ -154,7 +177,7 @@ class MultiplayerTestField(State):
                 if self.tile_map[y][x] == 2:
                     brick_positions.append((x, y,))
 
-        # Determine how many power-ups to place (e.g., 40% of bricks)
+        # Determine how many power-ups to place
         num_powerups = int(len(brick_positions) * config.POWERUP_SPAWNING_RATE)
 
         # Randomly select bricks to hide power-ups under
