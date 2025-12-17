@@ -1,20 +1,15 @@
-from operator import index
-
-
 import random
 import pygame
 import json
 import copy
+import config
 import time
-
-from pyexpat.errors import messages
 
 from power_up import PowerUp
 from states.state import State
 from player import Player
 from managers.music_manager import MusicManager
 from maps.test_field_map import all_maps
-import config
 from image_loader import load_images
 from bomb import Bomb
 
@@ -26,6 +21,9 @@ class MultiplayerTestField(State):
         pygame.display.set_caption(f"BomberMan: {map_name} User: {self.lobby.player_name}")
         self.map_name = map_name
         self.socket = self.lobby.socket
+        
+        # Music manager
+        self.music_manager = MusicManager()
 
         # Load map
         self.tile_map = copy.deepcopy(all_maps[map_name])
@@ -43,21 +41,19 @@ class MultiplayerTestField(State):
         self.images = load_images()
 
         self.players = {}
-        self.player_name = self.lobby.player_name
+        self.player_username = self.lobby.player_name
 
         # Players: dict player_name -> Player object
         if self.lobby.is_host:
             self.players = {}
             for player_name, _ in self.lobby.players:
-                spawn = "spawn1" if player_name == self.player_name else "spawn4"
+                spawn = "spawn1" if player_name == self.player_username else "spawn4"
                 self.players[player_name] = Player(1 if spawn == "spawn1" else 2, spawn, self,username=player_name)
             self.send_player_list()
 
 
-
     # ---------------- Network ----------------
     def handle_network_packets(self):
-        """Receive updates from network (other players)"""
         try:
             packet, _ = self.socket.recvfrom(1024)
             data = json.loads(packet.decode("utf-8"))
@@ -65,11 +61,11 @@ class MultiplayerTestField(State):
                 player_username = data["player_username"]
                 x = data["x"]
                 y = data["y"]
-                if player_username in self.players and player_username != self.player_name:
+                if player_username in self.players and player_username != self.player_username:
                     self.players[player_username].rect.topleft = (x, y)
             elif data.get('type') == 'PLAYER_LIST':
                 for player_name, spawn in data['list'].items():
-                    self.players[player_name] = Player(1 if player_name == self.player_name else 2,spawn, self,username=player_name)
+                    self.players[player_name] = Player(1 if player_name == self.player_username else 2,spawn, self,username=player_name)
             elif data.get('type') == 'BOMB_UPDATE':
                 player_username = data['player_username']
                 Bomb(self.players[player_username], self.bomb_group, self.explosion_group,self)
@@ -77,20 +73,6 @@ class MultiplayerTestField(State):
         except (BlockingIOError,TimeoutError) as e:
             # No data received
             pass
-
-    def send_position(self):
-        # Send local player position to other players
-        player = self.players[self.player_name]
-        packet = {
-            "type": "PLAYER_UPDATE",
-            "player_username": self.player_name,
-            "x": player.rect.x,
-            "y": player.rect.y
-        }
-        message = json.dumps(packet).encode("utf-8")
-        for name, addr in self.lobby.players:
-            if name != self.player_name:
-                self.socket.sendto(message, addr)
 
     def send_player_list(self):
         indexes = {key:('spawn1' if key == 'Server Host' else 'spawn4') for key in self.players.keys()}
@@ -102,22 +84,22 @@ class MultiplayerTestField(State):
         if self.lobby.is_host:
             # Broadcast to all clients
             for name, addr in self.lobby.players:
-                if name != self.player_name:
+                if name != self.player_username:
                     self.socket.sendto(message, addr)
 
     def send_bomb_placement(self, bomb_packet):
         message = json.dumps(bomb_packet).encode("utf-8")
         for name, addr in self.lobby.players:
-            if name != self.player_name:
+            if name != self.player_username:
                 self.socket.sendto(message, addr)
     def send_packet(self, packet):
         message = json.dumps(packet).encode("utf-8")
         for name, addr in self.lobby.players:
-            if name != self.player_name:
+            if name != self.player_username:
                 self.socket.sendto(message, addr)
     # ---------------- Input ----------------
     def handle_events(self, event):
-        player = self.players[self.player_name]
+        player = self.players[self.player_username]
         if event.type == pygame.KEYDOWN:
             if event.key in player.move_keys and event.key not in player.held_down_keys:
                 player.held_down_keys.append(event.key)
@@ -132,12 +114,15 @@ class MultiplayerTestField(State):
     def update(self):
         # Update network first
         self.handle_network_packets()
-
         # Move local player based on held keys
         if self.players:
-            local_player = self.players[self.player_name]
+            local_player = self.players[self.player_username]
+            local_player.moving = False
             now = pygame.time.get_ticks()
             local_player.handle_queued_keys(now)
+            # Powerup updates
+            self.check_powerup_collisions()
+            local_player.update_powerups()
     # --------------- Game Logic ----------------
     def destroy_tile(self, x, y):
         # Only handle brick tiles (2)
@@ -171,7 +156,39 @@ class MultiplayerTestField(State):
         for x, y in selected_bricks:
             powerup_type = random.choice(config.POWERUP_TYPES)
             self.hidden_powerups[(x, y)] = powerup_type  # Only store type here
+    
+    def check_powerup_collisions(self):
+        if self.powerup_group is None:
+            return
+        # Only collect visible (not hidden) power-ups
+        visible_powerups = [p for p in self.powerup_group.sprites() if not p.hidden]
 
+        for powerup in visible_powerups:
+            if pygame.sprite.collide_rect(self.players[self.player_username], powerup):
+                self.powerup_message = powerup.apply_effect(self.players[self.player_username])
+                self.message_timer = pygame.time.get_ticks()
+                self.music_manager.play_sound("walk", "walk_volume")  # Play pickup sound
+                powerup.kill()  # Remove from sprite group
+
+    def draw_active_powerups(self, screen):
+        powerups_text = []
+
+        for powerup, expire_time in self.player_username.active_powerups.items():
+            remaining = round(expire_time - time.time(), 2)
+            if remaining > 0:
+                if powerup == "shield_powerup":
+                    powerups_text.append(f"Shield: {remaining}s")
+                elif powerup == 'freeze_powerup':
+                    powerups_text.append(f'Freeze: {remaining}s')
+
+        # Display Player 1 power-ups
+        y_offset = 40
+        for text in powerups_text:
+            powerup_text = self.game.font.render(text, True, config.COLOR_BLACK)
+            screen.blit(powerup_text, (10, y_offset))
+            y_offset += 20
+
+    
     # ---------------- Render ---------------
     def draw_menu(self, screen):
         num_players = len(self.players)
@@ -190,6 +207,13 @@ class MultiplayerTestField(State):
             # Bomb count
             bombs_text = self.game.font.render(f"x {player.get_max_bombs()}", True, config.COLOR_BLACK)
             screen.blit(bombs_text, (x_base + config.GRID_SIZE * 3, 10))
+        
+        #self.draw_active_powerups(screen)
+
+        # Display power-up message if active
+        if self.powerup_message:
+            message_text = self.game.font.render(self.powerup_message, True, config.COLOR_BLACK)
+            screen.blit(message_text, (config.SCREEN_WIDTH // 2 - message_text.get_width() // 2, 10))
 
     def draw_grid(self, screen):
         if self.map_name == "Crystal Caves":
@@ -270,7 +294,7 @@ class MultiplayerTestField(State):
         self.bomb_group.update(self.explosion_group)
         self.explosion_group.update()
 
-        # 🎮 Draw visible power-ups (not hidden ones)
+        # 🎮 Draw visible power-ups
         self.powerup_group.draw(screen)
 
         # 🎨 Draw objects
