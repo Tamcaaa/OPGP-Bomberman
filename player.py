@@ -177,8 +177,9 @@ class Player(pygame.sprite.Sprite):
             self.maxBombs += 1
             self.currentBomb += 1
         elif powerup_type == "freeze_powerup":
-            other_player = self.test_field.player2 if self.player_id == 1 else self.test_field.player1
-            other_player.freeze_timer = time.time() + duration
+            for player in self.test_field.players.values():
+                if player.username != self.username:
+                    player.freeze_timer = time.time() + duration
         elif powerup_type == "live+_powerup":
             self.health = min(self.health + 1, config.PLAYER_MAX_HEALTH)
         elif powerup_type == "shield_powerup":
@@ -187,7 +188,10 @@ class Player(pygame.sprite.Sprite):
         self.active_powerups[powerup_type] = now + duration
 
     def update_powerups(self):
-        """Update active power-ups and remove expired ones."""
+        if self.active_powerups is None:
+            return
+        
+        # Update active power-ups and remove expired ones.
         now = time.time()
         expired = []
         for powerup, expire_time in self.active_powerups.items():
@@ -276,8 +280,8 @@ class Player(pygame.sprite.Sprite):
     def deploy_bomb(self, bomb_group, explosion_group):
         """Deploy a bomb at the player's current position."""
         if self.currentBomb > 0:
-            Bomb(self, bomb_group, explosion_group, self.test_field)
             self.currentBomb -= 1
+            Bomb(self, bomb_group, explosion_group, self.test_field)
             packet = {
                 "type": "BOMB_UPDATE",
                 "player_username": self.username,
