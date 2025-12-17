@@ -11,10 +11,11 @@ SkinPayload = Union[None, ColorLike, Tuple[ColorLike, str]]
 
 
 class Player(pygame.sprite.Sprite):
-    def __init__(self, player_id: int, starting_location: str | tuple, test_field, skin: SkinPayload = None):
+    def __init__(self, player_id: int, starting_location: str | tuple, test_field,username = None, skin: SkinPayload = None):
         super().__init__()
 
         self.player_id = player_id
+        self.username = username if username is not None else f"UKNOWN_USER"
         self.skin = skin
         self.test_field = test_field
         self.music_manager = MusicManager()
@@ -267,7 +268,14 @@ class Player(pygame.sprite.Sprite):
         """Deploy a bomb at the player's current position."""
         if self.currentBomb > 0:
             Bomb(self, bomb_group, explosion_group, self.test_field)
-            self.currentBomb -= 1  # Decrement available bombs
+            self.currentBomb -= 1
+            packet = {
+                "type": "BOMB_UPDATE",
+                "player_username": self.username,
+            }
+            print(packet)
+            self.test_field.send_bomb_placement(packet)
+
 
     def find_paired_teleport(self, teleport_type, current_x, current_y):
         tiles = []
