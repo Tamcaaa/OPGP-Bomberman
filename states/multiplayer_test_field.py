@@ -40,6 +40,10 @@ class MultiplayerTestField(State):
         # Load images
         self.images = load_images()
 
+        # Feedback message for power-ups
+        self.powerup_message = ""
+        self.message_timer = 0
+
         self.players = {}
         self.player_username = self.lobby.player_name
 
@@ -112,17 +116,21 @@ class MultiplayerTestField(State):
 
     # ---------------- Update ----------------
     def update(self):
+        now = pygame.time.get_ticks()
         # Update network first
         self.handle_network_packets()
         # Move local player based on held keys
         if self.players:
             local_player = self.players[self.player_username]
             local_player.moving = False
-            now = pygame.time.get_ticks()
             local_player.handle_queued_keys(now)
             # Powerup updates
             self.check_powerup_collisions()
             local_player.update_powerups()
+                # Clear power-up message after 3 seconds
+        if self.message_timer > 0 and now - self.message_timer > 1500:
+            self.powerup_message = ""
+            self.message_timer = 0
     # --------------- Game Logic ----------------
     def destroy_tile(self, x, y):
         # Only handle brick tiles (2)
