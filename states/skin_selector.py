@@ -22,12 +22,11 @@ AVAILABLE_COLORS = {
 
 # --- Čiapky: názov, súbor, offset_x, offset_y (pre 8x sprite) ---
 HATS = [
-    {"name": "None",     "file": "",     "offset": (-6, -30)},
-    {"name": "Cap",      "file": "",     "offset": (-6, -30)},
-    {"name": "Note",     "file": "",     "offset": (-4, -38)},
-    {"name": "Devil",    "file": "",     "offset": (-2, -22)},
-    {"name": "Cowboy",   "file": "",     "offset": (-6, -34)},
-    {"name": "Crown",    "file": "",     "offset": (-4, -36)},
+    {"name": "None",      "file": None,             "offset": (0, 0)},
+    {"name": "Crown",     "file": "Crown.png",      "offset": (79, -30)},
+    {"name": "Cowboy",    "file": "Cowboy.png",     "offset": (79, -25)},
+    {"name": "Devil",     "file": "Devil.png",      "offset": (79, -10)},
+    {"name": "Cap",       "file": "Cap.png",        "offset": (79, -20)},
 ]
 
 TAB_COLORS = 0
@@ -57,25 +56,46 @@ class SkinSelector(State):
         self.last_idle_update = pygame.time.get_ticks()
         self.idle_fps = 4
 
+        # pre jemný pohyb čiapky hore/dole
+        # Inicializácia
+        
+
+        
         # Načítanie čiapok (thumbnails aj plná vrstva)
         self.hat_images = {}
         self.hat_thumbs = {}
+
         for hat in HATS:
-            path = os.path.join(game.photos_dir, "hats", hat["file"])
-            if os.path.exists(path):
-                img = pygame.image.load(path).convert_alpha()
-                self.hat_images[hat["name"]] = img
-                # thumbnail ~ 40px najdlhšia hrana (na riadok)
-                tw = 40
-                scale = tw / max(img.get_width(), img.get_height(), 1)
-                th_img = pygame.transform.smoothscale(
-                    img, (int(img.get_width()*scale), int(img.get_height()*scale))
-                )
-                self.hat_thumbs[hat["name"]] = th_img
-            else:
-                # žiadny placeholder – nič nekreslíme
-                self.hat_images[hat["name"]] = None
-                self.hat_thumbs[hat["name"]] = None
+            name = hat["name"]
+            file = hat["file"]
+
+            # None = žiadna čiapka, nič nenačítavame
+            if file is None:
+                self.hat_images[name] = None
+                self.hat_thumbs[name] = None
+                continue
+
+            path = os.path.join(game.photos_dir, "../assets/player_hats", file)
+
+            if not os.path.exists(path):
+                print("❌ Missing hat image:", path)
+                self.hat_images[name] = None
+                self.hat_thumbs[name] = None
+                continue
+
+            img = pygame.image.load(path).convert_alpha()
+            img = pygame.transform.smoothscale(img, (100, 100))
+
+            self.hat_images[name] = img
+
+            # thumbnail (~40px)
+            tw = 40
+            scale = tw / max(img.get_width(), img.get_height())
+            thumb = pygame.transform.smoothscale(
+                img,
+                (int(img.get_width() * scale), int(img.get_height() * scale))
+            )
+            self.hat_thumbs[name] = thumb
 
         # Stav výberu
         self.players = {
@@ -246,6 +266,20 @@ class SkinSelector(State):
 
 
     # ---- Zoznam Čiapok (scroll) ----
+    def get_idle_frame_for_preview(self):
+        """
+        Vráti správny idle frame pre preview, prípadne posledný frame.
+        """
+        frames = self.images["idle"]
+        # Použi frame_index cyklicky podľa času, aby animácia išla aj v preview
+        now = pygame.time.get_ticks()
+        frame_duration = 1000 // max(1, len(frames))  # dynamicky podľa počtu idle frames
+        frame_index = (now // frame_duration) % len(frames)
+        return frames[frame_index]
+
+    
+
+
     def draw_hats_list(self, screen, player_id, rect):
         area = self._list_area(rect)
 
@@ -310,35 +344,50 @@ class SkinSelector(State):
     # ---- Náhľad hráča (farba + čiapka) ----
     def draw_player_preview(self, screen, player_id, rect):
         color_keys = list(AVAILABLE_COLORS.keys())
-        frame = self.idle_frames[self.idle_index]
-        chosen_color = self.players[player_id]["color"]
-        if chosen_color is None:
-            idx = self.selected_index[player_id][TAB_COLORS]
-            chosen_color = color_keys[idx]
+        chosen_color = color_keys[self.selected_index[player_id][TAB_COLORS]]
+        
+
+        # --- Idle frame ---
+        num_frames = len(self.idle_frames)
+        frame_index = (pygame.time.get_ticks() // (1000 // self.idle_fps)) % num_frames
+        
+        frame = self.idle_frames[frame_index]
         img = self.tint_image(frame, chosen_color)
         if player_id == 2:
             img = pygame.transform.flip(img, True, False)
 
-        if player_id == 1:
-            px = rect.x + rect.width//2 - img.get_width()//2 + 45 
-        else:
-            px = rect.x + rect.width//2 - img.get_width()//2 - 45  
+        px = rect.x + rect.width // 2 - img.get_width() // 2 + (45 if player_id == 1 else -45)
         py = rect.y + 72
         screen.blit(img, (px, py))
+        # Čiapka presne podľa idle frame
+        HAT_IDLE_OFFSETS = [0, -4, 0]  # normál → hore → stojí hore
+        hat_offset = HAT_IDLE_OFFSETS[frame_index]
+        # --- Hat ---
+        hat_def = HATS[self.selected_index[player_id][TAB_HATS]]
+        hat_name = hat_def["name"]
+        if hat_name != "None":
+            hat_img = self.hat_images.get(hat_name)
+            if hat_img:
+                ox, oy = hat_def["offset"]
 
-        hat_name = self.players[player_id]["hat"]
-        if hat_name:
-            hat_def = next((h for h in HATS if h["name"] == hat_name), None)
-            if hat_def:
-                hat_img = self.hat_images[hat_name]
-                if hat_img is not None:
-                    ox, oy = hat_def["offset"]
-                    hx = px + ox
-                    hy = py + oy
-                    if player_id == 2:
-                        hat_img = pygame.transform.flip(hat_img, True, False)
-                        hx = px + (img.get_width() - hat_img.get_width()) - ox
-                    screen.blit(hat_img, (hx, hy))
+                # --- Len pre čiapku "Devil" (rohy) ---
+                if hat_name == "Devil":
+                    if not hasattr(self, 'preview_corner_offset'):
+                        self.preview_corner_offset = {1: 10, 2: -10}  # posuny pre ľavý/pravý preview
+                    ox += self.preview_corner_offset.get(player_id, 0)
+
+                hy = py + oy + hat_offset
+                hx = px + ox
+
+                if player_id == 2:
+                    hat_img = pygame.transform.flip(hat_img, True, False)
+
+                screen.blit(hat_img, (hx, hy))
+
+
+
+
+
 
     # ----------------- Draw -----------------
     def draw(self, screen):
@@ -391,91 +440,76 @@ class SkinSelector(State):
             cx = (config.SCREEN_WIDTH - self.font.size(cont)[0]) // 2
             self.blit_text_with_outline(screen, cont, self.font, (255,255,255), (cx, 24))
 
-        pygame.display.flip()
 
     # ----------------- Events -----------------
     def handle_events(self, event):
         color_keys = list(AVAILABLE_COLORS.keys())
 
-        # MOUSEWHEEL – scroll podľa panelu pod kurzorom
-        if event.type == pygame.MOUSEWHEEL:
-            mx, my = pygame.mouse.get_pos()
-            for pid in (1, 2):
-                rect = self.panel_rects[pid]
-                if rect.collidepoint(mx, my):
-                    tab = self.active_tab[pid]
-                    total = len(color_keys) if tab == TAB_COLORS else len(HATS)
-                    if total == 0: return
-                    # posun výberu o -event.y (wheel up = +1)
-                    delta = -event.y
-                    idx = self.selected_index[pid][tab]
-                    idx = (idx + delta) % total
-                    self.selected_index[pid][tab] = idx
-                    self._clamp_scroll(pid, tab, total, rect)
-                    return
-            return
-
         if event.type != pygame.KEYDOWN:
             return
 
-        # pomocný getter total items
         def total_count(tab):
             return len(color_keys) if tab == TAB_COLORS else len(HATS)
 
-        # --- Player 1 ---
+        # ================= PLAYER 1 =================
         if event.key == self.controls[1]['left']:
-            self.active_tab[1] = max(0, self.active_tab[1]-1)
+            self.active_tab[1] = max(0, self.active_tab[1] - 1)
+
         elif event.key == self.controls[1]['right']:
-            self.active_tab[1] = min(len(TAB_NAMES)-1, self.active_tab[1]+1)
+            self.active_tab[1] = min(len(TAB_NAMES) - 1, self.active_tab[1] + 1)
+
         elif event.key == self.controls[1]['up']:
             tab = self.active_tab[1]
             t = total_count(tab)
-            idx = (self.selected_index[1][tab]-1) % t
-            self.selected_index[1][tab] = idx
+            self.selected_index[1][tab] = (self.selected_index[1][tab] - 1) % t
             self._clamp_scroll(1, tab, t, self.panel_rects[1])
+
         elif event.key == self.controls[1]['down']:
             tab = self.active_tab[1]
             t = total_count(tab)
-            idx = (self.selected_index[1][tab]+1) % t
-            self.selected_index[1][tab] = idx
+            self.selected_index[1][tab] = (self.selected_index[1][tab] + 1) % t
             self._clamp_scroll(1, tab, t, self.panel_rects[1])
-        elif event.key == self.controls[1]['select']:
-            if self.active_tab[1] == TAB_COLORS:
-                chosen = color_keys[self.selected_index[1][TAB_COLORS]]
-                if chosen != self.players[2]["color"]:
-                    self.players[1]["color"] = chosen
-            else:
-                i = self.selected_index[1][TAB_HATS]
-                self.players[1]["hat"] = HATS[i]["name"]
 
-        # --- Player 2 ---
+        elif event.key == self.controls[1]['select']:
+            # ✔ ENTER = vždy uloží FARBU AJ ČIAPKU
+            color_idx = self.selected_index[1][TAB_COLORS]
+            chosen_color = color_keys[color_idx]
+            if chosen_color != self.players[2]["color"]:
+                self.players[1]["color"] = chosen_color
+
+            hat_idx = self.selected_index[1][TAB_HATS]
+            self.players[1]["hat"] = HATS[hat_idx]["name"]
+
+        # ================= PLAYER 2 =================
         if event.key == self.controls[2]['left']:
-            self.active_tab[2] = max(0, self.active_tab[2]-1)
+            self.active_tab[2] = max(0, self.active_tab[2] - 1)
+
         elif event.key == self.controls[2]['right']:
-            self.active_tab[2] = min(len(TAB_NAMES)-1, self.active_tab[2]+1)
+            self.active_tab[2] = min(len(TAB_NAMES) - 1, self.active_tab[2] + 1)
+
         elif event.key == self.controls[2]['up']:
             tab = self.active_tab[2]
             t = total_count(tab)
-            idx = (self.selected_index[2][tab]-1) % t
-            self.selected_index[2][tab] = idx
+            self.selected_index[2][tab] = (self.selected_index[2][tab] - 1) % t
             self._clamp_scroll(2, tab, t, self.panel_rects[2])
+
         elif event.key == self.controls[2]['down']:
             tab = self.active_tab[2]
             t = total_count(tab)
-            idx = (self.selected_index[2][tab]+1) % t
-            self.selected_index[2][tab] = idx
+            self.selected_index[2][tab] = (self.selected_index[2][tab] + 1) % t
             self._clamp_scroll(2, tab, t, self.panel_rects[2])
-        elif event.key == self.controls[2]['select']:
-            if self.active_tab[2] == TAB_COLORS:
-                chosen = color_keys[self.selected_index[2][TAB_COLORS]]
-                if chosen != self.players[1]["color"]:
-                    self.players[2]["color"] = chosen
-            else:
-                i = self.selected_index[2][TAB_HATS]
-                self.players[2]["hat"] = HATS[i]["name"]
 
-        # Enter až po výbere farieb (čiapky voliteľné)
-        if event.key == pygame.K_RETURN and self.players[1]["color"] and self.players[2]["color"]:
+        elif event.key == self.controls[2]['select']:
+            color_idx = self.selected_index[2][TAB_COLORS]
+            chosen_color = color_keys[color_idx]
+            if chosen_color != self.players[1]["color"]:
+                self.players[2]["color"] = chosen_color
+
+            hat_idx = self.selected_index[2][TAB_HATS]
+            self.players[2]["hat"] = HATS[hat_idx]["name"]
+
+        # ================= POKRAČOVANIE =================
+        if event.key == pygame.K_SPACE and self.players[1]["color"] and self.players[2]["color"]:
             payload = {
                 1: (self.players[1]["color"], self.players[1]["hat"]),
                 2: (self.players[2]["color"], self.players[2]["hat"]),

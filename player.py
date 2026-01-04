@@ -1,10 +1,10 @@
 import pygame
 import config
+import os
 import time
 from bomb import Bomb
 from managers.music_manager import MusicManager
 from typing import Optional, Tuple, Union, List
-
 
 ColorLike = Union[pygame.Color, Tuple[int, int, int], Tuple[int, int, int, int]]
 SkinPayload = Union[None, ColorLike, Tuple[ColorLike, str]]
@@ -15,6 +15,7 @@ class Player(pygame.sprite.Sprite):
         super().__init__()
 
         self.player_id = player_id
+        self.skin = skin
         self.test_field = test_field
         self.music_manager = MusicManager()
         self.bomb_group = self.test_field.bomb_group
@@ -307,3 +308,26 @@ class Player(pygame.sprite.Sprite):
             self.last_anim_update = now
 
         self.image = frames[self.frame_index]
+
+    def load_sprites(self):
+        # Idle frame
+        self.idle_frames = []
+        for i in range(3):
+            frame = pygame.image.load(
+                os.path.join("assets/player_color", f"p_{self.player_id}_idle_{i}.png")
+            ).convert_alpha()
+            self.idle_frames.append(pygame.transform.scale(frame, (frame.get_width()*8, frame.get_height()*8)))
+
+        # Farba z SkinSelector
+        if self.skin and self.skin[0]:  # self.skin = (color, hat_name)
+            self.idle_frames = [self.tint_image(f, self.skin[0]) for f in self.idle_frames]
+
+        self.image = self.idle_frames[0]
+        self.rect = self.image.get_rect()
+
+    def tint_image(self, image, color):
+        tinted = image.copy()
+        tint = pygame.Surface(image.get_size(), pygame.SRCALPHA)
+        tint.fill((*color, 255))
+        tinted.blit(tint, (0,0), special_flags=pygame.BLEND_MULT)
+        return tinted

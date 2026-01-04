@@ -164,7 +164,7 @@ FRAME_INDEX = 0
 # Walking animation slower
 ANIM_FPS = 4          
 # Idle system
-AFK_DELAY = 1000
+AFK_DELAY = 800
 
 
 
