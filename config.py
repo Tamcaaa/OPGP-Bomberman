@@ -36,18 +36,18 @@ BUTTON_COLOR = (88, 94, 149)
 BUTTON_HOVER_COLOR = (0, 100, 200)
 TEXT_COLOR = (95, 68, 46)
 # ----------------------------------------------------------------Player_colors-------------------------------------------------------------
-WHITE_PLAYER = (255, 255, 255)
-BLACK_PLAYER = (103, 103, 103)
-RED_PLAYER = (197, 17, 17)
-BLUE_PLAYER = (18, 62, 209)
-DARK_GREEN_PLAYER = (17, 127, 45)
-LIGHT_GREEN_PLAYER = (80, 239, 57)
-YELLOW_PLAYER = (245, 245, 87)
-PINK_PLAYER = (237, 84, 186)
-ORANGE_PLAYER = (239, 125, 13)
-PURPLE_PLAYER = (107, 47, 187)
-BROWN_PLAYER = (113, 73, 30)
-CYAN_PLAYER = (56, 254, 220)
+WHITE_PLAYER  = (255, 255, 255)   
+BLACK_PLAYER  = (103, 103, 103)    
+RED_PLAYER    = (220, 50, 50)    
+BLUE_PLAYER   = (50, 100, 220)   
+DARK_GREEN_PLAYER  = (30, 160, 80) 
+LIGHT_GREEN_PLAYER = (100, 220, 100) 
+YELLOW_PLAYER = (255, 230, 100)  
+PINK_PLAYER   = (255, 120, 180)   
+ORANGE_PLAYER = (255, 165, 50)   
+PURPLE_PLAYER = (150, 100, 255)  
+BROWN_PLAYER  = (160, 120, 80)  
+CYAN_PLAYER   = (50, 220, 220) 
 
 
 # ----------------------------------------------------------------Skin_selector-----------------------------------------------------------------
@@ -165,7 +165,22 @@ FRAME_INDEX = 0
 ANIM_FPS = 4          
 # Idle system
 AFK_DELAY = 800
-
+# HAT ANIMATION OFFSETS - Test_field.py
+GAME_HAT_OFFSETS = {
+    "Crown":  (5, -10),
+    "Cowboy": (5, -10),
+    "Cap":    (5, -6),
+    "Devil":  (15, -8),
+    "Cone":   (5, -10),
+    "Halo":   (5, -8),
+}
+HAT_ANIM_OFFSETS = {
+    "idle":  [0, -1, 0],
+    "down":  [0, 1, 1],
+    "up":    [1, 0, 1],
+    "right": [0, 0, -1],
+    "left":  [0, -1, 0],
+}
 
 
 # ---------------------------------------------------------------Map_Selector---------------------------------------------------------------
@@ -185,3 +200,16 @@ SEL_CARD_WIDTH = 240
 SEL_CARD_HEIGHT = 180
 SEL_CARD_SPACING = 60
 
+#------SKIN SELECTOR CONSTANTS------
+HATS = [
+    {"name": "None",      "file": None,             "offset": (0, 0)},
+    {"name": "Crown",     "file": "Crown.png",      "offset": (79, -30)},
+    {"name": "Halo",     "file": "Halo.png",        "offset": (79, -20)},
+    {"name": "Cowboy",    "file": "Cowboy.png",     "offset": (79, -25)},
+    {"name": "Devil",     "file": "Devil.png",      "offset": (79, -10)},
+    {"name": "Cone",      "file": "Cone.png",       "offset": (79, -20)},
+    {"name": "Cap",       "file": "Cap.png",        "offset": (79, -20)},
+]
+TAB_COLORS = 0
+TAB_HATS   = 1
+TAB_NAMES  = ["Farby", "Čiapky"]
