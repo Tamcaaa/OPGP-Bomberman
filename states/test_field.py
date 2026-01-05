@@ -279,12 +279,12 @@ class TestField(State):
 
             # --- Čiapka podľa skinu ---
             if player.skin:
-                color, hat_name, *_ = player.skin
+                hat_name = player.hat
                 if hat_name and hat_name != "None":
                     # HATS obsahuje offset pre hru
                     hat_def = next((h for h in HATS if h["name"] == hat_name), None)
                     if hat_def:
-                        hat_img = self.game.skin_selector.hat_images.get(hat_name)
+                        hat_img = self.hat_images[hat_name]
                         if hat_img:
                             ox, oy = hat_def.get("offset", (0,0))  # offset pre hru
 
@@ -294,8 +294,8 @@ class TestField(State):
                                     self.game_corner_offset = {1: 10, 2: -10}
                                 ox += self.game_corner_offset.get(player.player_id, 0)
 
-                            hx = player.rect.x + ox
-                            hy = player.rect.y + oy
+                            hx = player.rect.x
+                            hy = player.rect.y
 
                             # Flip pre hráča 2
                             if player.player_id == 2:
