@@ -9,13 +9,14 @@ class MusicManager:
             "title": "assets/sounds/title.mp3",
             "game_over": "assets/sounds/game_over.mp3",
             "level": "assets/sounds/level.mp3",
+            "pause": "assets/sounds/pausemusic.mp3"
         }
         self.sounds = {
             "explosion": "assets/sounds/explosion.mp3",
-            "walk": "assets/sounds/walk.wav",
+            "walk": "assets/sounds/walk.mp3",
+            "hit": "assets/sounds/hit.mp3",
             "death": "assets/sounds/death.wav",
             'move_map_selector': "assets/sounds/move.wav",
-            'select_map_selector': "assets/sounds/select.wav",
             'final_map_selector': "assets/sounds/final.wav"
         }
 

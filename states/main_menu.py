@@ -45,7 +45,6 @@ class MainMenu(State):
     def handle_events(self, event):
         """Handle button clicks."""
         if self.singleplayer_button.is_clicked():
-            pygame.mixer_music.stop()
             self.enter_single_player()
         elif self.multiplayer_button.is_clicked():
             self.state_manager.change_state("MultiplayerSelector")

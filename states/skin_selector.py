@@ -2,6 +2,7 @@ import pygame, os
 from states.state import State
 import config
 from managers.state_manager import StateManager
+from managers.music_manager import MusicManager
 
 # --- Dostupné farby ---
 AVAILABLE_COLORS = {
@@ -105,6 +106,7 @@ class SkinSelector(State):
             1: pygame.Rect(40, 70, 360, 400),
             2: pygame.Rect(config.SCREEN_WIDTH - 400, 70, 360, 400),
         }
+
         self.panel_pad = 20
         self.row_spacing = 46     # výška jedného riadku
         self.list_left_pad = 24   # kde sa kreslí chip/thumbnail
@@ -115,10 +117,10 @@ class SkinSelector(State):
 
         # Ovládanie
         self.controls = {
-            1: {'up': pygame.K_UP, 'down': pygame.K_DOWN, 'left': pygame.K_LEFT,
-                'right': pygame.K_RIGHT, 'select': pygame.K_RETURN},
-            2: {'up': pygame.K_w, 'down': pygame.K_s, 'left': pygame.K_a,
+            1: {'up': pygame.K_w, 'down': pygame.K_s, 'left': pygame.K_a,
                 'right': pygame.K_d, 'select': pygame.K_LSHIFT},
+            2: {'up': pygame.K_UP, 'down': pygame.K_DOWN, 'left': pygame.K_LEFT,
+                'right': pygame.K_RIGHT, 'select': pygame.K_RETURN},
         }
 
     # ----------------- Pomocné -----------------
@@ -148,8 +150,21 @@ class SkinSelector(State):
     def draw_panel(self, surface, rect):
         x, y, w, h = rect
         s = pygame.Surface((w, h), pygame.SRCALPHA)
-        pygame.draw.rect(s, (15, 20, 30, 200), (0, 0, w, h), border_radius=14)
-        pygame.draw.rect(s, (255, 255, 255, 50), (0, 0, w, h), width=1, border_radius=14)
+
+        pygame.draw.rect(
+            s,
+            (15, 20, 30, 200),
+            (0, 0, w, h),
+            border_radius=18
+        )
+
+        pygame.draw.rect(
+            s,
+            (*config.MENU_OUTLINE, 200),
+            s.get_rect(),
+            width=1,
+            border_radius=10
+        )
         surface.blit(s, (x, y))
 
     def blit_text_with_outline(self, surface, text, font, color, pos):
@@ -177,13 +192,13 @@ class SkinSelector(State):
             pygame.Rect(x0 + half + 4, y0, half-4, self.tab_height),
         ]
         for i, r in enumerate(tabs):
-            bg = (40, 50, 70, 220) if i == active_tab else (25, 30, 45, 160)
+            bg = (*config.MENU_PAPER_DARK, 220) if i == active_tab else (15, 20, 30, 160)
             bar = pygame.Surface((r.width, r.height), pygame.SRCALPHA)
             pygame.draw.rect(bar, bg, bar.get_rect(), border_radius=10)
-            pygame.draw.rect(bar, (255,255,255,70), bar.get_rect(), width=1, border_radius=10)
+            pygame.draw.rect(bar, (*config.MENU_OUTLINE,200), bar.get_rect(), width=1, border_radius=10)
             surface.blit(bar, (r.x, r.y))
             label = config.TAB_NAMES[i]
-            color = (255,255,255) if i == active_tab else (200,200,220)
+            color = (config.MENU_TEXT) if i == active_tab else (120,90,60)
             self.blit_text_with_outline(surface, label, self.small_font, color, (r.x+10, r.y+6))
 
     def tint_image(self, image, color):

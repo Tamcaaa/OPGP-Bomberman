@@ -13,10 +13,10 @@ MOVE_COOLDOWN = 120
 
 MUSIC_VOLUME = {
     "main_menu_volume": 0.25,
-    "level_volume": 0.5,
+    "level_volume": 0.4,
     "game_over_volume": 0.5,
-    "explosion_volume": 1,
-    "walk_volume": 0.5,
+    "explosion_volume": 0.5,
+    "walk_volume": 0.1,
     "death_volume": 1
 
 }
@@ -212,4 +212,8 @@ HATS = [
 ]
 TAB_COLORS = 0
 TAB_HATS   = 1
-TAB_NAMES  = ["Farby", "Čiapky"]
+TAB_NAMES  = ["Farby", "Čiapky"]  
+MENU_OUTLINE = (140, 105, 65)     
+MENU_TEXT = (95, 68, 46)         
+MENU_DISABLED = (190, 170, 145)
+MENU_PAPER_DARK = (211, 161, 105)

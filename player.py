@@ -164,6 +164,7 @@ class Player(pygame.sprite.Sprite):
             return
         if bool(pygame.sprite.spritecollide(self, self.explosion_group, False)):  # type: ignore[arg-type]
             self.iframe_timer = time.time()
+            self.music_manager.play_sound("hit", "level_volume")
             self.health -= 1
             return True
         return False
