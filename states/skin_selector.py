@@ -2,6 +2,7 @@ import pygame, os
 from states.state import State
 import config
 from managers.state_manager import StateManager
+from managers.music_manager import MusicManager
 
 # --- Dostupné farby ---
 AVAILABLE_COLORS = {
@@ -17,21 +18,7 @@ AVAILABLE_COLORS = {
     config.PURPLE_PLAYER: "Purple",
     config.BROWN_PLAYER: "Brown",
     config.CYAN_PLAYER: "Cyan"
-    
 }
-
-# --- Čiapky: názov, súbor, offset_x, offset_y (pre 8x sprite) ---
-HATS = [
-    {"name": "None",      "file": None,             "offset": (0, 0)},
-    {"name": "Crown",     "file": "Crown.png",      "offset": (79, -30)},
-    {"name": "Cowboy",    "file": "Cowboy.png",     "offset": (79, -25)},
-    {"name": "Devil",     "file": "Devil.png",      "offset": (79, -10)},
-    {"name": "Cap",       "file": "Cap.png",        "offset": (79, -20)},
-]
-
-TAB_COLORS = 0
-TAB_HATS   = 1
-TAB_NAMES  = ["Farby", "Čiapky"]
 
 class SkinSelector(State):
     def __init__(self, game):
@@ -56,16 +43,11 @@ class SkinSelector(State):
         self.last_idle_update = pygame.time.get_ticks()
         self.idle_fps = 4
 
-        # pre jemný pohyb čiapky hore/dole
-        # Inicializácia
-        
-
-        
         # Načítanie čiapok (thumbnails aj plná vrstva)
         self.hat_images = {}
         self.hat_thumbs = {}
 
-        for hat in HATS:
+        for hat in config.HATS:
             name = hat["name"]
             file = hat["file"]
 
@@ -103,15 +85,15 @@ class SkinSelector(State):
             2: {"color": None, "hat": None},
         }
         self.selected_index = {
-            1: {TAB_COLORS: 0, TAB_HATS: 0},
-            2: {TAB_COLORS: 0, TAB_HATS: 0},
+            1: {config.TAB_COLORS: 0, config.TAB_HATS: 0},
+            2: {config.TAB_COLORS: 0, config.TAB_HATS: 0},
         }
-        self.active_tab = {1: TAB_COLORS, 2: TAB_COLORS}
+        self.active_tab = {1: config.TAB_COLORS, 2: config.TAB_COLORS}
 
         # Scroll okná (prvý viditeľný index) – zvlášť pre hráča a tabu
         self.scroll_top = {
-            1: {TAB_COLORS: 0, TAB_HATS: 0},
-            2: {TAB_COLORS: 0, TAB_HATS: 0},
+            1: {config.TAB_COLORS: 0, config.TAB_HATS: 0},
+            2: {config.TAB_COLORS: 0, config.TAB_HATS: 0},
         }
 
         # Fonty
@@ -124,6 +106,7 @@ class SkinSelector(State):
             1: pygame.Rect(40, 70, 360, 400),
             2: pygame.Rect(config.SCREEN_WIDTH - 400, 70, 360, 400),
         }
+
         self.panel_pad = 20
         self.row_spacing = 46     # výška jedného riadku
         self.list_left_pad = 24   # kde sa kreslí chip/thumbnail
@@ -134,10 +117,10 @@ class SkinSelector(State):
 
         # Ovládanie
         self.controls = {
-            1: {'up': pygame.K_UP, 'down': pygame.K_DOWN, 'left': pygame.K_LEFT,
-                'right': pygame.K_RIGHT, 'select': pygame.K_RETURN},
-            2: {'up': pygame.K_w, 'down': pygame.K_s, 'left': pygame.K_a,
+            1: {'up': pygame.K_w, 'down': pygame.K_s, 'left': pygame.K_a,
                 'right': pygame.K_d, 'select': pygame.K_LSHIFT},
+            2: {'up': pygame.K_UP, 'down': pygame.K_DOWN, 'left': pygame.K_LEFT,
+                'right': pygame.K_RIGHT, 'select': pygame.K_RETURN},
         }
 
     # ----------------- Pomocné -----------------
@@ -167,8 +150,21 @@ class SkinSelector(State):
     def draw_panel(self, surface, rect):
         x, y, w, h = rect
         s = pygame.Surface((w, h), pygame.SRCALPHA)
-        pygame.draw.rect(s, (15, 20, 30, 200), (0, 0, w, h), border_radius=14)
-        pygame.draw.rect(s, (255, 255, 255, 50), (0, 0, w, h), width=1, border_radius=14)
+
+        pygame.draw.rect(
+            s,
+            (15, 20, 30, 200),
+            (0, 0, w, h),
+            border_radius=18
+        )
+
+        pygame.draw.rect(
+            s,
+            (*config.MENU_OUTLINE, 200),
+            s.get_rect(),
+            width=1,
+            border_radius=10
+        )
         surface.blit(s, (x, y))
 
     def blit_text_with_outline(self, surface, text, font, color, pos):
@@ -196,13 +192,13 @@ class SkinSelector(State):
             pygame.Rect(x0 + half + 4, y0, half-4, self.tab_height),
         ]
         for i, r in enumerate(tabs):
-            bg = (40, 50, 70, 220) if i == active_tab else (25, 30, 45, 160)
+            bg = (*config.MENU_PAPER_DARK, 220) if i == active_tab else (15, 20, 30, 160)
             bar = pygame.Surface((r.width, r.height), pygame.SRCALPHA)
             pygame.draw.rect(bar, bg, bar.get_rect(), border_radius=10)
-            pygame.draw.rect(bar, (255,255,255,70), bar.get_rect(), width=1, border_radius=10)
+            pygame.draw.rect(bar, (*config.MENU_OUTLINE,200), bar.get_rect(), width=1, border_radius=10)
             surface.blit(bar, (r.x, r.y))
-            label = TAB_NAMES[i]
-            color = (255,255,255) if i == active_tab else (200,200,220)
+            label = config.TAB_NAMES[i]
+            color = (config.MENU_TEXT) if i == active_tab else (120,90,60)
             self.blit_text_with_outline(surface, label, self.small_font, color, (r.x+10, r.y+6))
 
     def tint_image(self, image, color):
@@ -230,7 +226,7 @@ class SkinSelector(State):
         color_keys = list(AVAILABLE_COLORS.keys())
         total = len(color_keys)
         vis = self._visible_count(rect)
-        top = self.scroll_top[player_id][TAB_COLORS]
+        top = self.scroll_top[player_id][config.TAB_COLORS]
 
         prev_clip = screen.get_clip()
         screen.set_clip(area)
@@ -251,7 +247,7 @@ class SkinSelector(State):
                 align = "right"
 
             chosen_by_other = (self.players[2]["color"] == color_keys[idx]) if player_id == 1 else (self.players[1]["color"] == color_keys[idx])
-            selected = (self.selected_index[player_id][TAB_COLORS] == idx)
+            selected = (self.selected_index[player_id][config.TAB_COLORS] == idx)
             self.draw_chip(screen, (cx, y), self.chip_radius, color_keys[idx], chosen_by_other, selected, ring)
 
             name = AVAILABLE_COLORS[color_keys[idx]]
@@ -287,9 +283,9 @@ class SkinSelector(State):
         pygame.draw.rect(screen, (30, 38, 55), area, border_radius=10)
 
         ring = config.COLOR_RED if player_id == 1 else config.COLOR_BLUE
-        total = len(HATS)
+        total = len(config.HATS)
         vis = self._visible_count(rect)
-        top = self.scroll_top[player_id][TAB_HATS]
+        top = self.scroll_top[player_id][config.TAB_HATS]
 
         prev_clip = screen.get_clip()
         screen.set_clip(area)
@@ -298,18 +294,18 @@ class SkinSelector(State):
             idx = top + i
             if idx >= total:
                 break
-            hat = HATS[idx]
+            hat = config.HATS[idx]
             y = area.y + i*self.row_spacing + self.row_spacing//2
 
             if player_id == 1:
-                tx = area.x + self.list_left_pad - 18
+                tx = area.x + self.list_left_pad - 10
                 name_x = tx + 50
                 thumb = self.hat_thumbs[hat["name"]]
                 if thumb is not None:
                     screen.blit(thumb, (tx, y-18))
                 self.blit_text_with_outline(screen, hat["name"], self.info_font, (230,230,240), (name_x, y-12))
             else:
-                tx = area.right - self.list_left_pad - 22
+                tx = area.right - self.list_left_pad - 8
                 thumb = self.hat_thumbs[hat["name"]]
                 if thumb is not None:
                     screen.blit(thumb, (tx - thumb.get_width(), y-18))
@@ -321,7 +317,7 @@ class SkinSelector(State):
                     self.blit_text_with_outline(screen, hat["name"], self.info_font, (230,230,240),
                                                 (tx - 10 - w, y-12))
 
-            if self.selected_index[player_id][TAB_HATS] == idx:
+            if self.selected_index[player_id][config.TAB_HATS] == idx:
                 # border len vo vnútri list area
                 inner = pygame.Rect(area.x+4, y - self.row_spacing//2 + 4, area.width-8, self.row_spacing-8)
                 pygame.draw.rect(screen, ring, inner, width=2, border_radius=10)
@@ -344,7 +340,7 @@ class SkinSelector(State):
     # ---- Náhľad hráča (farba + čiapka) ----
     def draw_player_preview(self, screen, player_id, rect):
         color_keys = list(AVAILABLE_COLORS.keys())
-        chosen_color = color_keys[self.selected_index[player_id][TAB_COLORS]]
+        chosen_color = color_keys[self.selected_index[player_id][config.TAB_COLORS]]
         
 
         # --- Idle frame ---
@@ -363,7 +359,7 @@ class SkinSelector(State):
         HAT_IDLE_OFFSETS = [0, -4, 0]  # normál → hore → stojí hore
         hat_offset = HAT_IDLE_OFFSETS[frame_index]
         # --- Hat ---
-        hat_def = HATS[self.selected_index[player_id][TAB_HATS]]
+        hat_def = config.HATS[self.selected_index[player_id][config.TAB_HATS]]
         hat_name = hat_def["name"]
         if hat_name != "None":
             hat_img = self.hat_images.get(hat_name)
@@ -408,12 +404,12 @@ class SkinSelector(State):
         self.draw_tab_bar(screen, self.panel_rects[2], self.active_tab[2])
 
         # Zoznamy
-        if self.active_tab[1] == TAB_COLORS:
+        if self.active_tab[1] == config.TAB_COLORS:
             self.draw_colors_list(screen, 1, self.panel_rects[1])
         else:
             self.draw_hats_list(screen, 1, self.panel_rects[1])
 
-        if self.active_tab[2] == TAB_COLORS:
+        if self.active_tab[2] == config.TAB_COLORS:
             self.draw_colors_list(screen, 2, self.panel_rects[2])
         else:
             self.draw_hats_list(screen, 2, self.panel_rects[2])
@@ -449,14 +445,14 @@ class SkinSelector(State):
             return
 
         def total_count(tab):
-            return len(color_keys) if tab == TAB_COLORS else len(HATS)
+            return len(color_keys) if tab == config.TAB_COLORS else len(config.HATS)
 
         # ================= PLAYER 1 =================
         if event.key == self.controls[1]['left']:
             self.active_tab[1] = max(0, self.active_tab[1] - 1)
 
         elif event.key == self.controls[1]['right']:
-            self.active_tab[1] = min(len(TAB_NAMES) - 1, self.active_tab[1] + 1)
+            self.active_tab[1] = min(len(config.TAB_NAMES) - 1, self.active_tab[1] + 1)
 
         elif event.key == self.controls[1]['up']:
             tab = self.active_tab[1]
@@ -472,20 +468,20 @@ class SkinSelector(State):
 
         elif event.key == self.controls[1]['select']:
             # ✔ ENTER = vždy uloží FARBU AJ ČIAPKU
-            color_idx = self.selected_index[1][TAB_COLORS]
+            color_idx = self.selected_index[1][config.TAB_COLORS]
             chosen_color = color_keys[color_idx]
             if chosen_color != self.players[2]["color"]:
                 self.players[1]["color"] = chosen_color
 
-            hat_idx = self.selected_index[1][TAB_HATS]
-            self.players[1]["hat"] = HATS[hat_idx]["name"]
+            hat_idx = self.selected_index[1][config.TAB_HATS]
+            self.players[1]["hat"] = config.HATS[hat_idx]["name"]
 
         # ================= PLAYER 2 =================
         if event.key == self.controls[2]['left']:
             self.active_tab[2] = max(0, self.active_tab[2] - 1)
 
         elif event.key == self.controls[2]['right']:
-            self.active_tab[2] = min(len(TAB_NAMES) - 1, self.active_tab[2] + 1)
+            self.active_tab[2] = min(len(config.TAB_NAMES) - 1, self.active_tab[2] + 1)
 
         elif event.key == self.controls[2]['up']:
             tab = self.active_tab[2]
@@ -500,13 +496,13 @@ class SkinSelector(State):
             self._clamp_scroll(2, tab, t, self.panel_rects[2])
 
         elif event.key == self.controls[2]['select']:
-            color_idx = self.selected_index[2][TAB_COLORS]
+            color_idx = self.selected_index[2][config.TAB_COLORS]
             chosen_color = color_keys[color_idx]
             if chosen_color != self.players[1]["color"]:
                 self.players[2]["color"] = chosen_color
 
-            hat_idx = self.selected_index[2][TAB_HATS]
-            self.players[2]["hat"] = HATS[hat_idx]["name"]
+            hat_idx = self.selected_index[2][config.TAB_HATS]
+            self.players[2]["hat"] = config.HATS[hat_idx]["name"]
 
         # ================= POKRAČOVANIE =================
         if event.key == pygame.K_SPACE and self.players[1]["color"] and self.players[2]["color"]:

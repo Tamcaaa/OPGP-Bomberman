@@ -10,14 +10,23 @@ from states.settings import Settings
 
 
 class PauseState(State):
-    def __init__(self, game,map_selected,map_name):
+    def __init__(self, game, map_selected, map_name):
         super().__init__(game)
         self.font = pygame.font.Font(None, 60)
         self.selected_option = 0
         self.map_selected = map_selected
         self.map_name = map_name
+        self.music_manager = MusicManager()
+        
+        # --- Ulož stav hudby hry ---
+        self.prev_music_playing = pygame.mixer.music.get_busy()
+        if self.prev_music_playing:
+            pygame.mixer.music.pause()
 
-        # Výpočty pre zarovnanie
+        # --- Spusti hudbu pauzy hneď ---
+        self.load_music()
+        
+        # Výpočty pre zarovnanie tlačidiel
         left_x = 200
         bottom_y = config.SCREEN_HEIGHT - 100  
         spacing = 15
@@ -26,15 +35,19 @@ class PauseState(State):
 
         self.buttons = [
             Button(left_x, start_y + i * (config.BUTTON_HEIGHT + spacing),
-                   config.BUTTON_WIDTH, config.BUTTON_HEIGHT, text,font='CaveatBrush-Regular.ttf',button_color=config.COLOR_BEIGE)
+                   config.BUTTON_WIDTH, config.BUTTON_HEIGHT, text,
+                   font='CaveatBrush-Regular.ttf', button_color=config.COLOR_BEIGE)
             for i, text in enumerate(["Resume", "Restart", "Map Select", "Settings", "Main Menu"])
         ]
 
+        # Pozadie pauzy
         self.background_image = pygame.transform.scale(
             pygame.image.load(os.path.join("assets", "pause.png")).convert_alpha(),
             (config.SCREEN_WIDTH, config.SCREEN_HEIGHT)
         )
-        pygame.mixer.music.pause()
+
+    def load_music(self):
+        self.music_manager.play_music('pause', 'main_menu_volume', loop=True)
 
     def handle_events(self, event):
         if event.type == pygame.KEYDOWN:
@@ -46,7 +59,6 @@ class PauseState(State):
                 self.selected_option = (self.selected_option + 1) % len(self.buttons)
             elif event.key == pygame.K_RETURN:
                 self.select_option()
-
         elif event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:
                 for i, button in enumerate(self.buttons):
@@ -56,8 +68,8 @@ class PauseState(State):
 
     def update(self):
         pass
-    def render(self, screen):
 
+    def render(self, screen):
         screen.blit(self.background_image, (0, 0))
         for button in self.buttons:
             button.draw(screen)
@@ -69,7 +81,7 @@ class PauseState(State):
             self.exit_state()
         elif index == 1:  # Restart
             self.exit_state()
-            self.game.state_manager.change_state("TestField",self.map_selected,self.map_name)
+            self.game.state_manager.change_state("TestField", self.map_selected, self.map_name)
         elif index == 2:  # Map Select
             self.exit_state()
             self.game.state_manager.change_state("MapSelector")
@@ -80,6 +92,6 @@ class PauseState(State):
             self.game.state_manager.change_state("MainMenu")
 
     def exit_state(self):
-        pygame.mixer.music.unpause()
+        if self.prev_music_playing:
+            self.music_manager.play_music('level', 'level_volume', True)
         super().exit_state()
-

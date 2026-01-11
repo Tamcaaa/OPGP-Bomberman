@@ -164,6 +164,7 @@ class Player(pygame.sprite.Sprite):
             return
         if bool(pygame.sprite.spritecollide(self, self.explosion_group, False)):  # type: ignore[arg-type]
             self.iframe_timer = time.time()
+            self.music_manager.play_sound("hit", "level_volume")
             self.health -= 1
             return True
         return False
@@ -287,28 +288,25 @@ class Player(pygame.sprite.Sprite):
 
     def update_animation(self):
         """Aktualizuje animácie hráča (idle + walk) s použitím skinned snímok."""
-        now = pygame.time.get_ticks()
 
-        if self.moving:
-            anim_key = self.current_direction
-            frame_duration = 1000 / self.anim_fps
-            self.idle_start = now
-        else:
-            if now - self.idle_start > self.afk_delay:
-                anim_key = "idle"
-                frame_duration = 1000 / 2
-            else:
-                anim_key = self.current_direction
-                frame_duration = 1000 / self.anim_fps
+        now = pygame.time.get_ticks()
+        anim_key = self.current_direction if self.moving else "idle"
+
+        if anim_key not in self.images:  # bezpečnostný fallback
+            anim_key = "idle"
 
         frames = self.images[anim_key]
+        frame_duration = 1000 / self.anim_fps if self.moving else 500
 
         if now - self.last_anim_update >= frame_duration:
             self.frame_index = (self.frame_index + 1) % len(frames)
             self.last_anim_update = now
 
         self.image = frames[self.frame_index]
+        self.current_animation = anim_key
+        self.current_frame_index = self.frame_index
 
+        
     def load_sprites(self):
         # Idle frame
         self.idle_frames = []
@@ -331,3 +329,20 @@ class Player(pygame.sprite.Sprite):
         tint.fill((*color, 255))
         tinted.blit(tint, (0,0), special_flags=pygame.BLEND_MULT)
         return tinted
+    def update_movement_status(self):
+        self.moving = False
+        if self.held_down_keys:
+            if pygame.K_w in self.held_down_keys or pygame.K_UP in self.held_down_keys:
+                self.current_direction = "up"
+                self.moving = True
+            elif pygame.K_s in self.held_down_keys or pygame.K_DOWN in self.held_down_keys:
+                self.current_direction = "down"
+                self.moving = True
+            elif pygame.K_a in self.held_down_keys or pygame.K_LEFT in self.held_down_keys:
+                self.current_direction = "left"
+                self.moving = True
+            elif pygame.K_d in self.held_down_keys or pygame.K_RIGHT in self.held_down_keys:
+                self.current_direction = "right"
+                self.moving = True
+
+

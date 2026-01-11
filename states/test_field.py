@@ -9,7 +9,6 @@ from states.state import State
 from player import Player
 from managers.music_manager import MusicManager
 from power_up import PowerUp
-from states.skin_selector import HATS
 
 
 class TestField(State):
@@ -37,17 +36,21 @@ class TestField(State):
 
         self.powerup_message = ""
         self.message_timer = 0
+        self.current_animation = "idle"  # idle, walk_up, walk_down, walk_left, walk_right
+        self.current_frame_index = 0      # 0, 1, 2 pre animácie
 
         # --- Load hat images directly in TestField ---
         self.hat_images = {}
 
-        for hat_def in HATS:
+        for hat_def in config.HATS:
             name = hat_def["name"]
             if name != "None":
                 file_name = f"{name.lower()}.png"  # alebo použij presný názov súboru
                 path = os.path.join(game.photos_dir, "../assets/player_hats", file_name)
                 img = pygame.image.load(path).convert_alpha()
-                img = pygame.transform.scale(img, (config.GRID_SIZE, config.GRID_SIZE))
+                scale_factor = 0.7 
+                size = int(config.GRID_SIZE * scale_factor)
+                img = pygame.transform.scale(img, (size, size))
                 self.hat_images[name] = img
 
         # --- Load backgrounds ---
@@ -110,6 +113,7 @@ class TestField(State):
         self.tile_map = copy.deepcopy(selected_map)
         self.available_powerups = ["bomb_powerup", "range_powerup", "freeze_powerup", "live+_powerup", "shield_powerup"]
 
+        
         self.load_music()
         self.place_hidden_powerups()
 
@@ -281,27 +285,35 @@ class TestField(State):
             if player.skin:
                 hat_name = player.hat
                 if hat_name and hat_name != "None":
-                    # HATS obsahuje offset pre hru
-                    hat_def = next((h for h in HATS if h["name"] == hat_name), None)
+                    hat_def = next((h for h in config.HATS if h["name"] == hat_name), None)
                     if hat_def:
                         hat_img = self.hat_images[hat_name]
                         if hat_img:
-                            ox, oy = hat_def.get("offset", (0,0))  # offset pre hru
+                            ox, oy = config.GAME_HAT_OFFSETS.get(hat_name, (0, 0))
 
-                            # --- Špeciálne posuny pre "Devil" rohy ---
+                            # zisťujeme smer pohybu podľa kláves
+                            if player.player_id == 1:
+                                going_right = pygame.K_d in player.held_down_keys
+                            else:  # player 2
+                                going_right = pygame.K_RIGHT in player.held_down_keys
+
+                            # extra posun pre Devil rohy
                             if hat_name == "Devil":
-                                if not hasattr(self, 'game_corner_offset'):
-                                    self.game_corner_offset = {1: 10, 2: -10}
-                                ox += self.game_corner_offset.get(player.player_id, 0)
+                                corner_spread = 10
+                                if going_right:
+                                    ox += corner_spread
+                                else:
+                                    ox -= corner_spread
 
-                            hx = player.rect.x
-                            hy = player.rect.y
+                            anim_offsets = config.HAT_ANIM_OFFSETS.get(player.current_animation, [0, 0, 0])
+                            frame_index = player.current_frame_index % len(anim_offsets)
+                            anim_offset_y = anim_offsets[frame_index]
 
-                            # Flip pre hráča 2
-                            if player.player_id == 2:
-                                hat_img = pygame.transform.flip(hat_img, True, False)
+                            hx = player.rect.x + ox
+                            hy = player.rect.y + oy + anim_offset_y
+                            hat_to_draw = pygame.transform.flip(hat_img, True, False) if going_right else hat_img
 
-                            screen.blit(hat_img, (hx, hy))
+                            screen.blit(hat_to_draw, (hx, hy))
 
 
     def update(self):
@@ -310,6 +322,8 @@ class TestField(State):
         self.player2.moving = False
         self.player1.handle_queued_keys(now)
         self.player2.handle_queued_keys(now)
+        self.player1.update_movement_status()
+        self.player2.update_movement_status()
         self.player1.update_animation()
         self.player2.update_animation()
         self.handle_explosions()
@@ -356,5 +370,3 @@ class TestField(State):
         self.bomb_group.draw(screen)
         self.explosion_group.draw(screen)
 
-
-#TO DO: čiapky sa nezobrazujú v main loope len v skin selectore
