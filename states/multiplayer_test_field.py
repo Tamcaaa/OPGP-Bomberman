@@ -18,10 +18,10 @@ class MultiplayerTestField(State):
         super().__init__(game)
 
         self.lobby = multiplayer_lobby
+        self.players_addr = self.lobby.players_addr
         pygame.display.set_caption(f"BomberMan: {map_name} User: {self.lobby.player_name}")
         self.map_name = map_name
         self.socket = self.lobby.socket
-        
         # Music manager
         self.music_manager = MusicManager()
 
@@ -56,20 +56,20 @@ class MultiplayerTestField(State):
             self.send_player_list()
 
 
-    # ---------------- Network ----------------
+    # ---------------- NETWORK ----------------
     def handle_network_packets(self):
         try:
             packet, _ = self.socket.recvfrom(1024)
             data = json.loads(packet.decode("utf-8"))
-            if data.get("type") == "PLAYER_UPDATE":
+            if data.get('type') == 'PLAYER_LIST':
+                for player_name, spawn in data['list'].items():
+                    self.players[player_name] = Player(1 if player_name == self.player_username else 2,spawn, self,username=player_name)
+            elif data.get("type") == "PLAYER_UPDATE":
                 player_username = data["player_username"]
                 x = data["x"]
                 y = data["y"]
                 if player_username in self.players and player_username != self.player_username:
                     self.players[player_username].rect.topleft = (x, y)
-            elif data.get('type') == 'PLAYER_LIST':
-                for player_name, spawn in data['list'].items():
-                    self.players[player_name] = Player(1 if player_name == self.player_username else 2,spawn, self,username=player_name)
             elif data.get('type') == 'BOMB_UPDATE':
                 player_username = data['player_username']
                 Bomb(self.players[player_username], self.bomb_group, self.explosion_group,self)
@@ -128,6 +128,8 @@ class MultiplayerTestField(State):
             self.check_powerup_collisions()
             local_player.update_powerups()
                 # Clear power-up message after 3 seconds
+        if self.explosion_group:
+            self.handle_explosions()
         if self.message_timer > 0 and now - self.message_timer > 1500:
             self.powerup_message = ""
             self.message_timer = 0
@@ -196,7 +198,15 @@ class MultiplayerTestField(State):
             screen.blit(powerup_text, (10, y_offset))
             y_offset += 20
 
-    
+    def handle_explosions(self):
+        if not self.explosion_group:
+            return
+        for hit_player_name,player_obj in list(self.players.items()):
+            if player_obj.check_hit() and player_obj.get_health() <= 0:
+                self.exit_state()
+                winner = [player_name for player_name in list(self.players.keys()) if hit_player_name != player_name][0]
+                self.game.state_manager.change_state("MultiplayerGameOver",winner,self.map_name,self.lobby)
+            
     # ---------------- Render ---------------
     def draw_menu(self, screen):
         num_players = len(self.players)

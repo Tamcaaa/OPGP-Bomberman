@@ -35,6 +35,7 @@ class MultiplayerLobby(State):
         self.is_host = is_host
 
         self.players: List[Tuple[str, Tuple[str, int]]] = []
+        self.players_addr = dict()
 
         self.request_cooldown = 1
         self.last_request_time = 0
@@ -112,6 +113,8 @@ class MultiplayerLobby(State):
             self.exit_state()
             self.socket.close()
         elif self.start_button.is_clicked():
+            for player in self.players:
+                self.players_addr[player[0]] = player[1]
             self.broadcast_state_change("MultiplayerMapSelector")
             self.exit_state()
             self.state_manager.change_state("MultiplayerMapSelector", self)
@@ -168,6 +171,7 @@ class MultiplayerLobby(State):
                             'type': 'ACK_STATE_CHANGE'
                         }
                         self.socket.sendto(json.dumps(ack_packet).encode('utf-8'), (self.address_to_join, self.port))
+                        self.exit_state()
                         self.state_manager.change_state("MultiplayerMapSelector", self)
                 elif packet['type'] == "PLAYER_LIST":
                     self.players = []
@@ -218,8 +222,7 @@ class MultiplayerLobby(State):
             else:
                 player_name = player_name
 
-            text_surface = pygame.font.Font(None, config.FONT_SIZE).render(f'{index + 1}. {player_name}', True,
-                                                                           config.TEXT_COLOR)
+            text_surface = pygame.font.Font(None, config.FONT_SIZE).render(f'{index + 1}. {player_name}', True, config.TEXT_COLOR)
             text_rect = text_surface.get_rect(center=(config.SCREEN_WIDTH // 2, y_start + index * 40))
             screen.blit(text_surface, text_rect)
 
