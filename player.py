@@ -270,9 +270,11 @@ class Player(pygame.sprite.Sprite):
 
         packet = {
             "type": "PLAYER_UPDATE",
-            "player_username": self.username,
-            "x": self.rect.x,
-            "y": self.rect.y
+            'data' : {
+                "player_username": self.username,
+                "x": self.rect.x,
+                "y": self.rect.y
+            }
         }
         self.test_field.send_packet(packet)
 
@@ -283,12 +285,10 @@ class Player(pygame.sprite.Sprite):
             self.currentBomb -= 1
             Bomb(self, bomb_group, explosion_group, self.test_field)
             packet = {
-                "type": "BOMB_UPDATE",
-                "player_username": self.username,
+                'type': 'BOMB_UPDATE',
+                'data': {'player_username': self.username,}
             }
-            print(packet)
             self.test_field.send_bomb_placement(packet)
-
 
     def find_paired_teleport(self, teleport_type, current_x, current_y):
         tiles = []
