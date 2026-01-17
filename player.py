@@ -179,7 +179,7 @@ class Player(pygame.sprite.Sprite):
         elif powerup_type == "freeze_powerup":
             for player in self.test_field.players.values():
                 if player.username != self.username:
-                    player.freeze_timer = time.time() + duration
+                    player.freeze_timer = pygame.time.get_ticks() + (duration * 1000) 
         elif powerup_type == "live+_powerup":
             self.health = min(self.health + 1, config.PLAYER_MAX_HEALTH)
         elif powerup_type == "shield_powerup":
@@ -215,6 +215,7 @@ class Player(pygame.sprite.Sprite):
         move_keys = self.move_keys
 
         move_delay = config.MOVE_COOLDOWN * 2 if now < self.freeze_timer else config.MOVE_COOLDOWN
+        print(now,self.freeze_timer,move_delay)
 
         if now - self.last_move_time >= move_delay and self.held_down_keys:
             key = self.held_down_keys[-1]
