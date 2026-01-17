@@ -54,7 +54,7 @@ CYAN_PLAYER   = (50, 220, 220)
 WIDTH_BETWEEN_PLAYER = 340
 
 # ----------------------------------------------------------------Test_field----------------------------------------------------------------
-PLAYER_IFRAMES = 0.75
+PLAYER_IFRAMES = 750
 MAX_QUEUE = 3
 SPAWN_POINTS = {"spawn1": (0, 30),
                 "spawn2": (930, 30),

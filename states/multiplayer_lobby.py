@@ -4,18 +4,20 @@ import socket
 import pygame
 import config
 from typing import List, Tuple, Any, Dict, Union
-from dataclasses import dataclass,asdict
+from dataclasses import dataclass,asdict,field
 from states.state import State
 from custom_classes.button import Button
 from managers.music_manager import MusicManager
 from managers.state_manager import StateManager
 
-
 @dataclass
-class Player():
+class Player:
     name : str
     ip : str
     port : int
+    is_host: bool
+    selection_index: int = 0
+    vote_index: int | None = None
 
 class MultiplayerLobby(State):
     def __init__(self, game, player_name,socket_= None, players_list = {}, is_host=False):
@@ -37,7 +39,7 @@ class MultiplayerLobby(State):
         self.player_name = player_name
         self.is_host = is_host
         
-        self.players: Dict[str,Player] = self.convert_player_list_to_Player(players_list) if players_list else {}
+        self.players_list: Dict[str,Player] = self.convert_player_list_to_Player(players_list) if players_list else {}
 
         self.request_cooldown = 1
         self.last_request_time = 0
@@ -65,7 +67,7 @@ class MultiplayerLobby(State):
             self.port = 9999
             self.host_ip = self.get_local_ip()
             self.socket.bind((self.host_ip, self.port))
-            self.players[self.player_name] = Player(self.player_name,self.host_ip,self.port)  # Need to add the host to the list
+            self.players_list[player_name] = Player(player_name,self.host_ip,self.port,is_host=True)  # Need to add the host to the list
 
     # ---------------- NETWORK ----------------
     @staticmethod
@@ -90,10 +92,10 @@ class MultiplayerLobby(State):
                 data = packet.get('data')
                 player_name = data.get('name', "UNKNOWN")
                 # Check if player is already connected
-                if len(self.players) >= self.max_players:
+                if len(self.players_list) >= self.max_players:
                     print(f'{player_name} tried to join from {ip,port} but the lobby is full!')
                     return
-                for name in self.players:
+                for name in self.players_list:
                     if name == player_name:
                         print(f'{player_name} tried to join from {ip,port} player with same name already joined!')
                         packet = {
@@ -102,12 +104,12 @@ class MultiplayerLobby(State):
                         }
                         self.send_packet(packet)
                         return
-                for player in self.players.values():
+                for player in self.players_list.values():
                     if (ip,port) == (player.ip,player.port):
                         print("Player already Connected")
                         return
                 
-                self.players[player_name] = Player(player_name,ip,port)
+                self.players_list[player_name] = Player(player_name,ip,port,is_host=False)
 
                 print(f"{player_name} joined from {(ip,port)}")
 
@@ -115,24 +117,24 @@ class MultiplayerLobby(State):
                 # We need to change the dict so we can send it, because we cant send complex data as dataclass with JSON
                 packet = {
                     'type': 'PLAYER_LIST',
-                    'data': {'player_list': self.convert_player_list_to_dict(self.players)}
+                    'data': {'player_list': self.convert_player_list_to_dict(self.players_list)}
                 }
                 self.send_packet(packet)
 
             elif packet.get('type') == 'LEAVE':
                 data = packet.get('data')
-                del self.players[data.get('player_name')]
+                del self.players_list[data.get('player_name')]
                 packet = {
                     'type': 'PLAYER_LIST',
-                    'data': {'player_list': self.convert_player_list_to_dict(self.players)}
+                    'data': {'player_list': self.convert_player_list_to_dict(self.players_list)}
                 }
                 print(f"{data.get('player_name')} left!")
                 self.send_packet(packet)
             elif packet.get('type') == "PLAYER_LIST":
-                print(self.players)
+                print(self.players_list)
                 data = packet.get('data')
-                self.players = self.convert_player_list_to_Player(data.get('player_list'))
-                print(self.players)
+                self.players_list = self.convert_player_list_to_Player(data.get('player_list'))
+                print(self.players_list)
             elif packet.get('type') == 'STATE_CHANGE':
                 data = packet.get('data')
                 if  data.get('state', 'UNKNOWN') == 'MultiplayerMapSelector':
@@ -142,7 +144,7 @@ class MultiplayerLobby(State):
                     }
                     self.send_packet(ack_packet)
                     self.exit_state()
-                    self.state_manager.change_state("MultiplayerMapSelector", self)
+                    self.state_manager.change_state("MultiplayerMapSelector", self.players_list,self.socket,self.player_name)
         except socket.timeout:
             pass
         except json.JSONDecodeError as e:
@@ -150,7 +152,7 @@ class MultiplayerLobby(State):
 
     def send_packet(self, packet : bytes | Dict):
         packet = json.dumps(packet).encode("utf-8")
-        for player in self.players.values():
+        for player in self.players_list.values():
             if self.player_name != player.name:
                 self.socket.sendto(packet, (player.ip,player.port))
     def convert_player_list_to_dict(self,player_list:Dict[str,Player])-> Dict[str,dict]:
@@ -177,7 +179,7 @@ class MultiplayerLobby(State):
         elif self.start_button.is_clicked():
             self.broadcast_state_change("MultiplayerMapSelector")
             self.exit_state()
-            self.state_manager.change_state("MultiplayerMapSelector", self)
+            self.state_manager.change_state("MultiplayerMapSelector", self.players_list,self.socket,self.player_name)
 
     def update(self):
         self.handle_network_packets()
@@ -200,21 +202,21 @@ class MultiplayerLobby(State):
         self.game.draw_text(screen, 'Multiplayer Lobby', config.COLOR_BLACK, config.SCREEN_WIDTH // 2, 60)
 
         # IP Label
-        host = self.players.get('Server Host')
+        host = self.players_list.get('Server Host')
         ip_text = f'Share this IP with a friend: {host.ip if host else 'UNKNOWN'}'
         ip_surface = pygame.font.Font(None, config.FONT_SIZE).render(ip_text, True, config.TEXT_COLOR)
         ip_rect = ip_surface.get_rect(center=(config.SCREEN_WIDTH // 2, 100))
         screen.blit(ip_surface, ip_rect)
 
         # Player count label
-        player_count_text = f"Players: {len(self.players)}/2"
+        player_count_text = f"Players: {len(self.players_list)}/2"
         player_count_surface = pygame.font.Font(None, config.FONT_SIZE).render(player_count_text, True, config.TEXT_COLOR)
         player_count_rect = player_count_surface.get_rect(center=(config.SCREEN_WIDTH // 2, 125))
         screen.blit(player_count_surface, player_count_rect)
 
         # Draw player list
         y_start = 150
-        for index, player_name in enumerate(self.players.keys()):
+        for index, player_name in enumerate(self.players_list.keys()):
             if self.player_name == "Server Host" and player_name == "Server Host":
                 player_name = 'Server Host (You)'
             elif self.player_name == player_name:

@@ -93,26 +93,26 @@ class PowerUp(pygame.sprite.Sprite):
         if self.type == "bomb_powerup":
             if player.maxBombs < player.max_bomb_limit:  # optional limit if you want
                 player.activate_powerup("bomb_powerup")
-            return f"{player.username} can place more bombs permanently!"
+            return f"{player.name} can place more bombs permanently!"
 
         elif self.type == "range_powerup":
             player.activate_powerup('range_powerup')
-            return f"{player.username}'s explosion range increased permanently!"
+            return f"{player.name}'s explosion range increased permanently!"
 
         elif self.type == "freeze_powerup":
             # Apply freeze effect to the other player
             freeze_duration = config.POWERUP_DURATIONS.get("freeze_powerup", 5)
             player.activate_powerup("freeze_powerup", freeze_duration)
-            return f"{player.username} froze the opponent/s for {freeze_duration}s!"
+            return f"{player.name} froze the opponent/s for {freeze_duration}s!"
 
         elif self.type == "live+_powerup":
             player.activate_powerup("live+_powerup")
-            return f"{player.username} gained an extra life!"
+            return f"{player.name} gained an extra life!"
 
         elif self.type == "shield_powerup":
             # Temporary invincibility
             shield_duration = config.POWERUP_DURATIONS.get("shield_powerup", 15)
             player.activate_powerup("shield_powerup", shield_duration)
-            return f"{player.username} is invincible for {shield_duration}s!"
+            return f"{player.name} is invincible for {shield_duration}s!"
 
-        return f"{player.username} collected a power-up!"
+        return f"{player.name} collected a power-up!"

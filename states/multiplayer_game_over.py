@@ -7,11 +7,11 @@ from managers.music_manager import MusicManager
 from custom_classes.button import Button
 
 class MultiplayerGameOver(State):
-    def __init__(self, game, winner,map_name,lobby):
+    def __init__(self, game, winner,map_name,socket):
         State.__init__(self, game)
         pygame.display.set_caption("BomberMan: GameOver")
         self.map_name = map_name
-        self.lobby = lobby
+        self.socket = socket
         self.bg_image = pygame.image.load(os.path.join(game.photos_dir, "bg.png"))
         self.winner = winner
 
@@ -33,10 +33,9 @@ class MultiplayerGameOver(State):
         if self.exit_button.is_clicked():
             pygame.mixer_music.stop()
             self.music_manager.play_music('title', 'main_menu_volume', True)
-            print(self.game.state_stack)
             self.exit_state()
             self.exit_state()
-            self.lobby.socket.close()
+            self.socket.close()
     def render(self, screen):
         """Draw the main menu screen."""
         screen.blit(self.bg_image, (0, 0))

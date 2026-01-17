@@ -1,33 +1,24 @@
 import json
 import pygame
 import random
-
 import config
 import os
 import socket
+from typing import Dict
 from states.state import State
 from maps.test_field_map import all_maps
 from collections import Counter
-from dataclasses import dataclass
 from managers.state_manager import StateManager
 
-
-@dataclass
-class PlayerSelection:
-    selection_index: int = 0
-    vote_index: int | None = None
-
-
 class MultiplayerMapSelector(State):
-    def __init__(self, game, multiplayer_lobby):
+    def __init__(self, game, player_list,socket,player_name):
         super().__init__(game)
         pygame.display.set_caption("BomberMan: Map Selector")
         self.bg_image = pygame.image.load(os.path.join("assets", "bg.png"))
-
-        self.lobby = multiplayer_lobby  # Keep reference to lobby for players and socket
-        self.socket = self.lobby.socket
-
-        self.players = {player_name: PlayerSelection() for player_name, _ in self.lobby.players}
+        
+        self.socket = socket
+        self.players_list = player_list
+        self.player_name = player_name
 
         self.state_manager = StateManager(self.game)
 
@@ -45,10 +36,9 @@ class MultiplayerMapSelector(State):
         # Animation variables
         self.animation_timer = 30
         self.transition_effect = 1.0
+        
 
-        self.player_name = self.lobby.player_name
-
-        if self.lobby.is_host:
+        if self.players_list.get(self.player_name).is_host:
             self.select_random_maps()
             self.send_map_selection()
 
@@ -62,76 +52,69 @@ class MultiplayerMapSelector(State):
             'type': 'MAP_SELECTION',
             'data': {'map_list': self.selected_maps},
         }
-        for _, addr in self.lobby.players:
-            if addr[1] != 1111:
-                self.socket.sendto(json.dumps(packet_map_selection).encode('utf-8'), addr)
+        self.send_packet(packet_map_selection)
 
+    def send_packet(self, packet : bytes | Dict):
+        packet = json.dumps(packet).encode("utf-8")
+        for player in self.players_list.values():
+            if self.player_name != player.name:
+                self.socket.sendto(packet, (player.ip,player.port))
+    
     def move_selection(self, player_name, direction):
-        current = self.players[player_name].selection_index
-        self.players[player_name].selection_index = (current + direction) % len(self.selected_maps)
+        current = self.players_list.get(player_name).selection_index
+        self.players_list.get(player_name).selection_index = (current + direction) % len(self.selected_maps)
 
-        print(f"[MOVE] {player_name} moved from {current} to {self.players[player_name].selection_index}")
+        print(f"[MOVE] {player_name} moved from {current} to {self.players_list.get(player_name).selection_index}")
 
         packet = {
-            "type": "MOVE_SELECTION",
-            "player_id": player_name,
-            "new_index": self.players[player_name].selection_index
+            'type': 'MOVE_SELECTION',
+            'data': {'player_name': player_name,
+                     'new_index'  : self.players_list.get(player_name).selection_index}
         }
-
-        message = json.dumps(packet).encode('utf-8')
-
-        if self.lobby.is_host:
-            # Broadcast to all clients
-            for name, addr in self.lobby.players:
-                if name != self.player_name:  # Don't send to self
-                    self.socket.sendto(message, addr)
-        else:
-            # Clients only send to host
-            self.socket.sendto(message, (self.lobby.address_to_join, 9999))
+        self.send_packet(packet)
 
     def handle_network_packets(self):
         try:
-            packet, _ = self.lobby.socket.recvfrom(1024)
-            raw_data = packet.decode('utf-8')
-            print(f"[NETWORK] Received packet: {raw_data}")
-            packet = json.loads(raw_data)
+            packet, _ = self.socket.recvfrom(1024)
+            packet = json.loads(packet.decode('utf-8'))
             packet_type = packet.get('type')
-            print(f"[NETWORK] Packet type: {packet_type}")
+            packet_data = packet.get('data')
+            print(f"[NETWORK] Packet recived: {packet}")
 
             if packet_type == 'MOVE_SELECTION':
-                player_id = packet['player_id']
-                new_index = packet['new_index']
-                if player_id in self.players:
-                    self.players[player_id].selection_index = new_index
+                player_name = packet_data.get('player_name')
+                new_index = packet_data.get('new_index')
+
+                if player_name in self.players_list:
+                    self.players_list.get(player_name).selection_index = new_index
                 else:
-                    print(f"[WARN] Unknown player in MOVE_SELECTION: {player_id}")
+                    print(f"[WARN] Unknown player in MOVE_SELECTION: {player_name}")
 
             elif packet_type == 'MAP_SELECTION':
-                self.selected_maps = packet['data']['map_list']
-
+                self.selected_maps = packet_data.get('map_list')
             elif packet_type == 'CONFIRM_SELECTION':
-                player_id = packet['player_id']
-                vote_index = packet['vote_index']
-                if player_id in self.players:
-                    self.players[player_id].vote_index = vote_index
-                    print(f"[VOTE] {player_id} voted for map index {vote_index}")
-                    if all(p.vote_index is not None for p in
-                           self.players.values()) and self.player_name == "Server Host":
+                player_name = packet_data.get('player_name')
+                vote_index = packet_data.get('vote_index')
+                if player_name in self.players_list:
+                    self.players_list.get(player_name).vote_index = vote_index
+                    print(f"[VOTE] {player_name} voted for map index {vote_index}")
+                    if all(player.vote_index is not None for player in
+                           self.players_list.values()) and self.player_name == "Server Host":
                         self.determine_final_map()
                 else:
-                    print(f"[WARN] Unknown player in CONFIRM_SELECTION: {player_id}")
+                    print(f"[WARN] Unknown player in CONFIRM_SELECTION: {player_name}")
             elif packet_type == 'CANCEL_SELECTION':
-                player_id = packet['player_id']
-                if player_id in self.players:
-                    self.players[player_id].vote_index = None
-                    print(f"[VOTE] {player_id} canceled their vote")
+                player_name = packet_data.get('player_name')
+                if player_name in self.players_list:
+                    self.players_list.get(player_name).vote_index = None
+                    print(f"[VOTE] {player_name} canceled their vote")
                 else:
-                    print(f"[WARN] Unknown player in CANCEL_SELECTION: {player_id}")
+                    print(f"[WARN] Unknown player in CANCEL_SELECTION: {player_name}")
             elif packet_type == 'FINAL_MAP_SELECTION':
-                self.final_map = packet['final_map']
+                self.final_map = packet_data.get('final_map')
             elif packet_type == 'STATE_CHANGE':
                 self.exit_state()
-                self.state_manager.change_state(packet['data']['state'], self.lobby, self.final_map)
+                self.state_manager.change_state(packet_data.get('state'), self.final_map,self.socket,self.players_list,self.player_name)
         except json.JSONDecodeError as e:
             print(f"[ERROR] JSON decode failed: {e}")
         except socket.timeout:
@@ -140,76 +123,56 @@ class MultiplayerMapSelector(State):
             print(f"[EXCEPTION] Network handler crashed: {e}")
 
     def confirm_vote(self):
-        player = self.players[self.player_name]
+        player = self.players_list.get(self.player_name)
         player.vote_index = player.selection_index
         packet = {
-            "type": "CONFIRM_SELECTION",
-            "player_id": self.player_name,
-            "vote_index": player.vote_index
-        }
-        message = json.dumps(packet).encode("utf-8")
-        for name, addr in self.lobby.players:
-            if name != self.player_name:
-                self.socket.sendto(message, addr)
-        if all(p.vote_index is not None for p in self.players.values()) and self.player_name == "Server Host":
+            'type': 'CONFIRM_SELECTION',
+            'data': {'player_name': self.player_name,
+                     'vote_index': player.vote_index}}
+        self.send_packet(packet)
+        if all(player.vote_index is not None for player in self.players_list.values()) and self.player_name == "Server Host":
             self.determine_final_map()
 
     def determine_final_map(self):
-        votes = [p.vote_index for p in self.players.values() if p.vote_index is not None]
+        votes = [player.vote_index for player in self.players_list.values() if player.vote_index is not None]
         vote_counter = Counter(votes)
         max_votes = max(vote_counter.values())
         top_maps = [index for index, count in vote_counter.items() if count == max_votes]
         winning_index = random.choice(top_maps) if len(top_maps) > 1 else top_maps[0]
         self.final_map = self.selected_maps[winning_index]
         packet = {
-            "type": "FINAL_MAP_SELECTION",
-            "final_map": self.final_map
-        }
-        message = json.dumps(packet).encode("utf-8")
-        for name, addr in self.lobby.players:
-            if name != self.player_name:
-                self.socket.sendto(message, addr)
+            'type': "FINAL_MAP_SELECTION",
+            'data': {'final_map': self.final_map}}
+        self.send_packet(packet)
 
     def cancel_vote(self):
-        player = self.players[self.player_name]
+        player = self.players_list.get(self.player_name)
         player.vote_index = None
         packet = {
-            "type": "CANCEL_SELECTION",
-            "player_id": self.player_name,
-        }
-        message = json.dumps(packet).encode("utf-8")
-        for name, addr in self.lobby.players:
-            if name != self.player_name:
-                print(self.lobby.players)
-                self.socket.sendto(message, addr)
-
+            'type': 'CANCEL_SELECTION',
+            'data': {'player_id': self.player_name,}}
+        self.send_packet(packet)
     def broadcast_state_change(self, new_state):
         packet = {
             'type': 'STATE_CHANGE',
             'data': {'state': new_state}
         }
-        acknowledged_players = set()
-        message = json.dumps(packet).encode('utf-8')
-        for username, address in self.lobby.players:
-            if address[1] == 9999:  # skip host
-                continue
-            elif address not in acknowledged_players:
-                self.socket.sendto(message, address)
-
+        self.send_packet(packet)
+    
     def handle_events(self, event):
         if event.type == pygame.KEYDOWN:
             # If space is pressed and the final map is selected, exit the loop
             if self.final_map:
-                if event.key == pygame.K_SPACE and self.lobby.is_host:
+                if event.key == pygame.K_SPACE and self.players_list.get(self.player_name).is_host:
                     self.broadcast_state_change('MultiplayerTestField')
                     self.exit_state()
-                    self.state_manager.change_state("MultiplayerTestField", self.lobby, self.final_map)
+                    self.state_manager.change_state("MultiplayerTestField", self.final_map,self.socket,self.players_list,self.player_name)
             elif event.key == pygame.K_RETURN:
-                if self.players[self.player_name].vote_index is None:
+                if self.players_list.get(self.player_name).vote_index is None:
                     self.confirm_vote()
                 else:
                     self.cancel_vote()
-            elif self.players[self.player_name].vote_index is not None:
+            elif self.players_list.get(self.player_name).vote_index is not None:
                 return
             elif event.key == pygame.K_LEFT:
                 self.move_selection(self.player_name, -1)
@@ -229,7 +192,7 @@ class MultiplayerMapSelector(State):
 
     def draw_instructions(self, screen):
         # Player instructions
-        if self.players[self.player_name].vote_index is None:
+        if self.players_list.get(self.player_name).vote_index is None:
             instruction_text = "← → to move, ENTER to vote"
         else:
             instruction_text = "Vote confirmed! ENTER to cancel vote"
@@ -274,9 +237,9 @@ class MultiplayerMapSelector(State):
             player_stacks = {i: [] for i in range(len(self.selected_maps))}  # index -> list of (player_name)
 
             # Build stack lists for each map index
-            for player_name, sel in self.players.items():
-                map_index = sel.selection_index
-                player_stacks[map_index].append(player_name)
+            for player in self.players_list.values():
+                map_index = player.selection_index
+                player_stacks[map_index].append(player.name)
 
             # Render stacked names under each map
             for map_index, player_list in player_stacks.items():
@@ -284,9 +247,7 @@ class MultiplayerMapSelector(State):
                 for stack_index, player_name in enumerate(player_list):
                     y_text = y + card_height + 10 + stack_index * name_offset_y
                     label = f"{stack_index + 1}. {player_name}"
-                    name_surf = self.info_font.render(label, True, config.TEXT_COLOR if self.players[
-                                                                                            player_name].vote_index is None else
-                    config.COLOR_LIGHT_GREEN)
+                    name_surf = self.info_font.render(label, True, config.TEXT_COLOR if self.players_list.get(player_name).vote_index is None else config.COLOR_LIGHT_GREEN)
                     name_rect = name_surf.get_rect(center=(x + card_width // 2, y_text))
                     screen.blit(name_surf, name_rect)
 
@@ -320,7 +281,7 @@ class MultiplayerMapSelector(State):
             screen.blit(selected_label,
                         (config.SCREEN_WIDTH // 2 - selected_label.get_width() // 2,
                          text_y + map_name_text.get_height() + 10))
-            if self.lobby.is_host:
+            if self.players_list.get(self.player_name).is_host:
                 start_text = self.info_font.render("Press SPACE to start the game", True, (255, 255, 0))
                 screen.blit(start_text, (
                     config.SCREEN_WIDTH // 2 - start_text.get_width() // 2, text_y + map_name_text.get_height() + 50))

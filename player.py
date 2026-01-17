@@ -11,11 +11,11 @@ SkinPayload = Union[None, ColorLike, Tuple[ColorLike, str]]
 
 
 class Player(pygame.sprite.Sprite):
-    def __init__(self, player_id: int, starting_location: str | tuple, test_field,username = None, skin: SkinPayload = None):
+    def __init__(self, player_id: int, starting_location: str | tuple, test_field,name = None, skin: SkinPayload = None):
         super().__init__()
 
         self.player_id = player_id
-        self.username = username if username is not None else f"UKNOWN_USER"
+        self.name = name if name is not None else f"UKNOWN_USER"
         self.skin = skin
         self.test_field = test_field
         self.music_manager = MusicManager()
@@ -155,13 +155,13 @@ class Player(pygame.sprite.Sprite):
     # =======================
     def check_hit(self):
         """Check if player is hit by an explosion (s i-frame ochrannou)."""
-        now = time.time()
-
         # Invincibility frames check
+        now = pygame.time.get_ticks()
+        print(now,self.iframe_timer)
         if not now - self.iframe_timer >= config.PLAYER_IFRAMES:
             return
         if bool(pygame.sprite.spritecollide(self, self.explosion_group, False)):  # type: ignore[arg-type]
-            self.iframe_timer = time.time()
+            self.iframe_timer = now
             self.music_manager.play_sound("hit", "level_volume")
             self.health -= 1
             return True
@@ -178,12 +178,12 @@ class Player(pygame.sprite.Sprite):
             self.currentBomb += 1
         elif powerup_type == "freeze_powerup":
             for player in self.test_field.players.values():
-                if player.username != self.username:
+                if player.name != self.name:
                     player.freeze_timer = pygame.time.get_ticks() + (duration * 1000) 
         elif powerup_type == "live+_powerup":
             self.health = min(self.health + 1, config.PLAYER_MAX_HEALTH)
         elif powerup_type == "shield_powerup":
-            self.iframe_timer = now + duration
+            self.iframe_timer = pygame.time.get_ticks() + (duration * 1000)
 
         self.active_powerups[powerup_type] = now + duration
 
@@ -215,7 +215,6 @@ class Player(pygame.sprite.Sprite):
         move_keys = self.move_keys
 
         move_delay = config.MOVE_COOLDOWN * 2 if now < self.freeze_timer else config.MOVE_COOLDOWN
-        print(now,self.freeze_timer,move_delay)
 
         if now - self.last_move_time >= move_delay and self.held_down_keys:
             key = self.held_down_keys[-1]
@@ -272,7 +271,7 @@ class Player(pygame.sprite.Sprite):
         packet = {
             "type": "PLAYER_UPDATE",
             'data' : {
-                "player_username": self.username,
+                "player_name": self.name,
                 "x": self.rect.x,
                 "y": self.rect.y
             }
@@ -287,9 +286,9 @@ class Player(pygame.sprite.Sprite):
             Bomb(self, bomb_group, explosion_group, self.test_field)
             packet = {
                 'type': 'BOMB_UPDATE',
-                'data': {'player_username': self.username,}
+                'data': {'player_name': self.name}
             }
-            self.test_field.send_bomb_placement(packet)
+            self.test_field.send_packet(packet)
 
     def find_paired_teleport(self, teleport_type, current_x, current_y):
         tiles = []
