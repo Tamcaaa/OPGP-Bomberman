@@ -157,7 +157,6 @@ class Player(pygame.sprite.Sprite):
         """Check if player is hit by an explosion (s i-frame ochrannou)."""
         # Invincibility frames check
         now = pygame.time.get_ticks()
-        print(now,self.iframe_timer)
         if not now - self.iframe_timer >= config.PLAYER_IFRAMES:
             return
         if bool(pygame.sprite.spritecollide(self, self.explosion_group, False)):  # type: ignore[arg-type]
