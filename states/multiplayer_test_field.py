@@ -132,9 +132,10 @@ class MultiplayerTestField(State):
             local_player.moving = False
             local_player.handle_queued_keys(now)
             # Powerup updates
-            self.check_powerup_collisions()
             local_player.update_powerups()
                 # Clear power-up message after 3 seconds
+        if self.powerup_group:
+            self.check_powerup_collisions()
         if self.explosion_group:
             self.handle_explosions()
         if self.message_timer > 0 and now - self.message_timer > 1500:
@@ -189,11 +190,12 @@ class MultiplayerTestField(State):
         visible_powerups = [p for p in self.powerup_group.sprites() if not p.hidden]
 
         for powerup in visible_powerups:
-            if pygame.sprite.collide_rect(self.players[self.player_username], powerup):
-                self.powerup_message = powerup.apply_effect(self.players[self.player_username])
-                self.message_timer = pygame.time.get_ticks()
-                self.music_manager.play_sound("walk", "walk_volume")  # Play pickup sound
-                powerup.kill()  # Remove from sprite group
+            for player_obj in self.players.values():
+                if pygame.sprite.collide_rect(player_obj, powerup):
+                    self.powerup_message = powerup.apply_effect(player_obj)
+                    self.message_timer = pygame.time.get_ticks()
+                    self.music_manager.play_sound("walk", "walk_volume")  # Play pickup sound
+                    powerup.kill()  # Remove from sprite group
 
     def draw_active_powerups(self, screen):
         powerups_text = []
