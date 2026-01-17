@@ -1,14 +1,17 @@
 import pygame
 import config
+import json
+import socket
 from states.state import State
 from managers.state_manager import StateManager
 from custom_classes.button import Button
 
 
+
 class InputPopup(State):
     def __init__(self, game):
         State.__init__(self, game)
-        pygame.display.set_caption("BomberMan: Test")
+        pygame.display.set_caption("BomberMan: Multiplayer")
         self.font = pygame.font.Font(None, config.FONT_SIZE)
         self.active_box = None
 
@@ -18,8 +21,8 @@ class InputPopup(State):
         self.username_rect = pygame.Rect(config.SCREEN_WIDTH // 4, config.SCREEN_HEIGHT // 3, config.SCREEN_WIDTH // 2, 40)
         self.address_rect = pygame.Rect(config.SCREEN_WIDTH // 4, config.SCREEN_HEIGHT // 3 + 80, config.SCREEN_WIDTH // 2, 40)
 
-        self.username_text = ""
-        self.address_text = ""
+        self.username_text = 'Test'
+        self.address_text = '192.168.1.11'
 
         self.color_inactive = pygame.Color('lightskyblue3')
         self.color_active = pygame.Color('dodgerblue2')
@@ -29,6 +32,9 @@ class InputPopup(State):
 
         self.result = None
 
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.socket.settimeout(0.01)
+        
         # Buttons
         button_y = config.SCREEN_HEIGHT // 3 + 150
         self.join_button = Button(config.SCREEN_WIDTH // 2 - 110, button_y, 100, 40, "Join",
@@ -41,11 +47,37 @@ class InputPopup(State):
                                   button_color=config.COLOR_BEIGE)
 
     def submit(self):
-        if self.username_text.strip() and self.address_text.strip():
-            self.result = (self.username_text.strip(), self.address_text.strip())
-            self.exit_state()
-            self.state_manager.change_state("MultiplayerLobby",*self.result)
-
+        player_name = self.username_text.strip()
+        ip = self.address_text.strip()
+        if player_name and ip:
+            self.send_join_request(player_name,ip)
+    def send_join_request(self,player_name,ip_to_join):
+        max_attempts = 5
+        attempt = 0
+        while attempt < max_attempts:
+            packet = {
+                "type": "JOIN",
+                'data': {"name": player_name},
+            }
+            packet = json.dumps(packet).encode('utf-8')
+            self.socket.sendto(packet, (ip_to_join, 9999))
+            self.port = self.socket.getsockname()[1] # getsockname --> (ip,port)
+            try:
+                response, _ = self.socket.recvfrom(1024)
+                response_packet = json.loads(response.decode('utf-8'))
+                if response_packet.get('type') == 'PLAYER_LIST':
+                    data = response_packet.get('data')
+                    self.exit_state()
+                    self.state_manager.change_state('MultiplayerLobby',player_name,self.socket,data.get('player_list'))
+                    print("Joined successfully!")
+                    break
+                elif response_packet.get('type') == 'SAME_NAME':
+                    data = response_packet.get('data')
+                    print(data.get('msg'))
+            except (socket.timeout, json.JSONDecodeError):
+                # No response
+                attempt += 1
+                print(f"Join attempt {attempt} failed, retrying...")
     def go_back(self):
         self.exit_state()
 

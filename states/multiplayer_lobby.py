@@ -1,30 +1,33 @@
 import json
 import os
 import socket
-from typing import List, Tuple, Any
-
 import pygame
-
 import config
+from typing import List, Tuple, Any, Dict, Union
+from dataclasses import dataclass,asdict
 from states.state import State
 from custom_classes.button import Button
 from managers.music_manager import MusicManager
 from managers.state_manager import StateManager
 
 
+@dataclass
+class Player():
+    name : str
+    ip : str
+    port : int
+
 class MultiplayerLobby(State):
-    def __init__(self, game, player_name, address_to_join, is_host=False, ):
+    def __init__(self, game, player_name,socket_= None, players_list = {}, is_host=False):
         super().__init__(game)
         pygame.display.set_caption("BomberMan: Multiplayer Lobby")
         self.bg_image = pygame.image.load(os.path.join(game.photos_dir, "bg.png"))
-
-        self.AUTH = "PLEASEWORK"
 
         self.music_manager = MusicManager()
         self.state_manager = StateManager(game)
 
         # UDP socket
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.socket = socket_ if socket_ else socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.settimeout(0.01)
 
         self.acknowledged_players = set()
@@ -33,12 +36,13 @@ class MultiplayerLobby(State):
         # data from input
         self.player_name = player_name
         self.is_host = is_host
-
-        self.players: List[Tuple[str, Tuple[str, int]]] = []
-        self.players_addr = dict()
+        
+        self.players: Dict[str,Player] = self.convert_player_list_to_Player(players_list) if players_list else {}
 
         self.request_cooldown = 1
         self.last_request_time = 0
+
+        self.max_players = 2
 
         # Buttons
         self.start_button = Button(
@@ -61,12 +65,9 @@ class MultiplayerLobby(State):
             self.port = 9999
             self.host_ip = self.get_local_ip()
             self.socket.bind((self.host_ip, self.port))
-            self.players = [(self.player_name, (self.host_ip, self.port))]  # Need to add the host to the list
-        else:
-            self.address_to_join = address_to_join
-            self.port_to_join = 9999
-            self.port = None
-            self.send_join_request()
+            self.players[self.player_name] = Player(self.player_name,self.host_ip,self.port)  # Need to add the host to the list
+
+    # ---------------- NETWORK ----------------
     @staticmethod
     def get_local_ip():
         try:
@@ -79,42 +80,101 @@ class MultiplayerLobby(State):
         except Exception as e:
             return f"Could not determine local IP: {e}"
 
-    def send_join_request(self):
-        max_attempts = 5
-        attempts = 0
-        while attempts < max_attempts:
-            packet = {
-                "AUTH": self.AUTH,
-                "type": "JOIN",
-                'data': {"name": self.player_name},
-            }
-            message = json.dumps(packet).encode('utf-8')
-            self.socket.sendto(message, (self.address_to_join, self.port_to_join))
-            self.port = self.socket.getsockname()[1]
-            try:
-                response, addr = self.socket.recvfrom(1024)
-                response_packet = json.loads(response.decode('utf-8'))
-                if response_packet.get('type') == 'PLAYER_LIST':
-                    self.players = [(p[0], tuple(p[1])) for p in response_packet['data']['player_list']]
-                    print("Joined successfully!")
-                    break
-            except (socket.timeout, json.JSONDecodeError):
-                # No response
-                attempts += 1
-                print(f"Join attempt {attempts} failed, retrying...")
+    def handle_network_packets(self):
+        try:
+            packet, (ip,port) = self.socket.recvfrom(1024)
+            packet = json.loads(packet.decode('utf-8'))
+            if packet.get('type') == "ACK_STATE_CHANGE":
+                self.acknowledged_players.add((ip,port))
+            elif packet.get('type') == 'JOIN':
+                data = packet.get('data')
+                player_name = data.get('name', "UNKNOWN")
+                # Check if player is already connected
+                if len(self.players) >= self.max_players:
+                    print(f'{player_name} tried to join from {ip,port} but the lobby is full!')
+                    return
+                for name in self.players:
+                    if name == player_name:
+                        print(f'{player_name} tried to join from {ip,port} player with same name already joined!')
+                        packet = {
+                            'type' : 'SAME_NAME',
+                            'data' : {'msg' : f'Player with username {player_name} is already in the lobby!'}
+                        }
+                        self.send_packet(packet)
+                        return
+                for player in self.players.values():
+                    if (ip,port) == (player.ip,player.port):
+                        print("Player already Connected")
+                        return
+                
+                self.players[player_name] = Player(player_name,ip,port)
 
+                print(f"{player_name} joined from {(ip,port)}")
+
+                # Send updated player list
+                # We need to change the dict so we can send it, because we cant send complex data as dataclass with JSON
+                packet = {
+                    'type': 'PLAYER_LIST',
+                    'data': {'player_list': self.convert_player_list_to_dict(self.players)}
+                }
+                self.send_packet(packet)
+
+            elif packet.get('type') == 'LEAVE':
+                data = packet.get('data')
+                del self.players[data.get('player_name')]
+                packet = {
+                    'type': 'PLAYER_LIST',
+                    'data': {'player_list': self.convert_player_list_to_dict(self.players)}
+                }
+                print(f"{data.get('player_name')} left!")
+                self.send_packet(packet)
+            elif packet.get('type') == "PLAYER_LIST":
+                print(self.players)
+                data = packet.get('data')
+                self.players = self.convert_player_list_to_Player(data.get('player_list'))
+                print(self.players)
+            elif packet.get('type') == 'STATE_CHANGE':
+                data = packet.get('data')
+                if  data.get('state', 'UNKNOWN') == 'MultiplayerMapSelector':
+                    # Send ACK to host
+                    ack_packet = {
+                        'type': 'ACK_STATE_CHANGE'
+                    }
+                    self.send_packet(ack_packet)
+                    self.exit_state()
+                    self.state_manager.change_state("MultiplayerMapSelector", self)
+        except socket.timeout:
+            pass
+        except json.JSONDecodeError as e:
+            print(f"Invalid JSON received from: {e}")
+
+    def send_packet(self, packet : bytes | Dict):
+        packet = json.dumps(packet).encode("utf-8")
+        for player in self.players.values():
+            if self.player_name != player.name:
+                self.socket.sendto(packet, (player.ip,player.port))
+    def convert_player_list_to_dict(self,player_list:Dict[str,Player])-> Dict[str,dict]:
+        player_list_converted: Dict[str,dict] = {}
+        for player_name,player_data in player_list.items():
+            player_list_converted[player_name] = asdict(player_data)
+        return player_list_converted
+    
+    def convert_player_list_to_Player(self,player_list:Dict[str,dict]) -> Dict[str,Player]:
+        player_list_converted: Dict[str,Player] = {}
+        for player_name,player_data in player_list.items():
+            player_list_converted[player_name] = Player(**player_data)
+        return player_list_converted
+    # ---------------- INPUTS ----------------
     def handle_events(self, event):
         if self.back_button.is_clicked():
-            leave_packet = {
-                'AUTH': self.AUTH,
-                'type': 'LEAVE'
+            packet = {
+                'type': 'LEAVE',
+                'data': {'player_name' : self.player_name}
             }
-            self.socket.sendto(json.dumps(leave_packet).encode('utf-8'), (self.address_to_join, self.port))
+            self.send_packet(packet)
             self.exit_state()
             self.socket.close()
         elif self.start_button.is_clicked():
-            for player in self.players:
-                self.players_addr[player[0]] = player[1]
             self.broadcast_state_change("MultiplayerMapSelector")
             self.exit_state()
             self.state_manager.change_state("MultiplayerMapSelector", self)
@@ -122,99 +182,39 @@ class MultiplayerLobby(State):
     def update(self):
         self.handle_network_packets()
 
-    def handle_network_packets(self):
-        if self.is_host:
-            try:
-                packet, address = self.socket.recvfrom(1024)
-                packet = json.loads(packet.decode('utf-8'))
-                if not packet.get('AUTH','UNKNOWN') == self.AUTH:
-                    return
-                if packet['type'] == "ACK_STATE_CHANGE":
-                    self.acknowledged_players.add(address)
-                elif packet['type'] == 'JOIN':
-                    for player in self.players:
-                        if address == player[1]:
-                            print("Player Already Connected")
-                            return
-                    username = packet['data'].get('name', "UNKNOWN")
-                    print(f"{username} joined from {address}")
-                    self.players.append((username, address))
-
-                    # Send updated player list
-                    player_list_packet = {
-                        'type': 'PLAYER_LIST',
-                        'data': {'player_list': self.players}
-                    }
-                    for _, address in self.players[1:]:
-                        self.socket.sendto(json.dumps(player_list_packet).encode('utf-8'), address)
-                elif packet['type'] == 'LEAVE':
-                    self.players = [p for p in self.players if p[1] != address]
-                    for _, address in self.players:
-                        if address[1] == 9999:
-                            return
-                        player_list_packet = {
-                            'type': 'PLAYER_LIST',
-                            'data': {'player_list': self.players}
-                        }
-                        self.socket.sendto(json.dumps(player_list_packet).encode('utf-8'), address)
-            except socket.timeout:
-                pass
-        else:
-            try:
-                packet, address = self.socket.recvfrom(1024)
-                packet = json.loads(packet.decode('utf-8'))
-                if packet['type'] == 'STATE_CHANGE':
-                    if packet['data'].get('state', 'UNKNOWN') == 'MultiplayerMapSelector':
-                        # Send ACK to host
-                        ack_packet = {
-                            'AUTH': self.AUTH,
-                            'type': 'ACK_STATE_CHANGE'
-                        }
-                        self.socket.sendto(json.dumps(ack_packet).encode('utf-8'), (self.address_to_join, self.port))
-                        self.exit_state()
-                        self.state_manager.change_state("MultiplayerMapSelector", self)
-                elif packet['type'] == "PLAYER_LIST":
-                    self.players = []
-                    for p in packet['data']['player_list']:
-                        username, addr = p
-                        # have to change addr back to tuple because json.dumps converts them to list
-                        addr = tuple(addr)
-                        self.players.append((username, addr))
-            except socket.timeout:
-                pass
-            except json.JSONDecodeError as e:
-                print(f"Invalid JSON received from: {e}")
+    
 
     def broadcast_state_change(self, new_state):
         state_change_packet = {
             'type': 'STATE_CHANGE',
             'data': {'state': new_state}
         }
-        message = json.dumps(state_change_packet).encode('utf-8')
         self.acknowledged_players = set()
 
-        for username, address in self.players:
-            if address[1] == 9999:  # skip host
-                continue
-            elif address not in self.acknowledged_players:
-                self.socket.sendto(message, address)
-
+        self.send_packet(state_change_packet)
+    # ---------------- Render ---------------
     def render(self, screen):
         screen.blit(self.bg_image, (0, 0))
 
         # Title
-        self.game.draw_text(screen, "Multiplayer Lobby", config.COLOR_BLACK, config.SCREEN_WIDTH // 2, 60)
+        self.game.draw_text(screen, 'Multiplayer Lobby', config.COLOR_BLACK, config.SCREEN_WIDTH // 2, 60)
 
         # IP Label
-        ip_text = f"Share this IP with friends: {self.host_ip if self.is_host else self.address_to_join}"
+        host = self.players.get('Server Host')
+        ip_text = f'Share this IP with a friend: {host.ip if host else 'UNKNOWN'}'
         ip_surface = pygame.font.Font(None, config.FONT_SIZE).render(ip_text, True, config.TEXT_COLOR)
         ip_rect = ip_surface.get_rect(center=(config.SCREEN_WIDTH // 2, 100))
         screen.blit(ip_surface, ip_rect)
 
+        # Player count label
+        player_count_text = f"Players: {len(self.players)}/2"
+        player_count_surface = pygame.font.Font(None, config.FONT_SIZE).render(player_count_text, True, config.TEXT_COLOR)
+        player_count_rect = player_count_surface.get_rect(center=(config.SCREEN_WIDTH // 2, 125))
+        screen.blit(player_count_surface, player_count_rect)
+
         # Draw player list
         y_start = 150
-        for index, player in enumerate(self.players):
-            player_name = player[0]
+        for index, player_name in enumerate(self.players.keys()):
             if self.player_name == "Server Host" and player_name == "Server Host":
                 player_name = 'Server Host (You)'
             elif self.player_name == player_name:
