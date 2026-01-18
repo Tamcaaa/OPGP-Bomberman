@@ -16,9 +16,9 @@ class Player:
     ip : str
     port : int
     is_host: bool
+    is_ready: bool = False
     selection_index: int = 0
     vote_index: int | None = None
-    is_ready: bool = False
     color_index: int = 0  
     hat_index: int = 0 
 
@@ -86,8 +86,20 @@ class MultiplayerLobby(State):
             self.port = 9999
             self.host_ip = self.get_local_ip()
             self.socket.bind((self.host_ip, self.port))
-            self.players_list[player_name] = Player(player_name,self.host_ip,self.port,is_host=True)  # Need to add the host to the list
+            self.players_list[player_name] = Player(player_name,self.host_ip,self.port,is_host=True,is_ready=True)  # Need to add the host to the list
+            # Host sees Start, not Ready by default
+            self.start_button.set_visible(False)
+            self.start_button.set_enabled(False)
+            self.ready_button.set_visible(False)
+            self.ready_button.set_enabled(False)
+        else:
+            # Client sees Ready, not Start
+            self.start_button.set_visible(False)
+            self.start_button.set_enabled(False)
+            self.ready_button.set_visible(True)
+            self.ready_button.set_enabled(True)
 
+        self.my_player = self.players_list.get(self.player_name) 
     # ---------------- SKIN ASSETS ----------------
     def load_skin_assets(self):
         """Load color list, hat images, and idle animations for preview"""
@@ -157,9 +169,13 @@ class MultiplayerLobby(State):
         try:
             packet, (ip,port) = self.socket.recvfrom(1024)
             packet = json.loads(packet.decode('utf-8'))
-            if packet.get('type') == "ACK_STATE_CHANGE":
+
+            packet_type = packet.get('type')
+            packet_data = packet.get('data')
+
+            if packet_type == "ACK_STATE_CHANGE":
                 self.acknowledged_players.add((ip,port))
-            elif packet.get('type') == 'JOIN':
+            elif packet_type == 'JOIN':
                 data = packet.get('data')
                 player_name = data.get('name', "UNKNOWN")
                 # Check if player is already connected
@@ -192,7 +208,7 @@ class MultiplayerLobby(State):
                 }
                 self.send_packet(packet)
 
-            elif packet.get('type') == 'LEAVE':
+            elif packet_type == 'LEAVE':
                 data = packet.get('data')
                 del self.players_list[data.get('player_name')]
                 packet = {
@@ -201,12 +217,12 @@ class MultiplayerLobby(State):
                 }
                 print(f"{data.get('player_name')} left!")
                 self.send_packet(packet)
-            elif packet.get('type') == "PLAYER_LIST":
+            elif packet_type == "PLAYER_LIST":
                 print(self.players_list)
                 data = packet.get('data')
                 self.players_list = self.convert_player_list_to_Player(data.get('player_list'))
                 print(self.players_list)
-            elif packet.get('type') == 'STATE_CHANGE':
+            elif packet_type == 'STATE_CHANGE':
                 data = packet.get('data')
                 if  data.get('state', 'UNKNOWN') == 'MultiplayerMapSelector':
                     # Send ACK to host
@@ -216,12 +232,14 @@ class MultiplayerLobby(State):
                     self.send_packet(ack_packet)
                     self.exit_state()
                     self.state_manager.change_state("MultiplayerMapSelector", self.players_list,self.socket,self.player_name)
-            elif packet.get('type') == 'SKIN_UPDATE':
+            elif packet_type == 'SKIN_UPDATE':
                 data = packet.get('data')
                 player_name = data.get('player_name')
                 if player_name in self.players_list:
                     self.players_list[player_name].color_index = data.get('color_index', 0)
                     self.players_list[player_name].hat_index = data.get('hat_index', 0)
+            elif packet_type == 'READY_TOGGLE':
+                pass
         except socket.timeout:
             pass
         except json.JSONDecodeError as e:
@@ -245,7 +263,9 @@ class MultiplayerLobby(State):
         return player_list_converted
     # ---------------- INPUTS ----------------
     def handle_events(self, event):
-        if self.back_button.is_clicked():
+        if not self.my_player:
+            return
+        elif self.back_button.is_clicked():
             packet = {
                 'type': 'LEAVE',
                 'data': {'player_name' : self.player_name}
@@ -253,14 +273,16 @@ class MultiplayerLobby(State):
             self.send_packet(packet)
             self.exit_state()
             self.socket.close()
-        elif self.start_button.is_clicked():
+        elif self.is_host and self.start_button.is_clicked():
             self.broadcast_state_change("MultiplayerMapSelector")
             self.exit_state()
             self.state_manager.change_state("MultiplayerMapSelector", self.players_list,self.socket,self.player_name)
-        elif self.ready_button.is_clicked():
-            player = self.players_list.get(self.player_name)
-            if player:
-                player.is_ready = not player.is_ready
+        elif (not self.is_host) and self.ready_button.is_clicked():
+            self.my_player.is_ready = not self.my_player.is_ready
+            packet = {
+                'type' : 'READY_TOGGLE',
+                'data' : {'player_name': self.my_player.name}
+            }
         # Skin selection controls
         if event.type == pygame.KEYDOWN and self.player_name in self.players_list:
             my_player = self.players_list[self.player_name]
@@ -362,11 +384,14 @@ class MultiplayerLobby(State):
                 inst_rect = inst_surf.get_rect(center=(config.SCREEN_WIDTH // 2, inst_y + i * 22))
                 screen.blit(inst_surf, inst_rect)
 
-        # Draw buttons
-        if self.is_host and len(self.players_list) >= 2:
+        # Draw Buttons
+        if self.is_host:
+            self.start_button.set_visible(len(self.players_list) >= 2)
+            self.start_button.set_enabled(len(self.players_list) >= 2)
             self.start_button.draw(screen)
         else:
             self.ready_button.draw(screen)
+
         self.back_button.draw(screen)
 
     def draw_player_panel(self, screen, player: Player, x, y):
@@ -426,17 +451,16 @@ class MultiplayerLobby(State):
         hat_name_surf = pygame.font.Font("CaveatBrush-Regular.ttf", 18).render(f"Hat: {hat_def['name']}", True, (255, 255, 255))
         hat_name_rect = hat_name_surf.get_rect(center=(x + panel_width // 2, y + 185))
         screen.blit(hat_name_surf, hat_name_rect)
-        
+
+
         # Ready indicator
-        if player.name == self.player_name:
-            ready_surf = pygame.font.Font("CaveatBrush-Regular.ttf", 16).render("(You)", True, (100, 255, 100))
+        if not self.my_player:
+            return
+        
+        ready_color  = config.COLOR_LIGHT_GREEN if player.is_ready else config.COLOR_RED
+        if player.name == self.my_player.name:
+            ready_surf = pygame.font.Font("CaveatBrush-Regular.ttf", 16).render("(You)", True, ready_color)
         else:
-            my_player = self.players_list.get(player.name)
-            if not my_player:
-                return
-            elif my_player and my_player.is_ready:
-                ready_surf = pygame.font.Font("CaveatBrush-Regular.ttf", 16).render("Ready", True, (100, 255, 100))
-            else:
-                ready_surf = pygame.font.Font("CaveatBrush-Regular.ttf", 16).render("Ready", True, config.COLOR_RED)
+            ready_surf = pygame.font.Font("CaveatBrush-Regular.ttf", 16).render("Ready", True, ready_color)
         ready_rect = ready_surf.get_rect(center=(x + panel_width // 2, y + 215))
         screen.blit(ready_surf, ready_rect)
