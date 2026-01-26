@@ -224,3 +224,7 @@ AVAILABLE_COLORS = [
             YELLOW_PLAYER, PINK_PLAYER, ORANGE_PLAYER,
             PURPLE_PLAYER, BROWN_PLAYER, CYAN_PLAYER
         ]
+
+
+# ---------------------------------------------------------------Network---------------------------------------------------------------
+SERVER_PORT = 9999
