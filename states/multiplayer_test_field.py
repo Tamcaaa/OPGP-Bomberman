@@ -8,7 +8,7 @@ import time
 from typing import Dict,List,Tuple
 from power_up import PowerUp
 from states.state import State
-from player import Player
+from multiplayer_player import Player
 from managers.music_manager import MusicManager
 from managers.network_manager import NetworkManager
 from managers.state_manager import StateManager
