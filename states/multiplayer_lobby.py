@@ -55,27 +55,11 @@ class MultiplayerLobby(State):
         self.idle_fps = 4
 
         # Buttons
-        self.start_button = Button(
-            config.SCREEN_WIDTH // 2 - config.BUTTON_WIDTH // 2,
-            config.SCREEN_HEIGHT - 120,
-            config.BUTTON_WIDTH + 10,
-            config.BUTTON_HEIGHT + 10,
-            'Start Game',
-            font='CaveatBrush-Regular.ttf',
-            button_color = config.COLOR_BEIGE)
         self.back_button = Button(
             20, 20,
             config.BUTTON_WIDTH // 1.2,
             config.BUTTON_HEIGHT,
             "Back",
-            font='CaveatBrush-Regular.ttf',
-            button_color = config.COLOR_BEIGE)
-        self.ready_button = Button(
-            config.SCREEN_WIDTH // 2 - config.BUTTON_WIDTH // 2,
-            config.SCREEN_HEIGHT - 120,
-            config.BUTTON_WIDTH + 10,
-            config.BUTTON_HEIGHT + 10,
-            'Ready',
             font='CaveatBrush-Regular.ttf',
             button_color = config.COLOR_BEIGE)
 
@@ -84,15 +68,28 @@ class MultiplayerLobby(State):
             self.network_manager.socket.bind((self.host_ip, config.SERVER_PORT))
             addr = (self.host_ip, config.SERVER_PORT)
             self.players_list[player_name] = Player(player_name,addr,is_host=True,is_ready=True)  # Need to add the host to the list
-            # Host sees Start, not Ready by default
+
+            self.start_button = Button(
+            config.SCREEN_WIDTH // 2 - config.BUTTON_WIDTH // 2,
+            config.SCREEN_HEIGHT - 120,
+            config.BUTTON_WIDTH + 10,
+            config.BUTTON_HEIGHT + 10,
+            'Start Game',
+            font='CaveatBrush-Regular.ttf',
+            button_color = config.COLOR_BEIGE)
+            
             self.start_button.set_visible(False)
             self.start_button.set_enabled(False)
-            self.ready_button.set_visible(False)
-            self.ready_button.set_enabled(False)
         else:
-            # Client sees Ready, not Start
-            self.start_button.set_visible(False)
-            self.start_button.set_enabled(False)
+            self.ready_button = Button(
+            config.SCREEN_WIDTH // 2 - config.BUTTON_WIDTH // 2,
+            config.SCREEN_HEIGHT - 120,
+            config.BUTTON_WIDTH + 10,
+            config.BUTTON_HEIGHT + 10,
+            'Ready',
+            font='CaveatBrush-Regular.ttf',
+            button_color = config.COLOR_BEIGE)
+            
             self.ready_button.set_visible(True)
             self.ready_button.set_enabled(True)
         
@@ -409,9 +406,14 @@ class MultiplayerLobby(State):
 
         # Draw Buttons
         if self.is_host:
-            self.start_button.set_visible(len(self.players_list) >= 2)
-            self.start_button.set_enabled(len(self.players_list) >= 2)
-            self.start_button.draw(screen)
+            # Check if all players are ready
+            if all(player.is_ready for player in self.players_list.values()):
+                self.start_button.set_visible(len(self.players_list) >= 2)
+                self.start_button.set_enabled(len(self.players_list) >= 2)
+                self.start_button.draw(screen)
+            else:
+                self.start_button.set_visible(False)
+                self.start_button.set_enabled(True)
         else:
             self.ready_button.draw(screen)
 

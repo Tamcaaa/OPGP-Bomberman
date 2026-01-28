@@ -24,7 +24,7 @@ class InputPopup(State):
         self.address_rect = pygame.Rect(config.SCREEN_WIDTH // 4, config.SCREEN_HEIGHT // 3 + 80, config.SCREEN_WIDTH // 2, 40)
 
         self.username_text = 'Test'
-        self.address_text = '192.168.1.11'
+        self.address_text = '192.168.1.13'
 
         self.color_inactive = pygame.Color('lightskyblue3')
         self.color_active = pygame.Color('dodgerblue2')
