@@ -8,17 +8,21 @@ Addr = Tuple[str,int]
 Packet = Dict[str,Any]
 
 class NetworkManager:
-    def __init__(self,socket: socket.socket, *, resend_timeout:float = 0.2,resend_tries: int = 3) -> None:
+    def __init__(self,socket: socket.socket, *, resend_timeout:float = 0.5,resend_tries: int = 5) -> None:
         self.socket = socket
         self.socket.setblocking(False)
 
         # Seq for so we can track if packets got delivered twice
         self._seq = 0
         self._pending: Dict[int, Tuple[Addr,Packet,float,int]] = {}
-        self._processed_seq: Dict[Addr,set[int]] = {}  # seq -> (addr,packet,last_time_sent)
+        self._processed_seq: Dict[Addr,set[int]] = {}  # Track incoming packet seqs (duplicate detection)
+        self._completed_seq: Dict[Addr,set[int]] = {}  # Track outgoing packets that got ACKed
 
         self.resend_tries = resend_tries
         self.resend_timeout  = resend_timeout
+
+    def close_socket(self) -> None:
+        self.socket.close()
 
     # ---------------- Sending ----------------
     def send_packet(self, addr: Addr, packet_type:str,data: Optional[dict] = None,scope: str = 'Game') -> int:
@@ -29,6 +33,7 @@ class NetworkManager:
             'seq' : self._seq,
             'data': data
         }
+        print(f'[SEQ SENT] seq: {self._seq} packet: {packet} to {addr}')
         self._send_raw_packet(addr,packet)
         resend_try = 0
         self._pending[self._seq] = (addr,packet,time.time(),resend_try)
@@ -77,8 +82,8 @@ class NetworkManager:
         # Incoming ACK
         if packet_type == 'ACK' and isinstance(seq,int):
             self._pending.pop(seq,None)
-            self._processed_seq[addr].add(seq)
-            print(f'[SEQ COMPLETED] seq: {seq}')
+            self._completed_seq.setdefault(addr, set()).add(seq)
+            print(f'[SEQ COMPLETED] seq: {seq} packet: {packet} from {addr}')
             return
 
         if isinstance(seq,int):
@@ -88,9 +93,10 @@ class NetworkManager:
                 self._send_ack(addr,seq)
                 return
             seen.add(seq)
-            print(f'[SEQ PENDING] seq: {seq}')
+            print(f'[SEQ RECIEVED] seq: {seq} packet: {packet} from {addr}')
             self._send_ack(addr,seq)
             return (packet,addr)
+        print(f'[WARN] Packet with no seq: {packet} from {addr}')
         
     def _send_ack(self,addr:Addr,seq:int) -> None: 
         ack_packet = {'type': 'ACK','seq': seq}
@@ -101,6 +107,7 @@ class NetworkManager:
         now = time.time()
         for seq,(addr, packet, last_time_sent, resend_try) in list(self._pending.items()):
             if now - last_time_sent >= self.resend_timeout and resend_try <= self.resend_tries:
+                print(f'[SEQ RESEND] seq: {seq} packet: {packet} to {addr} (try {resend_try + 1})')
                 self._send_raw_packet(addr,packet)
                 resend_try += 1
                 self._pending[seq] = (addr,packet,now,resend_try)
@@ -110,13 +117,14 @@ class NetworkManager:
     def close_connection(self) -> None:
         self.socket.close()
     # ---------------- Getters and Setters ----------------
-    def get_processed_seq(self,addr: Optional[Addr] = None,*, seq: Optional[int] = None) -> ItemsView[Addr,Set[int]] | set[int] | bool | None:
+    def get_completed_seq(self,addr: Optional[Addr] = None,*, seq: Optional[int] = None) -> ItemsView[Addr,Set[int]] | set[int] | bool | None:
+        """Check if outgoing packets got ACKed"""
         if addr is None and seq is None:
-            return self._processed_seq.items()
+            return self._completed_seq.items()
         if addr and seq is None:
-            return self._processed_seq.get(addr, set())
+            return self._completed_seq.get(addr, set())
         if addr and seq:
-            return True if seq in self._processed_seq.get(addr, set()) else False
+            return True if seq in self._completed_seq.get(addr, set()) else False
         return None
     
     # ---------------- Packet Checker ----------------
@@ -132,10 +140,10 @@ class NetworkManager:
         if not packet_type:
             print(f'[PACKET ERROR] type is missing or empty! packet: {packet} from {addr}')
             return False
-        if packet_seq:
+        if not packet_seq:
             print(f'[PACKET ERROR] seq is missing or empty! packet: {packet} from {addr}')
             return False
-        if packet_data is None:
+        if not packet_data:
             print(f'[PACKET ERROR] data is missing or empty! packet: {packet} from {addr}')
             return False
         
@@ -143,44 +151,44 @@ class NetworkManager:
             return self._check_multiplayerLobby_packet(packet_type,packet_data,addr)
         return False
     
-    def _check_multiplayerLobby_packet(self,packet_type,packet_data,addr) -> bool:    
-        if packet_type == 'JOIN':
-            if not packet_data.get('player_name'):
-                print(f'[JOIN_PACKET ERROR] missing or empty player_name from {addr}')
+    def _check_multiplayerLobby_packet(self, packet_type: str, packet_data: Dict[str, Any], addr: Addr) -> bool:
+        def require_present(field: str, *, allow_empty_str: bool = False) -> bool:
+            value = packet_data.get(field)
+            if value is None:
+                print(f'[{packet_type}_PACKET ERROR] missing {field} from {addr}')
+                return False
+            if not allow_empty_str and isinstance(value, str) and not value.strip():
+                print(f'[{packet_type}_PACKET ERROR] empty {field} from {addr}')
                 return False
             return True
-        elif packet_type == 'LEAVE':
-            if not packet_data.get('player_name'):
-                print(f'[LEAVE_PACKET ERROR] missing or empty player_name from {addr}')
+
+        if packet_type in {'JOIN', 'LEAVE', 'READY_TOGGLE'}:
+            return require_present('player_name')
+
+        if packet_type == 'PLAYER_LIST':
+            return require_present('player_list')
+
+        if packet_type == 'STATE_CHANGE':
+            return require_present('state')
+
+        if packet_type == 'SKIN_UPDATE':
+            if not require_present('player_name'):
                 return False
-            return True
-        elif packet_type == 'PLAYER_LIST':
-            if not packet_data.get('player_list'):
-                print(f'[PLAYER_LIST ERROR] missing or empty player_list from {addr}')
-                return False
-            return True
-        elif packet_type == 'STATE_CHANGE':
-            if not packet_data.get('state'):
-                print(f'[STATE_CHANGE ERROR] missing or empty state from {addr}')
-                return False
-            return True
-        elif packet_type == 'SKIN_UPDATE':
             color_index = packet_data.get('color_index')
             hat_index = packet_data.get('hat_index')
-            if not packet_data.get('player_name'):
-                print(f'[SKIN_UPDATE ERROR] missing or empty player_name from {addr}')
+            if color_index is None:
+                print(f'[SKIN_UPDATE ERROR] missing color_index from {addr}')
                 return False
-            if not color_index:
-                print(f'[SKIN_UPDATE ERROR] missing or empty color_index from {addr}')
-                return False
-            if not isinstance(color_index,int):
+            if not isinstance(color_index, int):
                 print(f'[SKIN_UPDATE ERROR] invalid color_index from {addr}')
                 return False
-            if not hat_index:
-                print(f'[SKIN_UPDATE ERROR] missing or empty hat_index from {addr}')
+            if hat_index is None:
+                print(f'[SKIN_UPDATE ERROR] missing hat_index from {addr}')
                 return False
-            if not isinstance(hat_index,int):
+            if not isinstance(hat_index, int):
                 print(f'[SKIN_UPDATE ERROR] invalid hat_index from {addr}')
                 return False
             return True
+
+        print(f'[MultiplayerLobby ERROR] unknown packet type: {packet_type} from {addr}')
         return False

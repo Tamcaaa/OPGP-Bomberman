@@ -10,7 +10,7 @@ class StateManager:
             "MapSelector": "states.map_selector.MapSelector",
             "MultiplayerSelector": "states.multiplayer_selector.MultiplayerSelector",
             "MultiplayerLobby": "states.multiplayer_lobby.MultiplayerLobby",
-            "InputPopup": "states.input_popup.InputPopup",
+            "InputPopup": "states.multiplayer_input_popup.InputPopup",
             "MultiplayerMapSelector": "states.multiplayer_map_selector.MultiplayerMapSelector",
             "SkinSelector": "states.skin_selector.SkinSelector",
             "MultiplayerTestField": "states.multiplayer_test_field.MultiplayerTestField",

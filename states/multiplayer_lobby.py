@@ -9,12 +9,16 @@ from states.state import State
 from custom_classes.button import Button
 from managers.music_manager import MusicManager
 from managers.state_manager import StateManager
+from managers.network_manager import NetworkManager
+
+
+Addr = Tuple[str,int]
+Packet = Dict[str,Any]
 
 @dataclass
 class Player:
     name : str
-    ip : str
-    port : int
+    addr : Tuple[str,int]
     is_host: bool
     is_ready: bool = False
     selection_index: int = 0
@@ -23,29 +27,22 @@ class Player:
     hat_index: int = 0 
 
 class MultiplayerLobby(State):
-    def __init__(self, game, player_name,socket_= None, players_list = {}, is_host=False):
+    def __init__(self, game, player_name,network_manager:NetworkManager, players_list = {},*, is_host=False):
         super().__init__(game)
         pygame.display.set_caption("BomberMan: Multiplayer Lobby")
         self.bg_image = pygame.image.load(os.path.join(game.photos_dir, "bg.png"))
 
         self.music_manager = MusicManager()
         self.state_manager = StateManager(game)
-
-        # UDP socket
-        self.socket = socket_ if socket_ else socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.socket.settimeout(0.01)
-
-        self.acknowledged_players = set()
-        self.state_change_confirmed = False
+        self.network_manager = network_manager
 
         # data from input
         self.player_name = player_name
         self.is_host = is_host
+
+        self.leave_seq = None
         
         self.players_list: Dict[str,Player] = self.convert_player_list_to_Player(players_list) if players_list else {}
-
-        self.request_cooldown = 1
-        self.last_request_time = 0
 
         self.max_players = 2
 
@@ -83,10 +80,10 @@ class MultiplayerLobby(State):
             button_color = config.COLOR_BEIGE)
 
         if self.is_host:
-            self.port = 9999
             self.host_ip = self.get_local_ip()
-            self.socket.bind((self.host_ip, self.port))
-            self.players_list[player_name] = Player(player_name,self.host_ip,self.port,is_host=True,is_ready=True)  # Need to add the host to the list
+            self.network_manager.socket.bind((self.host_ip, config.SERVER_PORT))
+            addr = (self.host_ip, config.SERVER_PORT)
+            self.players_list[player_name] = Player(player_name,addr,is_host=True,is_ready=True)  # Need to add the host to the list
             # Host sees Start, not Ready by default
             self.start_button.set_visible(False)
             self.start_button.set_enabled(False)
@@ -98,8 +95,10 @@ class MultiplayerLobby(State):
             self.start_button.set_enabled(False)
             self.ready_button.set_visible(True)
             self.ready_button.set_enabled(True)
-
-        self.my_player = self.players_list.get(self.player_name) 
+        
+        self.my_player = self.players_list.get(self.player_name,None)
+        if self.my_player is None:
+            raise Exception('my_player is None in MultiplayerLobby')
     # ---------------- SKIN ASSETS ----------------
     def load_skin_assets(self):
         """Load color list, hat images, and idle animations for preview"""
@@ -164,92 +163,7 @@ class MultiplayerLobby(State):
             return local_ip
         except Exception as e:
             return f"Could not determine local IP: {e}"
-
-    def handle_network_packets(self):
-        try:
-            packet, (ip,port) = self.socket.recvfrom(1024)
-            packet = json.loads(packet.decode('utf-8'))
-
-            packet_type = packet.get('type')
-            packet_data = packet.get('data')
-
-            if packet_type == "ACK_STATE_CHANGE":
-                self.acknowledged_players.add((ip,port))
-            elif packet_type == 'JOIN':
-                data = packet.get('data')
-                player_name = data.get('name', "UNKNOWN")
-                # Check if player is already connected
-                if len(self.players_list) >= self.max_players:
-                    print(f'{player_name} tried to join from {ip,port} but the lobby is full!')
-                    return
-                for name in self.players_list:
-                    if name == player_name:
-                        print(f'{player_name} tried to join from {ip,port} player with same name already joined!')
-                        packet = {
-                            'type' : 'SAME_NAME',
-                            'data' : {'msg' : f'Player with username {player_name} is already in the lobby!'}
-                        }
-                        self.send_packet(packet)
-                        return
-                for player in self.players_list.values():
-                    if (ip,port) == (player.ip,player.port):
-                        print("Player already Connected")
-                        return
-                
-                self.players_list[player_name] = Player(player_name,ip,port,is_host=False)
-
-                print(f"{player_name} joined from {(ip,port)}")
-
-                # Send updated player list
-                # We need to change the dict so we can send it, because we cant send complex data as dataclass with JSON
-                packet = {
-                    'type': 'PLAYER_LIST',
-                    'data': {'player_list': self.convert_player_list_to_dict(self.players_list)}
-                }
-                self.send_packet(packet)
-
-            elif packet_type == 'LEAVE':
-                data = packet.get('data')
-                del self.players_list[data.get('player_name')]
-                packet = {
-                    'type': 'PLAYER_LIST',
-                    'data': {'player_list': self.convert_player_list_to_dict(self.players_list)}
-                }
-                print(f"{data.get('player_name')} left!")
-                self.send_packet(packet)
-            elif packet_type == "PLAYER_LIST":
-                print(self.players_list)
-                data = packet.get('data')
-                self.players_list = self.convert_player_list_to_Player(data.get('player_list'))
-                print(self.players_list)
-            elif packet_type == 'STATE_CHANGE':
-                data = packet.get('data')
-                if  data.get('state', 'UNKNOWN') == 'MultiplayerMapSelector':
-                    # Send ACK to host
-                    ack_packet = {
-                        'type': 'ACK_STATE_CHANGE'
-                    }
-                    self.send_packet(ack_packet)
-                    self.exit_state()
-                    self.state_manager.change_state("MultiplayerMapSelector", self.players_list,self.socket,self.player_name)
-            elif packet_type == 'SKIN_UPDATE':
-                data = packet.get('data')
-                player_name = data.get('player_name')
-                if player_name in self.players_list:
-                    self.players_list[player_name].color_index = data.get('color_index', 0)
-                    self.players_list[player_name].hat_index = data.get('hat_index', 0)
-            elif packet_type == 'READY_TOGGLE':
-                pass
-        except socket.timeout:
-            pass
-        except json.JSONDecodeError as e:
-            print(f"Invalid JSON received from: {e}")
-
-    def send_packet(self, packet : bytes | Dict):
-        packet = json.dumps(packet).encode("utf-8")
-        for player in self.players_list.values():
-            if self.player_name != player.name:
-                self.socket.sendto(packet, (player.ip,player.port))
+            
     def convert_player_list_to_dict(self,player_list:Dict[str,Player])-> Dict[str,dict]:
         player_list_converted: Dict[str,dict] = {}
         for player_name,player_data in player_list.items():
@@ -259,6 +173,7 @@ class MultiplayerLobby(State):
     def convert_player_list_to_Player(self,player_list:Dict[str,dict]) -> Dict[str,Player]:
         player_list_converted: Dict[str,Player] = {}
         for player_name,player_data in player_list.items():
+            player_data['addr'] = tuple(player_data['addr'])
             player_list_converted[player_name] = Player(**player_data)
         return player_list_converted
     # ---------------- INPUTS ----------------
@@ -266,23 +181,24 @@ class MultiplayerLobby(State):
         if not self.my_player:
             return
         elif self.back_button.is_clicked():
-            packet = {
-                'type': 'LEAVE',
-                'data': {'player_name' : self.player_name}
-            }
-            self.send_packet(packet)
-            self.exit_state()
-            self.socket.close()
+            packet_type = 'LEAVE'
+            pakcet_data = {'player_name' : self.my_player.name}
+            scope = 'MultiplayerLobby'
+            self.leave_seq = self.network_manager.send_packet(self.my_player.addr,packet_type,pakcet_data,scope)
         elif self.is_host and self.start_button.is_clicked():
             self.broadcast_state_change("MultiplayerMapSelector")
             self.exit_state()
-            self.state_manager.change_state("MultiplayerMapSelector", self.players_list,self.socket,self.player_name)
+            self.state_manager.change_state("MultiplayerMapSelector", self.players_list,self.network_manager,self.player_name)
         elif (not self.is_host) and self.ready_button.is_clicked():
             self.my_player.is_ready = not self.my_player.is_ready
             packet = {
                 'type' : 'READY_TOGGLE',
-                'data' : {'player_name': self.my_player.name}
+                'data' : {'player_name': self.my_player.name},
+                'scope' : 'MultiplayerLobby'
             }
+            for player in self.players_list.values():
+                if player.is_host:
+                    self.network_manager.send_packet(player.addr,packet['type'],packet['data'],packet['scope'])
         # Skin selection controls
         if event.type == pygame.KEYDOWN and self.player_name in self.players_list:
             my_player = self.players_list[self.player_name]
@@ -312,32 +228,139 @@ class MultiplayerLobby(State):
                 my_player.hat_index = (my_player.hat_index + 1) % len(config.HATS)
                 self.broadcast_skin_update()
 
-    def broadcast_skin_update(self):
-        """Send skin selection to other players"""
-        if self.player_name in self.players_list:
-            my_player = self.players_list[self.player_name]
-            packet = {
-                'type': 'SKIN_UPDATE',
-                'data': {
-                    'player_name': self.player_name,
-                    'color_index': my_player.color_index,
-                    'hat_index': my_player.hat_index
-                }
-            }
-            self.send_packet(packet)
+    # ---------------- Network ----------------
+    def handle_packet(self,poll_data:Tuple[Packet, Addr]) -> None:
+        packet,addr = poll_data
 
-    def update(self):
-        self.handle_network_packets()
-        self.update_idle_animation()
+        if not packet.get('scope') == 'MultiplayerLobby':
+            print(f'[SCOPE_ERROR] from MultiplayerLobby; packet:{packet} from {addr}')
+            return
+        packet_type = packet.get('type')
+        packet_data = packet.get('data')
+        packet_seq = packet.get('seq')
 
-    def broadcast_state_change(self, new_state):
-        state_change_packet = {
-            'type': 'STATE_CHANGE',
-            'data': {'state': new_state}
+        if not packet_type or not packet_data:
+            raise Exception(f'Invalid packet (data or type missing): packet:{packet} from {addr}')
+        
+        if packet_type == 'JOIN':
+            self._handle_join_packet(packet_data,addr)
+        elif packet_type == 'LEAVE':
+            self._handle_leave_packet(packet_data,addr)
+        elif packet_type == 'PLAYER_LIST':
+            self._handle_player_list_packet(packet_data,addr)
+        elif packet_type == 'STATE_CHANGE':
+            self._handle_state_change_packet(packet_data,addr)
+        elif packet_type == 'SKIN_UPDATE':
+            self._handle_skin_update_packet(packet_data,addr)
+        elif packet_type == 'READY_TOGGLE':
+            self._handle_ready_toggle_packet(packet_data,addr)
+    
+    def _handle_skin_update_packet(self,packet_data,addr):
+        player_name = packet_data.get('player_name')
+        if not (player_name in self.players_list):
+            print(f'[SKIN_UPDATE ERROR] Unknown player {player_name} from {addr}')
+            return
+        self.players_list[player_name].color_index = packet_data.get('color_index', 0)
+        self.players_list[player_name].hat_index = packet_data.get('hat_index', 0)
+        print(f'[SKIN_UPDATE] {player_name} updated skin from {addr}')
+
+    def _handle_state_change_packet(self,packet_data,addr):
+        state = packet_data.get('state')
+        print(f'[STATE_CHANGE] state: {state} from {addr}')
+        self.exit_state()
+        self.state_manager.change_state('MultiplayerMapSelector',self.players_list,self.network_manager,self.player_name)
+
+    def _handle_player_list_packet(self,packet_data,addr) -> None:
+        player_list = packet_data.get('player_list')
+        self.players_list = self.convert_player_list_to_Player(player_list)
+        print(f'[PLAYER_LIST UPDATE] player_list: {self.players_list}') 
+
+    def _handle_leave_packet(self,packet_data,addr) -> None:
+        player_name = packet_data.get('player_name')
+        print(f'{player_name} left from {addr}')
+        del self.players_list[player_name]
+        self._broadcast_player_list()
+        
+    def _broadcast_player_list(self) -> None:
+        if self.my_player is None:
+            return
+        
+        packet_type = 'PLAYER_LIST'
+        data = {'player_list': self.convert_player_list_to_dict(self.players_list)}
+        scope = 'MultiplayerLobby'
+        for player in self.players_list.values():
+            if player.addr == self.my_player.addr:
+                continue 
+            print(f'Sending PLAYER_LIST to {player.addr}')
+            self.network_manager.send_packet(player.addr,packet_type,data,scope)
+
+    def _handle_join_packet(self,packet_data,addr) -> None:
+        player_name = packet_data.get('player_name','UNKNOWN')
+            
+        if (len(self.players_list) >= self.max_players):
+            print(f'{player_name} tried to join from {addr} but the lobby is full!')
+            return
+        
+        for name in self.players_list:
+            if (name == player_name):
+                print(f'{player_name} tried to join from {addr} player with the same name already joined!')
+                data = {'msg' : f'Player with username {player_name} is already in the lobby!'}
+                packet_type = 'SAME_DATA'
+                scope = 'MultiplayerLobby'
+                self.network_manager.send_packet(addr,packet_type,data,scope)
+                return       
+        for player in self.players_list.values():
+            if (addr == (player.addr)):
+                print(f'Address: {addr} is already in player_list')
+                return
+        
+        self.players_list[player_name] = Player(player_name,(addr),is_host=False)
+        print(f"{player_name} joined from {addr}")
+
+        self._broadcast_player_list()
+
+    def _handle_ready_toggle_packet(self,packet_data,addr) -> None:
+        player_name = packet_data.get('player_name')
+        if not (player_name in self.players_list):
+            print(f'[READY_TOGGLE ERROR] Unknown player {player_name} from {addr}')
+            return
+        player = self.players_list[player_name]
+        player.is_ready = not (player.is_ready)
+        print(f'[READY_TOGGLE] {player_name} is_ready: {player.is_ready} from {addr}')
+    def broadcast_skin_update(self) -> None:
+        if not self.my_player:
+            return
+        packet_type = 'SKIN_UPDATE'
+        data = {
+            'player_name': self.my_player.name,
+            'color_index': self.my_player.color_index,
+            'hat_index': self.my_player.hat_index
         }
-        self.acknowledged_players = set()
+        scope = 'MultiplayerLobby'
+        for player in self.players_list.values():
+            if not (player == self.my_player):
+                self.network_manager.send_packet(player.addr,packet_type,data,scope)
+    def broadcast_state_change(self,new_state:str) -> None:
+        packet_type = 'STATE_CHANGE'
+        data = {'state' : new_state}
+        scope = 'MultiplayerLobby'
+        for player in self.players_list.values():
+            self.network_manager.send_packet(player.addr,packet_type,data,scope)
+    # ---------------- Update ----------------
+    def update(self) -> None:
+        if self.leave_seq and self.my_player and self.network_manager.get_completed_seq(self.my_player.addr,seq=self.leave_seq):
+            print(f'[LEFT LOBBY] {self.my_player.name} has left the lobby.')
+            self.network_manager.close_socket()
+            self.exit_state()
+            self.state_manager.change_state('MainMenu')
+            return
+        self.update_idle_animation()
+        poll_data = self.network_manager.poll()
+        if poll_data:
+            self.handle_packet(poll_data)
+        self.network_manager.update()
 
-        self.send_packet(state_change_packet)
+        
     # ---------------- Render ---------------
     def render(self, screen):
         screen.blit(self.bg_image, (0, 0))
@@ -348,7 +371,7 @@ class MultiplayerLobby(State):
         # IP Label (if host)
         if self.is_host:
             host = self.players_list.get(self.player_name)
-            ip_text = f'Share this IP: {host.ip if host else "UNKNOWN"}'
+            ip_text = f'Share this IP: {self.host_ip if host else "UNKNOWN"}'
             ip_surface = pygame.font.Font(None, 24).render(ip_text, True, config.TEXT_COLOR)
             ip_rect = ip_surface.get_rect(center=(config.SCREEN_WIDTH // 2, 60))
             screen.blit(ip_surface, ip_rect)

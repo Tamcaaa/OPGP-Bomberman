@@ -1,11 +1,14 @@
+import socket
 import pygame
 import config
 import os
+
 
 from states.state import State
 from managers.music_manager import MusicManager
 from managers.state_manager import StateManager
 from custom_classes.button import Button
+from managers.network_manager import NetworkManager
 
 class MultiplayerSelector(State):
     def __init__(self, game):
@@ -16,7 +19,9 @@ class MultiplayerSelector(State):
 
         self.music_manager = MusicManager()
         self.state_manager = StateManager(game)
-
+        _socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.network_manager = NetworkManager(_socket)
+        
         # Create buttons
         self.host_button = Button(
             config.SCREEN_WIDTH // 2 - config.BUTTON_WIDTH - 20,
@@ -46,9 +51,9 @@ class MultiplayerSelector(State):
     def handle_events(self, event):
         """Handle button clicks."""
         if self.host_button.is_clicked():
-            self.state_manager.change_state("MultiplayerLobby","Server Host",is_host=True)
+            self.state_manager.change_state("MultiplayerLobby","Server Host",self.network_manager,is_host=True)
         elif self.join_button.is_clicked():
-            self.state_manager.change_state("InputPopup")
+            self.state_manager.change_state('InputPopup',self.network_manager)
         elif self.goBack_button.is_clicked():
             self.exit_state()
             self.state_manager.change_state("MainMenu")

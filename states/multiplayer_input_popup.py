@@ -5,16 +5,18 @@ import socket
 from states.state import State
 from managers.state_manager import StateManager
 from custom_classes.button import Button
-
+from managers.network_manager import NetworkManager
 
 
 class InputPopup(State):
-    def __init__(self, game):
+    def __init__(self, game,network_manager:NetworkManager):
         State.__init__(self, game)
         pygame.display.set_caption("BomberMan: Multiplayer")
         self.font = pygame.font.Font(None, config.FONT_SIZE)
         self.active_box = None
 
+        # Managers
+        self.network_manager = network_manager
         self.state_manager = StateManager(game)
 
         # Input boxes
@@ -31,9 +33,6 @@ class InputPopup(State):
         self.address_color = self.color_inactive
 
         self.result = None
-
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.socket.settimeout(0.01)
         
         # Buttons
         button_y = config.SCREEN_HEIGHT // 3 + 150
@@ -51,33 +50,14 @@ class InputPopup(State):
         ip = self.address_text.strip()
         if player_name and ip:
             self.send_join_request(player_name,ip)
+    
     def send_join_request(self,player_name,ip_to_join):
-        max_attempts = 5
-        attempt = 0
-        while attempt < max_attempts:
-            packet = {
-                "type": "JOIN",
-                'data': {"name": player_name},
-            }
-            packet = json.dumps(packet).encode('utf-8')
-            self.socket.sendto(packet, (ip_to_join, 9999))
-            self.port = self.socket.getsockname()[1] # getsockname --> (ip,port)
-            try:
-                response, _ = self.socket.recvfrom(1024)
-                response_packet = json.loads(response.decode('utf-8'))
-                if response_packet.get('type') == 'PLAYER_LIST':
-                    data = response_packet.get('data')
-                    self.exit_state()
-                    self.state_manager.change_state('MultiplayerLobby',player_name,self.socket,data.get('player_list'))
-                    print("Joined successfully!")
-                    break
-                elif response_packet.get('type') == 'SAME_NAME':
-                    data = response_packet.get('data')
-                    print(data.get('msg'))
-            except (socket.timeout, json.JSONDecodeError):
-                # No response
-                attempt += 1
-                print(f"Join attempt {attempt} failed, retrying...")
+        addr = (ip_to_join,config.SERVER_PORT)
+        msg_type = 'JOIN'
+        data = {'player_name' : player_name}
+        scope = 'MultiplayerLobby'
+        self.network_manager.send_packet(addr,msg_type,data,scope)
+    
     def go_back(self):
         self.exit_state()
 
@@ -111,11 +91,42 @@ class InputPopup(State):
                     self.address_text += event.unicode
 
         # Check button clicks
-        if self.join_button.is_clicked():
+        if self.join_button.is_clicked() and self.join_button.action:
             self.join_button.action()
-        if self.back_button.is_clicked():
+        if self.back_button.is_clicked() and self.back_button.action:
             self.back_button.action()
+            
+    # ---------------- Network ----------------
+    def handle_packet(self,packet_poll):
+        packet,addr = packet_poll
 
+        if not (packet.get('scope') in  ['InputPopup','MultiplayerLobby']):
+            print(f'[SCOPE_ERROR] in InputPopup; packet:{packet} from {addr} ')
+            return
+        
+        packet_type = packet.get('type')
+        packet_data = packet.get('data')
+
+        player_name = self.username_text.strip()
+        
+        if not packet_type or not packet_data:
+            raise Exception(f'Invalid packet (data or type missing): {packet} from {addr}')
+        if packet_type == 'PLAYER_LIST':
+            player_list = packet_data.get('player_list',None)
+            if not player_list:
+                print('[PLAYER_LIST ERROR] no player_list in data')
+                return
+            self.exit_state()
+            self.state_manager.change_state('MultiplayerLobby',player_name,self.network_manager,player_list)
+            print(f"Joined successfully to {addr}")
+            return
+        print(f'[PACKET IGNORED] type: {packet_type} from {addr} in InputPopup')        
+    def update(self):
+        packet_poll = self.network_manager.poll()
+        if packet_poll:
+            self.handle_packet(packet_poll)
+        self.network_manager.update()
+        
     def render(self, screen):
         popup_height = 260
         popup_rect = pygame.Rect(config.SCREEN_WIDTH // 4 - 10, config.SCREEN_HEIGHT // 3 - 20, config.SCREEN_WIDTH // 2 + 20, popup_height)
