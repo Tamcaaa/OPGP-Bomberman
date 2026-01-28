@@ -6,7 +6,7 @@ import config
 import time
 
 from typing import Dict,List,Tuple
-from power_up import PowerUp
+from multiplayer_power_up import PowerUp
 from states.state import State
 from multiplayer_player import Player
 from managers.music_manager import MusicManager
