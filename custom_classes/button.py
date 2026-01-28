@@ -15,9 +15,14 @@ class Button:
         self.button_color = button_color
         self.button_hover_color = button_hover_color
         self.button_radius = button_radius
+        # Interaction flags
+        self.visible = True
+        self.enabled = True
 
     def draw(self, screen):
         """Draw the button on screen."""
+        if not self.visible:
+            return
         mouse_pos = pygame.mouse.get_pos()
         if self.rect.collidepoint(mouse_pos):
             pygame.draw.rect(screen, self.button_hover_color, self.rect, border_radius=self.button_radius)
@@ -31,6 +36,14 @@ class Button:
 
     def is_clicked(self):
         """Check if the button is clicked."""
+        if not (self.visible and self.enabled):
+            return False
         mouse_pos = pygame.mouse.get_pos()
         mouse_pressed = pygame.mouse.get_pressed()
         return self.rect.collidepoint(mouse_pos) and mouse_pressed[0]
+
+    def set_visible(self, visible: bool):
+        self.visible = visible
+
+    def set_enabled(self, enabled: bool):
+        self.enabled = enabled
