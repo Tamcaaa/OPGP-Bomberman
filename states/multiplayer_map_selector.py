@@ -212,9 +212,9 @@ class MultiplayerMapSelector(State):
                     self.cancel_vote()
             elif self.players_list.get(self.my_player.name).vote_index is not None:
                 return
-            elif event.key == pygame.K_LEFT:
+            elif event.key == pygame.K_a:
                 self.move_selection(self.my_player.name, -1)
-            elif event.key == pygame.K_RIGHT:
+            elif event.key == pygame.K_d:
                 self.move_selection(self.my_player.name, 1)
 
     # ==================== UPDATE ====================
@@ -364,7 +364,7 @@ class MultiplayerMapSelector(State):
             player_color = config.AVAILABLE_COLORS[my_player.color_index]
             
             if my_player.vote_index is None:
-                instruction_text = "<- -> to move, ENTER to vote"
+                instruction_text = "A D to move, ENTER to vote"
             else:
                 instruction_text = "Vote confirmed!"
 
