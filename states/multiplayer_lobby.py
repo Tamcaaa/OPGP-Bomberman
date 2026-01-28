@@ -226,6 +226,11 @@ class MultiplayerLobby(State):
                 self.broadcast_skin_update()
 
     # ---------------- Network ----------------
+    def handle_network_packets(self):
+        poll_data = self.network_manager.poll()
+        if poll_data:
+            self.handle_packet(poll_data)
+
     def handle_packet(self,poll_data:Tuple[Packet, Addr]) -> None:
         packet,addr = poll_data
 
@@ -311,7 +316,17 @@ class MultiplayerLobby(State):
                 print(f'Address: {addr} is already in player_list')
                 return
         
-        self.players_list[player_name] = Player(player_name,(addr),is_host=False)
+        # Create new player with unique color
+        new_player = Player(player_name, (addr), is_host=False)
+        
+        # Assign first available color
+        taken_colors = [p.color_index for p in self.players_list.values()]
+        for color_idx in range(len(self.available_colors)):
+            if color_idx not in taken_colors:
+                new_player.color_index = color_idx
+                break
+        
+        self.players_list[player_name] = new_player
         print(f"{player_name} joined from {addr}")
 
         self._broadcast_player_list()
@@ -337,27 +352,27 @@ class MultiplayerLobby(State):
         for player in self.players_list.values():
             if not (player == self.my_player):
                 self.network_manager.send_packet(player.addr,packet_type,data,scope)
+
     def broadcast_state_change(self,new_state:str) -> None:
         packet_type = 'STATE_CHANGE'
         data = {'state' : new_state}
         scope = 'MultiplayerLobby'
         for player in self.players_list.values():
             self.network_manager.send_packet(player.addr,packet_type,data,scope)
-    # ---------------- Update ----------------
-    def update(self) -> None:
+
+    def check_leave_seq(self) -> None:
+        '''Check if leave packet got Ack'ed'''
         if self.leave_seq and self.my_player and self.network_manager.get_completed_seq(self.my_player.addr,seq=self.leave_seq):
             print(f'[LEFT LOBBY] {self.my_player.name} has left the lobby.')
             self.network_manager.close_socket()
             self.exit_state()
             self.state_manager.change_state('MainMenu')
-            return
+    # ---------------- Update ----------------
+    def update(self) -> None:
+        self.check_leave_seq()
         self.update_idle_animation()
-        poll_data = self.network_manager.poll()
-        if poll_data:
-            self.handle_packet(poll_data)
+        self.handle_network_packets()
         self.network_manager.update()
-
-        
     # ---------------- Render ---------------
     def render(self, screen):
         screen.blit(self.bg_image, (0, 0))
