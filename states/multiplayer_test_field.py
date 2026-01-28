@@ -10,24 +10,34 @@ from power_up import PowerUp
 from states.state import State
 from player import Player
 from managers.music_manager import MusicManager
+from managers.network_manager import NetworkManager
+from managers.state_manager import StateManager
 from maps.test_field_map import all_maps
 from image_loader import load_images
 from bomb import Bomb
 
 class MultiplayerTestField(State):
-    def __init__(self, game,map_name,socket,players_list,player_name):
+    def __init__(self, game, selected_map, network_manager, players_list, player_name):
         super().__init__(game)
         
-        self.socket = socket
+        self.network_manager = network_manager
         self.players_list = players_list
         self.player_name = player_name
-        pygame.display.set_caption(f"BomberMan: {map_name} User: {self.player_name}")
-        self.map_name = map_name
+        self.my_player = players_list.get(player_name)
+        self.state_manager = StateManager(self.game)
+        
+        # Get map name from selected_map if it's a tuple, otherwise use as is
+        if isinstance(selected_map, tuple):
+            self.map_name = selected_map[0]
+            self.tile_map = copy.deepcopy(selected_map[1])
+        else:
+            self.map_name = selected_map
+            self.tile_map = copy.deepcopy(all_maps[selected_map])
+        
+        pygame.display.set_caption(f"BomberMan: {self.map_name} User: {self.player_name}")
+        
         # Music manager
         self.music_manager = MusicManager()
-
-        # Load map
-        self.tile_map = copy.deepcopy(all_maps[map_name])
 
         # Sprite groups
         self.bomb_group = pygame.sprite.Group()
@@ -44,59 +54,82 @@ class MultiplayerTestField(State):
         self.message_timer = 0
 
         self.players = {}
-
-        # Players: dict player_name -> Player object
-        if self.players_list.get(self.player_name).is_host:
-            self.players = {}
+        
+        if self.my_player.is_host:
+            # Players: dict player_name -> Player object
             for player_name in self.players_list:
                 spawn = "spawn1" if player_name == self.player_name else "spawn4"
-                self.players[player_name] = Player(1 if spawn == "spawn1" else 2, spawn, self,name=player_name)
+                self.players[player_name] = Player(1 if spawn == "spawn1" else 2, spawn, self, name=player_name)
             self.send_player_list()
             self.place_hidden_powerups()
 
     # ---------------- NETWORK ----------------
     def handle_network_packets(self):
-        try:
-            packet, _ = self.socket.recvfrom(1024)
-            packet = json.loads(packet.decode("utf-8"))
-            packet_type = packet.get('type')
-            packet_data = packet.get('data')
+        poll_data = self.network_manager.poll()
+        if poll_data:
+            self.handle_packet(poll_data)
 
-            if packet_type == 'PLAYER_LIST':
-                for player_name, spawn in packet_data.get('list').items():
-                    self.players[player_name] = Player(1 if player_name == self.player_name else 2,spawn, self,name=player_name)
-            elif packet_type == "PLAYER_UPDATE":
-                player_name = packet_data.get('player_name')
-                x = packet_data.get('x')
-                y = packet_data.get('y')
-                if player_name in self.players and player_name != self.player_name:
-                    self.players[player_name].rect.topleft = (x, y)
-            elif packet_type == 'BOMB_UPDATE':
-                player_name = packet_data.get('player_name')
-                Bomb(self.players.get(player_name), self.bomb_group, self.explosion_group,self)
-            elif packet_type == 'POWERUP_UPDATE':
-                x, y = map(int, packet_data.get('pos').split(','))
-                powerup_type = packet_data.get('powerup_type')
-                powerup = PowerUp(int(x), int(y), powerup_type)
-                powerup.reveal()
-                self.powerup_group.add(powerup)
-        except (BlockingIOError,TimeoutError) as e:
-            pass
+    def handle_packet(self, poll_data):
+        packet, addr = poll_data
+
+        if not packet.get('scope') == 'MultiplayerTestField':
+            return
+        
+        packet_type = packet.get('type')
+        packet_data = packet.get('data')
+
+        if not packet_type or not packet_data:
+            return
+        
+        if packet_type == 'PLAYER_LIST':
+            self._handle_player_list_packet(packet_data, addr)
+        elif packet_type == "PLAYER_UPDATE":
+            self._handle_player_update_packet(packet_data, addr)
+        elif packet_type == 'BOMB_UPDATE':
+            self._handle_bomb_update_packet(packet_data, addr)
+        elif packet_type == 'POWERUP_UPDATE':
+            self._handle_powerup_update_packet(packet_data, addr)
+
+    def _handle_player_list_packet(self, packet_data, addr):
+        """Receive initial player list"""
+        for player_name, spawn in packet_data.get('list').items():
+            if player_name not in self.players:
+                self.players[player_name] = Player(1 if player_name == self.player_name else 2, spawn, self, name=player_name)
+
+    def _handle_player_update_packet(self, packet_data, addr):
+        """Update player position"""
+        player_name = packet_data.get('player_name')
+        x = packet_data.get('x')
+        y = packet_data.get('y')
+        if player_name in self.players and player_name != self.player_name:
+            self.players[player_name].rect.topleft = (x, y)
+
+    def _handle_bomb_update_packet(self, packet_data, addr):
+        """Receive bomb placement from other player"""
+        player_name = packet_data.get('player_name')
+        if player_name in self.players:
+            Bomb(self.players.get(player_name), self.bomb_group, self.explosion_group, self)
+
+    def _handle_powerup_update_packet(self, packet_data, addr):
+        """Receive powerup spawn from other player"""
+        x, y = map(int, packet_data.get('pos').split(','))
+        powerup_type = packet_data.get('powerup_type')
+        powerup = PowerUp(int(x), int(y), powerup_type)
+        powerup.reveal()
+        self.powerup_group.add(powerup)
  
     def send_player_list(self):
-        indexes = {key:('spawn1' if key == 'Server Host' else 'spawn4') for key in self.players.keys()}
-        packet = {
-            'type': "PLAYER_LIST",
-            'data': {'list': indexes}
-        }
-        if self.players_list.get(self.player_name).is_host:
-            self.send_packet(packet)
+        indexes = {key: ('spawn1' if key == self.player_name else 'spawn4') for key in self.players.keys()}
+        packet_data = {'list': indexes}
+        self.send_packet('PLAYER_LIST', packet_data)
 
-    def send_packet(self, packet):
-        message = json.dumps(packet).encode("utf-8")
+    def send_packet(self, packet_type, packet_data):
+        """Broadcast packet to all other players"""
+        scope = 'MultiplayerTestField'
         for player in self.players_list.values():
-            if player.name != self.player_name:
-                self.socket.sendto(message, (player.ip,player.port))
+            if player.addr == self.my_player.addr:
+                continue
+            self.network_manager.send_packet(player.addr, packet_type, packet_data, scope)
     # ---------------- Input ----------------
     def handle_events(self, event):
         player = self.players.get(self.player_name)
@@ -139,21 +172,20 @@ class MultiplayerTestField(State):
         # Only handle brick tiles (2)
         if self.tile_map[y][x] == 2:
             # Check if there's a power-up hidden under this brick
-            for pos,type in self.hidden_powerups.items():
-                if (x, y) == pos:
-                    powerup = PowerUp(x, y, type)
-                    powerup.reveal()
-                    self.powerup_group.add(powerup)
-                    
-                    # We need to send the powerup to other player
-                    packet = {
-                        'type' : 'POWERUP_UPDATE',
-                        'data' : {'pos' : ",".join(map(str,[x,y])),
-                                  'powerup_type' : type}
-                    }
-                    self.send_packet(packet)
-            self.hidden_powerups.pop((x,y),None)
-    
+            if (x, y) in self.hidden_powerups:
+                powerup_type = self.hidden_powerups[(x, y)]
+                powerup = PowerUp(x, y, powerup_type)
+                powerup.reveal()
+                self.powerup_group.add(powerup)
+                
+                # Send the powerup to other players
+                packet_data = {
+                    'pos': f"{x},{y}",
+                    'powerup_type': powerup_type
+                }
+                self.send_packet('POWERUP_UPDATE', packet_data)
+                
+            self.hidden_powerups.pop((x, y), None)
             # Update the map (brick is destroyed)
             self.tile_map[y][x] = 0
 
@@ -191,19 +223,21 @@ class MultiplayerTestField(State):
                     powerup.kill()  # Remove from sprite group
 
     def draw_active_powerups(self, screen):
-        powerups_text = []
+        powerups_texts = []
 
-        for powerup, expire_time in self.player_name.active_powerups.items():
-            remaining = round(expire_time - time.time(), 2)
-            if remaining > 0:
-                if powerup == "shield_powerup":
-                    powerups_text.append(f"Shield: {remaining}s")
-                elif powerup == 'freeze_powerup':
-                    powerups_text.append(f'Freeze: {remaining}s')
+        local_player = self.players.get(self.player_name)
+        if local_player:
+            for powerup, expire_time in local_player.active_powerups.items():
+                remaining = round(expire_time - time.time(), 2)
+                if remaining > 0:
+                    if powerup == "shield_powerup":
+                        powerups_texts.append(f"Shield: {remaining}s")
+                    elif powerup == 'freeze_powerup':
+                        powerups_texts.append(f'Freeze: {remaining}s')
 
-        # Display Player 1 power-ups
+        # Display power-ups
         y_offset = 40
-        for text in powerups_text:
+        for text in powerups_texts:
             powerup_text = self.game.font.render(text, True, config.COLOR_BLACK)
             screen.blit(powerup_text, (10, y_offset))
             y_offset += 20
@@ -211,11 +245,11 @@ class MultiplayerTestField(State):
     def handle_explosions(self):
         if not self.explosion_group:
             return
-        for hit_player_name,player_obj in list(self.players.items()):
+        for hit_player_name, player_obj in list(self.players.items()):
             if player_obj.check_hit() and player_obj.get_health() <= 0:
                 self.exit_state()
                 winner = [player_name for player_name in list(self.players.keys()) if hit_player_name != player_name][0]
-                self.game.state_manager.change_state("MultiplayerGameOver",winner,self.map_name,self.socket)
+                self.state_manager.change_state("MultiplayerGameOver", winner, self.map_name, self.network_manager, self.players_list)
             
     # ---------------- Render ---------------
     def draw_menu(self, screen):

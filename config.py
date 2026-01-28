@@ -140,7 +140,7 @@ POWERUP_TYPES = [
     "freeze_powerup",  # Freezes the other player
     "live+_powerup",  # Adds an extra life
     "shield_powerup"]  # Temporary invincibility
-POWERUP_SPAWNING_RATE = 0.4
+POWERUP_SPAWNING_RATE = 0.15
 POWERUP_DURATIONS = {
     'shield_powerup': 15,
     'freeze_powerup': 5,

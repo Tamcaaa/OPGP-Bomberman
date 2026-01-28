@@ -23,7 +23,6 @@ class MultiplayerMapSelector(State):
         self.network_manager = network_manger
         self.players_list = player_list
         self.my_player = player_list.get(my_player_name)
-        self.player_name = my_player_name
 
         self.state_manager = StateManager(self.game)
 
@@ -31,12 +30,12 @@ class MultiplayerMapSelector(State):
         self.final_map = None
         self.all_maps = all_maps
 
-        # Fonts - matching single-player style
+        # Fonts
         self.title_font = pygame.font.Font("CaveatBrush-Regular.ttf", 46)
         self.map_font = pygame.font.SysFont('Arial', 26)
         self.info_font = pygame.font.Font("CaveatBrush-Regular.ttf", 25)
 
-        # UI parameters - matching single-player dimensions
+        # UI parameters
         self.card_width = 250
         self.card_height = 160
         self.card_spacing = 30
@@ -46,6 +45,7 @@ class MultiplayerMapSelector(State):
             self.select_random_maps()
             self.send_map_selection()
 
+    # ==================== NETWORK ====================
     def select_random_maps(self):
         available_maps = list(self.all_maps.keys())
         count = min(3, len(available_maps))
@@ -67,18 +67,6 @@ class MultiplayerMapSelector(State):
             if player.addr == self.my_player.addr:
                 continue
             self.network_manager.send_packet(player.addr, packet_type, packet_data, scope)
-    
-    def move_selection(self, player_name, direction):
-        current = self.players_list.get(player_name).selection_index
-        self.players_list.get(player_name).selection_index = (current + direction) % len(self.selected_maps)
-
-        print(f"[MOVE] {player_name} moved from {current} to {self.players_list.get(player_name).selection_index}")
-
-        packet_data = {
-            'player_name': player_name,
-            'new_index': self.players_list.get(player_name).selection_index
-        }
-        self.send_packet('MOVE_SELECTION', packet_data)
 
     def handle_network_packets(self):
         poll_data = self.network_manager.poll()
@@ -159,18 +147,44 @@ class MultiplayerMapSelector(State):
         new_state = packet_data.get('state')
         print(f'[STATE_CHANGE] Changing to state: {new_state} from {addr}')
         self.exit_state()
-        self.state_manager.change_state(new_state, self.final_map, self.network_manager, self.players_list, self.player_name)
+        self.state_manager.change_state(new_state, self.final_map, self.network_manager, self.players_list, self.my_player.name)
+
+    def broadcast_state_change(self, new_state):
+        packet_type = 'STATE_CHANGE'
+        packet_data = {'state': new_state}
+        scope = 'MultiplayerMapSelector'
+        for player in self.players_list.values():
+            self.network_manager.send_packet(player.addr, packet_type, packet_data, scope)
+
+    # ==================== GAME LOGIC ====================
+    def move_selection(self, player_name, direction):
+        current = self.players_list.get(player_name).selection_index
+        self.players_list.get(player_name).selection_index = (current + direction) % len(self.selected_maps)
+
+        print(f"[MOVE] {player_name} moved from {current} to {self.players_list.get(player_name).selection_index}")
+
+        packet_data = {
+            'player_name': player_name,
+            'new_index': self.players_list.get(player_name).selection_index
+        }
+        self.send_packet('MOVE_SELECTION', packet_data)
 
     def confirm_vote(self):
-        player = self.players_list.get(self.player_name)
+        player = self.players_list.get(self.my_player.name)
         player.vote_index = player.selection_index
         packet_data = {
-            'player_name': self.player_name,
+            'player_name': self.my_player.name,
             'vote_index': player.vote_index
         }
         self.send_packet('CONFIRM_SELECTION', packet_data)
         if all(player.vote_index is not None for player in self.players_list.values()) and self.my_player.is_host:
             self.determine_final_map()
+
+    def cancel_vote(self):
+        player = self.players_list.get(self.my_player.name)
+        player.vote_index = None
+        packet_data = {'player_name': self.my_player.name}
+        self.send_packet('CANCEL_SELECTION', packet_data)
 
     def determine_final_map(self):
         votes = [player.vote_index for player in self.players_list.values() if player.vote_index is not None]
@@ -182,19 +196,7 @@ class MultiplayerMapSelector(State):
         packet_data = {'final_map': self.final_map}
         self.send_packet('FINAL_MAP_SELECTION', packet_data)
 
-    def cancel_vote(self):
-        player = self.players_list.get(self.player_name)
-        player.vote_index = None
-        packet_data = {'player_name': self.player_name}
-        self.send_packet('CANCEL_SELECTION', packet_data)
-
-    def broadcast_state_change(self, new_state):
-        packet_type = 'STATE_CHANGE'
-        packet_data = {'state': new_state}
-        scope = 'MultiplayerMapSelector'
-        for player in self.players_list.values():
-            self.network_manager.send_packet(player.addr, packet_type, packet_data, scope)
-    
+    # ==================== INPUT ====================
     def handle_events(self, event):
         if event.type == pygame.KEYDOWN:
             # If space is pressed and the final map is selected, exit the loop
@@ -202,23 +204,25 @@ class MultiplayerMapSelector(State):
                 if event.key == pygame.K_SPACE and self.my_player.is_host:
                     self.broadcast_state_change('MultiplayerTestField')
                     self.exit_state()
-                    self.state_manager.change_state("MultiplayerTestField", self.final_map, self.network_manager, self.players_list, self.player_name)
+                    self.state_manager.change_state("MultiplayerTestField", self.final_map, self.network_manager, self.players_list, self.my_player.name)
             elif event.key == pygame.K_RETURN:
-                if self.players_list.get(self.player_name).vote_index is None:
+                if self.players_list.get(self.my_player.name).vote_index is None:
                     self.confirm_vote()
                 else:
                     self.cancel_vote()
-            elif self.players_list.get(self.player_name).vote_index is not None:
+            elif self.players_list.get(self.my_player.name).vote_index is not None:
                 return
             elif event.key == pygame.K_LEFT:
-                self.move_selection(self.player_name, -1)
+                self.move_selection(self.my_player.name, -1)
             elif event.key == pygame.K_RIGHT:
-                self.move_selection(self.player_name, 1)
+                self.move_selection(self.my_player.name, 1)
 
+    # ==================== UPDATE ====================
     def update(self):
         self.handle_network_packets()
         self.network_manager.update()
 
+    # ==================== RENDERING ====================
     def draw_card(self, screen, i, map_name):
         """Draw a map card matching single-player style"""
         map_count = len(self.selected_maps)
@@ -233,18 +237,21 @@ class MultiplayerMapSelector(State):
 
         # Draw borders for each player's selection using their lobby color
         for player in self.players_list.values():
-            if player.selection_index == i:
+            if not (self.my_player == player) and player.selection_index == i:
                 player_color = config.AVAILABLE_COLORS[player.color_index]
                 pygame.draw.rect(screen, player_color, rect, 4, border_radius=self.card_radius)
-
+        if self.my_player.selection_index == i:
+            # Draw my_player border as last so the my_player color is on top 
+            player_color = config.AVAILABLE_COLORS[self.my_player.color_index]
+            pygame.draw.rect(screen, player_color, rect, 4, border_radius=self.card_radius)
+        
         # Map name text
         text_surf = self.map_font.render(map_name, True, config.TEXT_COLOR)
         screen.blit(text_surf, (x + self.card_width // 2 - text_surf.get_width() // 2, y + 10))
 
         # Map preview if available
         try:
-            preview_img = pygame.image.load(os.path.join("assets", "map_previews",
-                                                         f"{map_name.lower().replace(' ', '_')}_preview.png"))
+            preview_img = pygame.image.load(os.path.join("assets", "map_previews",f"{map_name.lower().replace(' ', '_')}_preview.png"))
             preview_img = pygame.transform.scale(preview_img, (self.card_width - 20, self.card_height - 50))
             screen.blit(preview_img, (x + 10, y + 40))
         except:
@@ -260,7 +267,7 @@ class MultiplayerMapSelector(State):
 
     def draw_instructions(self, screen):
         # Player instructions - use player's color
-        my_player = self.players_list.get(self.player_name)
+        my_player = self.players_list.get(self.my_player.name)
         player_color = config.AVAILABLE_COLORS[my_player.color_index]
         
         if my_player.vote_index is None:
@@ -272,7 +279,6 @@ class MultiplayerMapSelector(State):
         screen.blit(instr_surf, (50, config.SCREEN_HEIGHT - 80))
 
     def draw_map_cards(self, screen):
-        # Draw map cards styled like local selector
         total_maps = len(self.selected_maps)
         card_width = config.SEL_CARD_WIDTH
         card_height = config.SEL_CARD_HEIGHT
@@ -340,7 +346,7 @@ class MultiplayerMapSelector(State):
             screen.blit(text_surf,
                         (config.SCREEN_WIDTH // 2 - text_surf.get_width() // 2, config.SCREEN_HEIGHT // 2 - 50))
 
-            if self.players_list.get(self.player_name).is_host:
+            if self.players_list.get(self.my_player.name).is_host:
                 start_text = self.info_font.render("Press SPACE to start", True, (255, 255, 0))
                 screen.blit(start_text,
                             (config.SCREEN_WIDTH // 2 - start_text.get_width() // 2, config.SCREEN_HEIGHT // 2 + 20))
@@ -354,7 +360,7 @@ class MultiplayerMapSelector(State):
                 self.draw_card(screen, i, map_name)
 
             # Instructions 
-            my_player = self.players_list.get(self.player_name)
+            my_player = self.players_list.get(self.my_player.name)
             player_color = config.AVAILABLE_COLORS[my_player.color_index]
             
             if my_player.vote_index is None:

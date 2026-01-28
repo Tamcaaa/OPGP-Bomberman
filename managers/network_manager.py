@@ -20,6 +20,8 @@ class NetworkManager:
 
         self.resend_tries = resend_tries
         self.resend_timeout  = resend_timeout
+        self.last_cleanup = time.time()
+        self.cleanup_interval = 30  # Clean up every 30 seconds
 
     def close_socket(self) -> None:
         self.socket.close()
@@ -103,7 +105,7 @@ class NetworkManager:
         self._send_raw_packet(addr,ack_packet)
     
     def update(self) -> None:
-        '''Call every frame to resend un_ACKed packets'''
+        '''Call every frame to resend un_ACKed packets and clean up old sequences'''
         now = time.time()
         for seq,(addr, packet, last_time_sent, resend_try) in list(self._pending.items()):
             if now - last_time_sent >= self.resend_timeout and resend_try <= self.resend_tries:
@@ -114,6 +116,33 @@ class NetworkManager:
             elif resend_try > self.resend_tries:
                 self._pending.pop(seq)
                 print(f'[SEQ DROPPED] seq: {seq}')
+                
+        # Periodically clean up old sequence records
+        if now - self.last_cleanup >= self.cleanup_interval:
+            self._cleanup_sequences()
+            self.last_cleanup = now
+
+
+    def _cleanup_sequences(self) -> None:
+        old_processed = len(self._processed_seq)
+        old_completed = sum(len(v) for v in self._completed_seq.values())
+        
+        # Keep only last 20 processed sequences per address
+        for addr in list(self._processed_seq.keys()):
+            if self._processed_seq[addr]:
+                self._processed_seq[addr] = set(list(self._processed_seq[addr])[-20:])
+            else:
+                del self._processed_seq[addr]
+        
+        # Keep only last 20 completed sequences per address
+        for addr in list(self._completed_seq.keys()):
+            if self._completed_seq[addr]:
+                self._completed_seq[addr] = set(list(self._completed_seq[addr])[-20:])
+            else:
+                del self._completed_seq[addr]
+        
+        print(f'[CLEANUP] Trimmed {old_processed} addresses in _processed_seq and {old_completed} completed sequences (kept last 20 each)')
+
     def close_connection(self) -> None:
         self.socket.close()
     # ---------------- Getters and Setters ----------------
