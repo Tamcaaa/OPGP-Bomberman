@@ -34,7 +34,7 @@ class SkinSelector(State):
         self.idle_frames = []
         for i in range(3):
             frame = pygame.image.load(
-                os.path.join(game.photos_dir, "player_color", f"p_1_idle_{i}.png")
+                os.path.join(game.photos_dir, "player_animations", f"p_1_idle_{i}.png")
             ).convert_alpha()
             w, h = frame.get_size()
             frame = pygame.transform.scale(frame, (w * 8, h * 8))

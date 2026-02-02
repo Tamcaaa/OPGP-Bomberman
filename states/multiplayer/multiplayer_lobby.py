@@ -15,6 +15,16 @@ from managers.network_manager import NetworkManager
 Addr = Tuple[str,int]
 Packet = Dict[str,Any]
 
+# Color name
+COLOR_NAMES = {
+    config.WHITE_PLAYER: "White", config.BLACK_PLAYER: "Black",
+    config.RED_PLAYER: "Red", config.BLUE_PLAYER: "Blue",
+    config.DARK_GREEN_PLAYER: "Green", config.LIGHT_GREEN_PLAYER: "Light Green",
+    config.YELLOW_PLAYER: "Yellow", config.PINK_PLAYER: "Pink",
+    config.ORANGE_PLAYER: "Orange", config.PURPLE_PLAYER: "Purple",
+    config.BROWN_PLAYER: "Brown", config.CYAN_PLAYER: "Cyan"
+}
+
 @dataclass
 class Player:
     name : str
@@ -45,9 +55,6 @@ class MultiplayerLobby(State):
         self.players_list: Dict[str,Player] = self.convert_player_list_to_Player(players_list) if players_list else {}
 
         self.max_players = 2
-
-        # --- Skin Selection Assets ---
-        self.load_skin_assets()
         
         # Animation
         self.last_idle_update = pygame.time.get_ticks()
@@ -92,10 +99,16 @@ class MultiplayerLobby(State):
             
             self.ready_button.set_visible(True)
             self.ready_button.set_enabled(True)
-        
+
         self.my_player = self.players_list.get(self.player_name,None)
         if self.my_player is None:
             raise Exception('my_player is None in MultiplayerLobby')
+
+        # --- Skin Selection Assets ---
+        self.load_skin_assets()
+        self.tinted_idle_images: Dict[int,Tuple[pygame.Surface]] = {} # {color_index: Tuple[tinted_images]}
+        self._load_tinted_images()
+
     # ---------------- SKIN ASSETS ----------------
     def load_skin_assets(self):
         """Load color list, hat images, and idle animations for preview"""
@@ -105,7 +118,7 @@ class MultiplayerLobby(State):
         self.idle_frames = []
         for i in range(3):
             frame = pygame.image.load(
-                os.path.join(self.game.photos_dir, "player_color", f"p_1_idle_{i}.png")
+                os.path.join(self.game.photos_dir, "player_animations", f"p_1_idle_{i}.png")
             ).convert_alpha()
             w, h = frame.get_size()
             frame = pygame.transform.scale(frame, (w * 4, h * 4))
@@ -132,8 +145,20 @@ class MultiplayerLobby(State):
         
         # Font for skin selector
         self.skin_font = pygame.font.Font("CaveatBrush-Regular.ttf", 20)
+    
+    def _load_tinted_images(self,color_index: int|None = None) -> None:
+        # Load tinted images for spefic color index (We safe it for later use for example if player is spamming the color wheel)
+        if not self.players_list:
+            return
+        for player in self.players_list.values():
+            tinted_images = []
+            color_index = color_index if color_index else player.color_index
+            for idle_frame in self.idle_frames:
+                color = self.available_colors[color_index]
+                tinted_images.append(self.tint_image(idle_frame,color))
+            self.tinted_idle_images.setdefault(color_index,tuple(tinted_images))
 
-    def tint_image(self, image, color):
+    def tint_image(self, image, color) -> pygame.Surface:
         '''Apply color tint to player sprite'''
         tinted = image.copy()
         tint = pygame.Surface(image.get_size(), pygame.SRCALPHA)
@@ -173,6 +198,7 @@ class MultiplayerLobby(State):
             player_data['addr'] = tuple(player_data['addr'])
             player_list_converted[player_name] = Player(**player_data)
         return player_list_converted
+    
     # ---------------- INPUTS ----------------
     def handle_events(self, event):
         if not self.my_player:
@@ -207,6 +233,8 @@ class MultiplayerLobby(State):
                 # Skip if same as other player
                 while my_player.color_index in other_player_colors:
                     my_player.color_index = (my_player.color_index - 1) % len(self.available_colors)
+                self._load_tinted_images()
+                print(self.tinted_idle_images)
                 self.broadcast_skin_update()
                 
             elif event.key in [pygame.K_RIGHT, pygame.K_d]:
@@ -214,6 +242,8 @@ class MultiplayerLobby(State):
                 # Skip if same as other player
                 while my_player.color_index in other_player_colors:
                     my_player.color_index = (my_player.color_index + 1) % len(self.available_colors)
+                self._load_tinted_images()
+                print(self.tinted_idle_images)
                 self.broadcast_skin_update()
             
             # Hat selection (Up/Down or WS)
@@ -454,13 +484,21 @@ class MultiplayerLobby(State):
         
         # Player preview with color and hat
         preview_y = y + 60
-        frame = self.idle_frames[self.idle_index]
-        chosen_color = self.available_colors[player.color_index]
+
+
+        if self.tinted_idle_images.get(player.color_index) is None:
+            self._load_tinted_images(player.color_index)
+        tinted_frames = self.tinted_idle_images.get(player.color_index)
         
+
+        if tinted_frames:
+            frame = tinted_frames[self.idle_index]  
+        else:   
+            frame = self.idle_frames[self.idle_index]
+    
         # Tint player sprite
-        tinted_frame = self.tint_image(frame, chosen_color)
-        preview_rect = tinted_frame.get_rect(center=(x + panel_width // 2, preview_y))
-        screen.blit(tinted_frame, preview_rect)
+        preview_rect = frame.get_rect(center=(x + panel_width // 2, preview_y))
+        screen.blit(frame, preview_rect)
         
         # Draw hat on player
         hat_def = config.HATS[player.hat_index]
@@ -471,18 +509,9 @@ class MultiplayerLobby(State):
                 hat_x = preview_rect.centerx - hat_img.get_width() // 2
                 hat_y = preview_rect.top - 10
                 screen.blit(hat_img, (hat_x, hat_y))
-        
-        # Color name
-        color_names = {
-            config.WHITE_PLAYER: "White", config.BLACK_PLAYER: "Black",
-            config.RED_PLAYER: "Red", config.BLUE_PLAYER: "Blue",
-            config.DARK_GREEN_PLAYER: "Green", config.LIGHT_GREEN_PLAYER: "Light Green",
-            config.YELLOW_PLAYER: "Yellow", config.PINK_PLAYER: "Pink",
-            config.ORANGE_PLAYER: "Orange", config.PURPLE_PLAYER: "Purple",
-            config.BROWN_PLAYER: "Brown", config.CYAN_PLAYER: "Cyan"
-        }
-        
-        color_name = color_names.get(chosen_color, "Unknown")
+                
+        color = self.available_colors[player.color_index]
+        color_name = COLOR_NAMES.get(color, "Unknown")
         color_surf = pygame.font.Font("CaveatBrush-Regular.ttf", 18).render(f"Color: {color_name}", True, (255, 255, 255))
         color_rect = color_surf.get_rect(center=(x + panel_width // 2, y + 160))
         screen.blit(color_surf, color_rect)

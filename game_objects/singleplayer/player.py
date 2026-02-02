@@ -312,7 +312,7 @@ class Player(pygame.sprite.Sprite):
         self.idle_frames = []
         for i in range(3):
             frame = pygame.image.load(
-                os.path.join("assets/player_color", f"p_{self.player_id}_idle_{i}.png")
+                os.path.join("assets/player_animations", f"p_{self.player_id}_idle_{i}.png")
             ).convert_alpha()
             self.idle_frames.append(pygame.transform.scale(frame, (frame.get_width()*8, frame.get_height()*8)))
 

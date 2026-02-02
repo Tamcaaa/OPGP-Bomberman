@@ -1,11 +1,10 @@
 import random
 import pygame
-import json
 import copy
 import config
 import time
 
-from typing import Dict,List,Tuple
+from typing import Dict,Tuple
 from game_objects.multiplayer.multiplayer_power_up import PowerUp
 from states.general.state import State
 from game_objects.multiplayer.multiplayer_player import Player
@@ -17,12 +16,12 @@ from image_loader import load_images
 from game_objects.general.bomb import Bomb
 
 class MultiplayerTestField(State):
-    def __init__(self, game, selected_map, network_manager, players_list, player_name):
+    def __init__(self, game, selected_map, network_manager:NetworkManager, players_list, player_name):
         super().__init__(game)
         
-        self.network_manager = network_manager
+        self.network_manager: NetworkManager  = network_manager
         self.players_list = players_list
-        self.player_name = player_name
+        self.player_name: str = player_name
         self.my_player = players_list.get(player_name)
         self.state_manager = StateManager(self.game)
         
@@ -157,9 +156,8 @@ class MultiplayerTestField(State):
                 return
             local_player.moving = False
             local_player.handle_queued_keys(now)
-            # Powerup updates
             local_player.update_powerups()
-                # Clear power-up message after 3 seconds
+
         if self.powerup_group:
             self.check_powerup_collisions()
         if self.explosion_group:
@@ -249,7 +247,7 @@ class MultiplayerTestField(State):
             if player_obj.check_hit() and player_obj.get_health() <= 0:
                 self.exit_state()
                 winner = [player_name for player_name in list(self.players.keys()) if hit_player_name != player_name][0]
-                self.state_manager.change_state("MultiplayerGameOver", winner, self.map_name, self.network_manager, self.players_list)
+                self.state_manager.change_state("MultiplayerGameOver", winner, self.map_name, self.network_manager)
             
     # ---------------- Render ---------------
     def draw_menu(self, screen):
