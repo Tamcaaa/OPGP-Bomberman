@@ -2,7 +2,7 @@ import pygame
 import random
 import config
 import os
-from states.state import State
+from states.general.state import State
 from maps.test_field_map import all_maps
 from dataclasses import dataclass
 from managers.music_manager import MusicManager

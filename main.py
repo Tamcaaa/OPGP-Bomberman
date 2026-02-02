@@ -3,7 +3,7 @@ import os
 import pygame
 import time
 from managers.state_manager import StateManager
-from states.state import State
+from states.general.state import State
 from managers.music_manager import MusicManager
 
 

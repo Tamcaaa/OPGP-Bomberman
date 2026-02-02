@@ -4,7 +4,7 @@ import random
 import config
 import os
 from typing import Dict
-from states.state import State
+from states.general.state import State
 from maps.test_field_map import all_maps
 from collections import Counter
 from managers.state_manager import StateManager

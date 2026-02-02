@@ -1,7 +1,7 @@
 import pygame
 import config
 import os
-from states.state import State
+from states.general.state import State
 from custom_classes.button import Button
 
 

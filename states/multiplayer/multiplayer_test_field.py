@@ -6,15 +6,15 @@ import config
 import time
 
 from typing import Dict,List,Tuple
-from multiplayer_power_up import PowerUp
-from states.state import State
-from multiplayer_player import Player
+from game_objects.multiplayer.multiplayer_power_up import PowerUp
+from states.general.state import State
+from game_objects.multiplayer.multiplayer_player import Player
 from managers.music_manager import MusicManager
 from managers.network_manager import NetworkManager
 from managers.state_manager import StateManager
 from maps.test_field_map import all_maps
 from image_loader import load_images
-from bomb import Bomb
+from game_objects.general.bomb import Bomb
 
 class MultiplayerTestField(State):
     def __init__(self, game, selected_map, network_manager, players_list, player_name):

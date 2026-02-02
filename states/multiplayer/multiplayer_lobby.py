@@ -5,7 +5,7 @@ import pygame
 import config
 from typing import List, Tuple, Any, Dict, Union
 from dataclasses import dataclass,asdict,field
-from states.state import State
+from states.general.state import State
 from custom_classes.button import Button
 from managers.music_manager import MusicManager
 from managers.state_manager import StateManager

@@ -4,7 +4,7 @@ import config
 import os
 
 
-from states.state import State
+from states.general.state import State
 from managers.music_manager import MusicManager
 from managers.state_manager import StateManager
 from custom_classes.button import Button

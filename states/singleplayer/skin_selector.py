@@ -1,5 +1,5 @@
 import pygame, os
-from states.state import State
+from states.general.state import State
 import config
 from managers.state_manager import StateManager
 from managers.music_manager import MusicManager
