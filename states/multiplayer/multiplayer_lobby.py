@@ -1,21 +1,20 @@
-import json
 import os
 import socket
 import pygame
 import config
-from typing import List, Tuple, Any, Dict, Union
-from dataclasses import dataclass,asdict,field
+from typing import Tuple, Any, Dict 
+from dataclasses import dataclass,asdict 
 from states.general.state import State
 from custom_classes.button import Button
 from managers.music_manager import MusicManager
 from managers.state_manager import StateManager
 from managers.network_manager import NetworkManager
 
+# Typing hints
+Addr = Tuple[str, int]
+Packet = Dict[str, Any]
 
-Addr = Tuple[str,int]
-Packet = Dict[str,Any]
-
-# Color name
+# CONSTANTS
 COLOR_NAMES = {
     config.WHITE_PLAYER: "White", config.BLACK_PLAYER: "Black",
     config.RED_PLAYER: "Red", config.BLUE_PLAYER: "Blue",
@@ -25,16 +24,21 @@ COLOR_NAMES = {
     config.BROWN_PLAYER: "Brown", config.CYAN_PLAYER: "Cyan"
 }
 
+PANEL_WIDTH = 200
+PANEL_HEIGHT = 280
+
 @dataclass
-class Player:
+class PlayerData:
     name : str
-    addr : Tuple[str,int]
+    addr : Tuple[str, int]
     is_host: bool
     is_ready: bool = False
     selection_index: int = 0
     vote_index: int | None = None
     color_index: int = 0  
     hat_index: int = 0 
+    final_color: Tuple[int, int, int] = (0, 0, 0)
+
 
 class MultiplayerLobby(State):
     def __init__(self, game, player_name,network_manager:NetworkManager, players_list = {},*, is_host=False):
@@ -52,8 +56,7 @@ class MultiplayerLobby(State):
 
         self.leave_seq = None
         
-        self.players_list: Dict[str,Player] = self.convert_player_list_to_Player(players_list) if players_list else {}
-
+        self.players_list: Dict[str,PlayerData] = self.convert_player_list_to_Player(players_list) if players_list else {}
         self.max_players = 2
         
         # Animation
@@ -74,7 +77,7 @@ class MultiplayerLobby(State):
             self.host_ip = self.get_local_ip()
             self.network_manager.socket.bind((self.host_ip, config.SERVER_PORT))
             addr = (self.host_ip, config.SERVER_PORT)
-            self.players_list[player_name] = Player(player_name,addr,is_host=True,is_ready=True)  # Need to add the host to the list
+            self.players_list[player_name] = PlayerData(player_name,addr,is_host=True,is_ready=True)  # Need to add the host to the list
 
             self.start_button = Button(
             config.SCREEN_WIDTH // 2 - config.BUTTON_WIDTH // 2,
@@ -108,6 +111,7 @@ class MultiplayerLobby(State):
         self.load_skin_assets()
         self.tinted_idle_images: Dict[int,Tuple[pygame.Surface]] = {} # {color_index: Tuple[tinted_images]}
         self._load_tinted_images()
+        self.my_player.final_color = self.available_colors[self.my_player.color_index]
 
     # ---------------- SKIN ASSETS ----------------
     def load_skin_assets(self):
@@ -186,17 +190,17 @@ class MultiplayerLobby(State):
         except Exception as e:
             return f"Could not determine local IP: {e}"
             
-    def convert_player_list_to_dict(self,player_list:Dict[str,Player])-> Dict[str,dict]:
+    def convert_player_list_to_dict(self,player_list:Dict[str,PlayerData])-> Dict[str,dict]:
         player_list_converted: Dict[str,dict] = {}
         for player_name,player_data in player_list.items():
             player_list_converted[player_name] = asdict(player_data)
         return player_list_converted
     
-    def convert_player_list_to_Player(self,player_list:Dict[str,dict]) -> Dict[str,Player]:
-        player_list_converted: Dict[str,Player] = {}
+    def convert_player_list_to_Player(self,player_list:Dict[str,dict]) -> Dict[str,PlayerData]:
+        player_list_converted: Dict[str,PlayerData] = {}
         for player_name,player_data in player_list.items():
             player_data['addr'] = tuple(player_data['addr'])
-            player_list_converted[player_name] = Player(**player_data)
+            player_list_converted[player_name] = PlayerData(**player_data)
         return player_list_converted
     
     # ---------------- INPUTS ----------------
@@ -224,35 +228,34 @@ class MultiplayerLobby(State):
                     self.network_manager.send_packet(player.addr,packet['type'],packet['data'],packet['scope'])
         # Skin selection controls
         if event.type == pygame.KEYDOWN and self.player_name in self.players_list:
-            my_player = self.players_list[self.player_name]
             other_player_colors = [p.color_index for name, p in self.players_list.items() if name != self.player_name]
             
             # Color selection (Arrow Keys or WASD)
             if event.key in [pygame.K_LEFT, pygame.K_a]:
-                my_player.color_index = (my_player.color_index - 1) % len(self.available_colors)
+                self.my_player.color_index = (self.my_player.color_index - 1) % len(self.available_colors)
                 # Skip if same as other player
-                while my_player.color_index in other_player_colors:
-                    my_player.color_index = (my_player.color_index - 1) % len(self.available_colors)
+                while self.my_player.color_index in other_player_colors:
+                    self.my_player.color_index = (self.my_player.color_index - 1) % len(self.available_colors)
                 self._load_tinted_images()
-                print(self.tinted_idle_images)
+                self.my_player.final_color = self.available_colors[self.my_player.color_index]
                 self.broadcast_skin_update()
                 
             elif event.key in [pygame.K_RIGHT, pygame.K_d]:
-                my_player.color_index = (my_player.color_index + 1) % len(self.available_colors)
+                self.my_player.color_index = (self.my_player.color_index + 1) % len(self.available_colors)
                 # Skip if same as other player
-                while my_player.color_index in other_player_colors:
-                    my_player.color_index = (my_player.color_index + 1) % len(self.available_colors)
+                while self.my_player.color_index in other_player_colors:
+                    self.my_player.color_index = (self.my_player.color_index + 1) % len(self.available_colors)
                 self._load_tinted_images()
-                print(self.tinted_idle_images)
+                self.my_player.final_color = self.available_colors[self.my_player.color_index]
                 self.broadcast_skin_update()
             
             # Hat selection (Up/Down or WS)
             elif event.key in [pygame.K_UP, pygame.K_w]:
-                my_player.hat_index = (my_player.hat_index - 1) % len(config.HATS)
+                self.my_player.hat_index = (self.my_player.hat_index - 1) % len(config.HATS)
                 self.broadcast_skin_update()
                 
             elif event.key in [pygame.K_DOWN, pygame.K_s]:
-                my_player.hat_index = (my_player.hat_index + 1) % len(config.HATS)
+                self.my_player.hat_index = (self.my_player.hat_index + 1) % len(config.HATS)
                 self.broadcast_skin_update()
 
     # ---------------- Network ----------------
@@ -292,11 +295,15 @@ class MultiplayerLobby(State):
         if not (player_name in self.players_list):
             print(f'[SKIN_UPDATE ERROR] Unknown player {player_name} from {addr}')
             return
-        self.players_list[player_name].color_index = packet_data.get('color_index', 0)
-        self.players_list[player_name].hat_index = packet_data.get('hat_index', 0)
+        player = self.players_list[player_name]
+        player.color_index = packet_data.get('color_index', 0)
+        player.hat_index = packet_data.get('hat_index', 0)
+        player.final_color = self.available_colors[player.color_index]
         print(f'[SKIN_UPDATE] {player_name} updated skin from {addr}')
 
     def _handle_state_change_packet(self,packet_data,addr):
+        if not self.my_player:
+            return
         state = packet_data.get('state')
         print(f'[STATE_CHANGE] state: {state} from {addr}')
         self.exit_state()
@@ -347,7 +354,7 @@ class MultiplayerLobby(State):
                 return
         
         # Create new player with unique color
-        new_player = Player(player_name, (addr), is_host=False)
+        new_player = PlayerData(player_name, (addr), is_host=False)
         
         # Assign first available color
         taken_colors = [p.color_index for p in self.players_list.values()]
@@ -464,13 +471,11 @@ class MultiplayerLobby(State):
 
         self.back_button.draw(screen)
 
-    def draw_player_panel(self, screen, player: Player, x, y):
+    def draw_player_panel(self, screen, player: PlayerData, x, y):
         """Draw individual player's skin selection panel"""
-        panel_width = 200
-        panel_height = 280
         
         # Panel background
-        panel_surf = pygame.Surface((panel_width, panel_height), pygame.SRCALPHA)
+        panel_surf = pygame.Surface((PANEL_WIDTH, PANEL_HEIGHT), pygame.SRCALPHA)
         pygame.draw.rect(panel_surf, (15, 20, 30, 200), panel_surf.get_rect(), border_radius=15)
         pygame.draw.rect(panel_surf, (*config.MENU_OUTLINE, 200), panel_surf.get_rect(), width=2, border_radius=15)
         screen.blit(panel_surf, (x, y))
@@ -479,7 +484,7 @@ class MultiplayerLobby(State):
         name_color = config.COLOR_WHITE
         name_text = player.name if len(player.name) <= 12 else player.name[:12] + "..."
         name_surf = self.skin_font.render(name_text, True, name_color)
-        name_rect = name_surf.get_rect(center=(x + panel_width // 2, y + 130))
+        name_rect = name_surf.get_rect(center=(x + PANEL_WIDTH // 2, y + 130))
         screen.blit(name_surf, name_rect)
         
         # Player preview with color and hat
@@ -489,7 +494,6 @@ class MultiplayerLobby(State):
         if self.tinted_idle_images.get(player.color_index) is None:
             self._load_tinted_images(player.color_index)
         tinted_frames = self.tinted_idle_images.get(player.color_index)
-        
 
         if tinted_frames:
             frame = tinted_frames[self.idle_index]  
@@ -497,7 +501,7 @@ class MultiplayerLobby(State):
             frame = self.idle_frames[self.idle_index]
     
         # Tint player sprite
-        preview_rect = frame.get_rect(center=(x + panel_width // 2, preview_y))
+        preview_rect = frame.get_rect(center=(x + PANEL_WIDTH // 2, preview_y))
         screen.blit(frame, preview_rect)
         
         # Draw hat on player
@@ -513,14 +517,13 @@ class MultiplayerLobby(State):
         color = self.available_colors[player.color_index]
         color_name = COLOR_NAMES.get(color, "Unknown")
         color_surf = pygame.font.Font("CaveatBrush-Regular.ttf", 18).render(f"Color: {color_name}", True, (255, 255, 255))
-        color_rect = color_surf.get_rect(center=(x + panel_width // 2, y + 160))
+        color_rect = color_surf.get_rect(center=(x + PANEL_WIDTH // 2, y + 160))
         screen.blit(color_surf, color_rect)
         
         # Hat name
         hat_name_surf = pygame.font.Font("CaveatBrush-Regular.ttf", 18).render(f"Hat: {hat_def['name']}", True, (255, 255, 255))
-        hat_name_rect = hat_name_surf.get_rect(center=(x + panel_width // 2, y + 185))
+        hat_name_rect = hat_name_surf.get_rect(center=(x + PANEL_WIDTH // 2, y + 185))
         screen.blit(hat_name_surf, hat_name_rect)
-
 
         # Ready indicator
         if not self.my_player:
@@ -531,5 +534,5 @@ class MultiplayerLobby(State):
             ready_surf = pygame.font.Font("CaveatBrush-Regular.ttf", 16).render("(You)", True, ready_color)
         else:
             ready_surf = pygame.font.Font("CaveatBrush-Regular.ttf", 16).render("Ready", True, ready_color)
-        ready_rect = ready_surf.get_rect(center=(x + panel_width // 2, y + 215))
+        ready_rect = ready_surf.get_rect(center=(x + PANEL_WIDTH // 2, y + 215))
         screen.blit(ready_surf, ready_rect)

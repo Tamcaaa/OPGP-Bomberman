@@ -6,16 +6,14 @@ from managers.music_manager import MusicManager
 from typing import Optional, Tuple, Union, List
 
 ColorLike = Union[pygame.Color, Tuple[int, int, int], Tuple[int, int, int, int]]
-SkinPayload = Union[None, ColorLike, Tuple[ColorLike, str]]
+
 
 
 class Player(pygame.sprite.Sprite):
-    def __init__(self, player_id: int, starting_location: str | tuple, test_field, name=None, skin: SkinPayload = None):
+    def __init__(self, starting_location: str | tuple, test_field, name: str, player_color: Tuple[int,int,int] ):
         super().__init__()
-
-        self.player_id = player_id
-        self.name = name if name is not None else "UNKNOWN_USER"
-        self.skin = skin
+        self.name = name 
+        self.player_color = player_color
         self.test_field = test_field
         self.music_manager = MusicManager()
         self.bomb_group = self.test_field.bomb_group
@@ -38,8 +36,7 @@ class Player(pygame.sprite.Sprite):
         self.iframe_timer = config.IFRAME_TIMER
 
         # ==================== Animations ====================
-        self.player_config = config.PLAYER_CONFIG[self.player_id]
-        self.move_keys = self.player_config["move_keys"]
+        self.move_keys = config.DEFAULT_PLAYER1_MOVE_KEYS
         self.current_direction = "idle"
         self.moving = False
         self.frame_index = config.FRAME_INDEX
@@ -53,7 +50,7 @@ class Player(pygame.sprite.Sprite):
 
         # Load and scale images from config
         self.images: dict[str, list[pygame.Surface]] = {}
-        for key, frames in self.player_config["images"].items():
+        for key, frames in config.PLAYER1_IMAGES.items():
             if isinstance(frames, list):
                 self.images[key] = [
                     pygame.transform.scale(f.convert_alpha(), (config.GRID_SIZE, config.GRID_SIZE))
@@ -72,56 +69,21 @@ class Player(pygame.sprite.Sprite):
         else:
             self.rect.topleft = starting_location
 
-        # Skin & Hat support
+        # Skin & Hat 
         self.hat: Optional[str] = None
-        self.skin: Optional[Tuple[int, int, int] | Tuple[int, int, int, int]] = self._normalize_skin(skin)
         self.current_animation = "idle"
         self.current_frame_index = 0
 
         # Apply skin if provided
         self.apply_skin()
 
-    # ==================== Skin & Hat ====================
-    def _normalize_skin(self, skin: SkinPayload):
-        """Normalize skin input to RGB(A) tuple, extracting hat name if provided."""
-        if skin is None:
-            return None
-
-        # Handle (color, "HatName") format
-        if isinstance(skin, (tuple, list)) and len(skin) == 2:
-            color_part, maybe_hat = skin
-            self.hat = str(maybe_hat) if maybe_hat is not None else None
-            skin = color_part
-
-        # Convert pygame.Color to RGBA tuple
-        if isinstance(skin, pygame.Color):
-            return (skin.r, skin.g, skin.b, skin.a)
-
-        # Handle RGB or RGBA tuple
-        if isinstance(skin, (tuple, list)) and len(skin) in (3, 4):
-            try:
-                comps = tuple(int(c) for c in skin)
-                if len(comps) == 3:
-                    r, g, b = comps
-                    return (max(0, min(255, r)), max(0, min(255, g)), max(0, min(255, b)))
-                else:
-                    r, g, b, a = comps
-                    return (max(0, min(255, r)), max(0, min(255, g)), max(0, min(255, b)), max(0, min(255, a)))
-            except Exception:
-                return None
-
-        return None
-
+    # ==================== Skin & Hat ===================
     def apply_skin(self):
         """Apply color tint to all player animation frames."""
-        if not self.skin:
-            return
-
-        color = self.skin
-        for key, frames in self.player_config["images"].items():
+        color = self.player_color
+        for key, frames in config.PLAYER1_IMAGES.items():
             tinted_frames = []
-            iterable = frames if isinstance(frames, list) else [frames]
-            for frame in iterable:
+            for frame in frames:
                 base = pygame.transform.scale(frame.convert_alpha(), (config.GRID_SIZE, config.GRID_SIZE))
                 tinted = base.copy()
                 tinted.fill(color, special_flags=pygame.BLEND_MULT)

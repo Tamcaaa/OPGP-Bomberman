@@ -14,7 +14,7 @@ Addr = tuple[str, int]
 Packet = Dict[str, any]
 
 class MultiplayerMapSelector(State):
-    def __init__(self, game, player_list, network_manger, my_player_name):
+    def __init__(self, game, player_list, network_manger: NetworkManager, my_player_name: str):
         super().__init__(game)
         pygame.display.set_caption("BomberMan: Map Selector")
         self.bg_image = pygame.image.load(os.path.join("assets", "battlefield-bg.png"))

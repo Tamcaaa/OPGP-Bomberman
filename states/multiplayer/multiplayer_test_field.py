@@ -14,15 +14,21 @@ from managers.state_manager import StateManager
 from maps.test_field_map import all_maps
 from image_loader import load_images
 from game_objects.general.bomb import Bomb
+from states.multiplayer.multiplayer_lobby import PlayerData
 
 class MultiplayerTestField(State):
-    def __init__(self, game, selected_map, network_manager:NetworkManager, players_list, player_name):
+    def __init__(self, game, selected_map, network_manager: NetworkManager, players_list: Dict[str, PlayerData], player_name: str):
         super().__init__(game)
         
         self.network_manager: NetworkManager  = network_manager
         self.players_list = players_list
         self.player_name: str = player_name
-        self.my_player = players_list.get(player_name)
+        
+        player = players_list.get(player_name)
+        if player is None:
+            raise Exception(f'player_name: {player_name} not found in player_list: {players_list}')
+        
+        self.my_player: PlayerData = player
         self.state_manager = StateManager(self.game)
         
         # Get map name from selected_map if it's a tuple, otherwise use as is
@@ -56,9 +62,11 @@ class MultiplayerTestField(State):
         
         if self.my_player.is_host:
             # Players: dict player_name -> Player object
-            for player_name in self.players_list:
-                spawn = "spawn1" if player_name == self.player_name else "spawn4"
-                self.players[player_name] = Player(1 if spawn == "spawn1" else 2, spawn, self, name=player_name)
+            for player in self.players_list.values():
+                spawn = "spawn1" if player.name == self.player_name else "spawn4"
+                print('-----------------------------------------------')
+                print(player)
+                self.players[player.name] = Player(spawn, self, player.name, player.final_color)
             self.send_player_list()
             self.place_hidden_powerups()
 
@@ -93,7 +101,8 @@ class MultiplayerTestField(State):
         """Receive initial player list"""
         for player_name, spawn in packet_data.get('list').items():
             if player_name not in self.players:
-                self.players[player_name] = Player(1 if player_name == self.player_name else 2, spawn, self, name=player_name)
+                player_color = self.players_list[player_name].final_color
+                self.players[player_name] = Player(spawn, self, player_name,player_color)
 
     def _handle_player_update_packet(self, packet_data, addr):
         """Update player position"""
@@ -134,12 +143,9 @@ class MultiplayerTestField(State):
         player = self.players.get(self.player_name)
         if not player:
             return
-        
         elif event.type == pygame.KEYDOWN:
             if event.key in player.move_keys and event.key not in player.held_down_keys:
                 player.held_down_keys.append(event.key)
-            if event.key == pygame.K_p and self.players_list.get(self.player_name).is_host:
-                self.game.state_manager.change_state("Pause", self.map_name, self.map_name)
         elif event.type == pygame.KEYUP:
             if event.key in player.held_down_keys:
                 player.held_down_keys.remove(event.key)
@@ -355,14 +361,14 @@ class MultiplayerTestField(State):
                 player.update_animation()
                 screen.blit(player.image, player.rect)
 
-        # 🔥 Update explosions
+        # Update explosions
         self.bomb_group.update(self.explosion_group)
         self.explosion_group.update()
 
-        # 🎮 Draw visible power-ups
+        # Draw visible power-ups
         self.powerup_group.draw(screen)
 
-        # 🎨 Draw objects
+        # Draw objects
         self.bomb_group.draw(screen)
         self.explosion_group.draw(screen)
 
