@@ -1,4 +1,5 @@
 import pygame
+from typing import Dict, Tuple
 
 # CONSTANTS
 SCREEN_WIDTH, SCREEN_HEIGHT = 960, 540
@@ -225,6 +226,17 @@ AVAILABLE_COLORS = [
             PURPLE_PLAYER, BROWN_PLAYER, CYAN_PLAYER
         ]
 
+AVAILABLE_HATS: Dict[str, Dict[str, str | Tuple[int, int]]] = {
+    'None':     {'file': '',            'offset': (0,0)},
+    'Crown':    {'file': 'Crown.png',   'offset': (5, -10)},
+    'Cowboy':   {'file': 'Cowboy.png',  'offset': (5, -10)},
+    'Cap':      {'file': 'Cap.png',     'offset': (5, -6)},
+    'Devil':    {'file': 'Devil.png',   'offset': (15, -8)},
+    'Cone':     {'file': 'Cone.png',    'offset': (5, -10)},
+    'Halo':     {'file': 'Halo.png',    'offset': (5, -8)},
+}
+
+HAT_SCALE_FACTOR = 0.7
 
 # ---------------------------------------------------------------Network---------------------------------------------------------------
 SERVER_PORT = 9999

@@ -3,14 +3,14 @@ import config
 import time
 from game_objects.general.bomb import Bomb
 from managers.music_manager import MusicManager
-from typing import Optional, Tuple, Union, List
+from typing import Tuple, Union, List
 
 ColorLike = Union[pygame.Color, Tuple[int, int, int], Tuple[int, int, int, int]]
 
 
 
 class Player(pygame.sprite.Sprite):
-    def __init__(self, starting_location: str | tuple, test_field, name: str, player_color: Tuple[int,int,int] ):
+    def __init__(self, starting_location: str | tuple, test_field, name: str, player_color: Tuple[int, int, int], player_hat: str):
         super().__init__()
         self.name = name 
         self.player_color = player_color
@@ -70,15 +70,15 @@ class Player(pygame.sprite.Sprite):
             self.rect.topleft = starting_location
 
         # Skin & Hat 
-        self.hat: Optional[str] = None
+        self._player_hat: str = player_hat
         self.current_animation = "idle"
         self.current_frame_index = 0
 
         # Apply skin if provided
-        self.apply_skin()
+        self._apply_skin()
 
     # ==================== Skin & Hat ===================
-    def apply_skin(self):
+    def _apply_skin(self):
         """Apply color tint to all player animation frames."""
         color = self.player_color
         for key, frames in config.PLAYER1_IMAGES.items():
@@ -91,6 +91,19 @@ class Player(pygame.sprite.Sprite):
             self.images[key] = tinted_frames
 
         self.image = self.images[self.current_direction][self.frame_index]
+
+    def has_hat(self) -> bool:
+        if self._player_hat == 'None':
+            return False
+        return True
+    
+    def get_player_hat(self) -> str:
+        return self._player_hat
+    
+    def set_player_hat(self,player_hat: str) -> None:
+        if not player_hat in config.AVAILABLE_HATS.keys():
+            raise Exception(f'[ERROR] player_hat: {player_hat} not in config.AVAILABLE_HATS: {config.AVAILABLE_HATS.keys()}')
+        self._player_hat = player_hat
 
     # ==================== Gameplay Logic ====================
     def check_hit(self):

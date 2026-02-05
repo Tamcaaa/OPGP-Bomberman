@@ -12,7 +12,7 @@ from managers.music_manager import MusicManager
 from managers.network_manager import NetworkManager
 from managers.state_manager import StateManager
 from maps.test_field_map import all_maps
-from image_loader import load_images
+from image_loader import load_images, load_hat_images
 from game_objects.general.bomb import Bomb
 from states.multiplayer.multiplayer_lobby import PlayerData
 
@@ -53,20 +53,19 @@ class MultiplayerTestField(State):
         self.hidden_powerups : Dict[Tuple[int,int], str] = {}
         # Load images
         self.images = load_images()
-
+        hats = [player.final_hat for player in self.players_list.values()]
+        self.hat_images = load_hat_images(hats)
         # Feedback message for power-ups
         self.powerup_message = ""
         self.message_timer = 0
 
-        self.players = {}
+        self.players: Dict[str,Player] = {}
         
         if self.my_player.is_host:
             # Players: dict player_name -> Player object
             for player in self.players_list.values():
                 spawn = "spawn1" if player.name == self.player_name else "spawn4"
-                print('-----------------------------------------------')
-                print(player)
-                self.players[player.name] = Player(spawn, self, player.name, player.final_color)
+                self.players[player.name] = Player(spawn, self, player.name, player.final_color, player.final_hat)
             self.send_player_list()
             self.place_hidden_powerups()
 
@@ -102,7 +101,8 @@ class MultiplayerTestField(State):
         for player_name, spawn in packet_data.get('list').items():
             if player_name not in self.players:
                 player_color = self.players_list[player_name].final_color
-                self.players[player_name] = Player(spawn, self, player_name,player_color)
+                player_hat = self.players_list[player_name].final_hat
+                self.players[player_name] = Player(spawn, self, player_name, player_color, player_hat)
 
     def _handle_player_update_packet(self, packet_data, addr):
         """Update player position"""
@@ -153,7 +153,7 @@ class MultiplayerTestField(State):
     # ---------------- Update ----------------
     def update(self):
         now = pygame.time.get_ticks()
-        # Update network first
+
         self.handle_network_packets()
         # Move local player based on held keys
         if self.players:
@@ -346,7 +346,35 @@ class MultiplayerTestField(State):
                         screen.blit(self.images['red_cave'], (x, y))
                     elif tile == config.TRAP:  # Poklop
                         screen.blit(self.images['trap_image'], (x, y))
-
+    
+    def _draw_player_hat(self, screen: pygame.Surface, player: Player) -> None:
+        if not player.has_hat:
+            return
+        hat_name = player.get_player_hat()
+        hat_image = self.hat_images[hat_name]
+        
+        # Get the current player animation to calculate offset for drawing hat
+        anim_offsets = config.HAT_ANIM_OFFSETS.get(player.current_animation, [0, 0, 0])
+        frame_index = player.current_frame_index % len(anim_offsets)
+        anim_offset_y = anim_offsets[frame_index]
+        
+        going_right = pygame.K_d in player.held_down_keys
+        
+        # Applying the offset to player rect
+        ox, oy = config.GAME_HAT_OFFSETS.get(hat_name, (0, 0))
+        hx = player.rect.x + ox
+        hy = player.rect.y + oy + anim_offset_y
+        hat_to_draw = hat_image if not going_right else pygame.transform.flip(hat_image, True, False)
+        
+        screen.blit(hat_to_draw, (hx, hy))
+    
+    def _draw_players(self, screen: pygame.Surface) -> None:
+        if not self.players:
+            return
+        for player in self.players.values():
+            player.update_animation()
+            self._draw_player_hat(screen, player)
+            screen.blit(player.image, player.rect)
 
     def render(self, screen):
         screen.fill(config.COLOR_WHITE)
@@ -355,11 +383,7 @@ class MultiplayerTestField(State):
         self.draw_walls(screen)
         self.draw_menu(screen)
 
-        # Draw players
-        if self.players:
-            for player in self.players.values():
-                player.update_animation()
-                screen.blit(player.image, player.rect)
+        self._draw_players(screen)
 
         # Update explosions
         self.bomb_group.update(self.explosion_group)

@@ -24,6 +24,10 @@ COLOR_NAMES = {
     config.BROWN_PLAYER: "Brown", config.CYAN_PLAYER: "Cyan"
 }
 
+AVAILABLE_HATS = config.AVAILABLE_HATS
+AVAILABLE_HATS_KEYS = list(config.AVAILABLE_HATS.keys())
+
+
 PANEL_WIDTH = 200
 PANEL_HEIGHT = 280
 
@@ -38,6 +42,7 @@ class PlayerData:
     color_index: int = 0  
     hat_index: int = 0 
     final_color: Tuple[int, int, int] = (0, 0, 0)
+    final_hat: str = "None"
 
 
 class MultiplayerLobby(State):
@@ -252,10 +257,12 @@ class MultiplayerLobby(State):
             # Hat selection (Up/Down or WS)
             elif event.key in [pygame.K_UP, pygame.K_w]:
                 self.my_player.hat_index = (self.my_player.hat_index - 1) % len(config.HATS)
+                self.my_player.final_hat = AVAILABLE_HATS_KEYS[self.my_player.hat_index]
                 self.broadcast_skin_update()
                 
             elif event.key in [pygame.K_DOWN, pygame.K_s]:
                 self.my_player.hat_index = (self.my_player.hat_index + 1) % len(config.HATS)
+                self.my_player.final_hat = AVAILABLE_HATS_KEYS[self.my_player.hat_index]
                 self.broadcast_skin_update()
 
     # ---------------- Network ----------------
@@ -299,6 +306,7 @@ class MultiplayerLobby(State):
         player.color_index = packet_data.get('color_index', 0)
         player.hat_index = packet_data.get('hat_index', 0)
         player.final_color = self.available_colors[player.color_index]
+        player.final_hat = AVAILABLE_HATS_KEYS[player.hat_index]
         print(f'[SKIN_UPDATE] {player_name} updated skin from {addr}')
 
     def _handle_state_change_packet(self,packet_data,addr):
@@ -505,9 +513,9 @@ class MultiplayerLobby(State):
         screen.blit(frame, preview_rect)
         
         # Draw hat on player
-        hat_def = config.HATS[player.hat_index]
-        if hat_def["name"] != "None":
-            hat_img = self.hat_images.get(hat_def["name"])
+        hat_def = AVAILABLE_HATS_KEYS[player.hat_index]
+        if hat_def != "None":
+            hat_img = self.hat_images.get(hat_def)
             if hat_img:
                 # Adjust hat position
                 hat_x = preview_rect.centerx - hat_img.get_width() // 2
@@ -521,7 +529,7 @@ class MultiplayerLobby(State):
         screen.blit(color_surf, color_rect)
         
         # Hat name
-        hat_name_surf = pygame.font.Font("CaveatBrush-Regular.ttf", 18).render(f"Hat: {hat_def['name']}", True, (255, 255, 255))
+        hat_name_surf = pygame.font.Font("CaveatBrush-Regular.ttf", 18).render(f"Hat: {hat_def}", True, (255, 255, 255))
         hat_name_rect = hat_name_surf.get_rect(center=(x + PANEL_WIDTH // 2, y + 185))
         screen.blit(hat_name_surf, hat_name_rect)
 
