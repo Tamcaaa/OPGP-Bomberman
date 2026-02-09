@@ -19,11 +19,8 @@ class BomberManApp:
         self.state_stack = []
         self.running = False
         self.photos_dir = os.path.join("assets")
-
         self.state_manager = StateManager(self)
-
         self.load_states()  # Load initial states
-
         self.all_sprites = pygame.sprite.Group()
         self.settings = {
             "volume": 0.5,
@@ -70,7 +67,9 @@ class BomberManApp:
 
 
 # Start the game
+
 if __name__ == '__main__':
     app = BomberManApp()
     app.run()
     pygame.quit()
+
