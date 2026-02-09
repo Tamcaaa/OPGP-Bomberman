@@ -79,11 +79,11 @@ class MapSelector(State):
         # Card background
         rect = pygame.Rect(x, y, self.card_width, self.card_height)
         pygame.draw.rect(screen, config.COLOR_BEIGE, rect, border_radius=self.card_radius)
-
-        # Selected border
-        for pid, color in [(1, (200, 50, 50)), (2, (50, 150, 250))]:
-            player = self.players[pid]
-            if player.selection_index == i:
+        
+        # Selected border pre každého hráča
+        for player_id, skin_id in zip((1, 2), (2, 1)):  # prehodené
+            color = self.selected_skins[skin_id][0]  # teraz správna farba hráča
+            if self.players[player_id].selection_index == i:
                 pygame.draw.rect(screen, color, rect, 4, border_radius=self.card_radius)
 
         # Map name text
@@ -93,30 +93,33 @@ class MapSelector(State):
         # Map preview if available
         try:
             preview_img = pygame.image.load(os.path.join("assets", "map_previews",
-                                                         f"{map_name.lower().replace(' ', '_')}_preview.png"))
+                                                        f"{map_name.lower().replace(' ', '_')}_preview.png"))
             preview_img = pygame.transform.scale(preview_img, (self.card_width - 20, self.card_height - 50))
             screen.blit(preview_img, (x + 10, y + 40))
         except:
             pass
 
+
     def render(self, screen):
         screen.blit(self.bg, (0, 0))
 
         battlefield_img = pygame.image.load(os.path.join("assets", "battlefield.png"))
-
         screen.blit(battlefield_img, (config.SCREEN_WIDTH // 2 - battlefield_img.get_width() // 2, 40))
 
         # Draw map cards
         for i, (name, _) in enumerate(self.selected_maps):
             self.draw_card(screen, i, name)
 
-        # Instructions
-        p1_instr = "Player 1: <- -> to move, ENTER to vote" if self.players[1].vote_index is None else "Vote confirmed!"
-        p2_instr = "Player 2: A D to move, RIGHT SHIFT to vote" if self.players[
-                                                                       2].vote_index is None else "Vote confirmed!"
+        # Farby hráčov
+        p1_color = self.selected_skins[1][0]
+        p2_color = self.selected_skins[2][0]
 
-        screen.blit(self.info_font.render(p1_instr, True, (200, 50, 50)), (50, config.SCREEN_HEIGHT - 80))
-        screen.blit(self.info_font.render(p2_instr, True, (50, 150, 250)),
+        # Instructions
+        p1_instr = "<- -> to move, ENTER" if self.players[1].vote_index is None else "Ready!"
+        p2_instr = "A D to move, RIGHT SHIFT" if self.players[2].vote_index is None else "Ready!"
+
+        screen.blit(self.info_font.render(p1_instr, True, p1_color), (50, config.SCREEN_HEIGHT - 80))
+        screen.blit(self.info_font.render(p2_instr, True, p2_color),
                     (config.SCREEN_WIDTH - 50 - self.info_font.size(p2_instr)[0], config.SCREEN_HEIGHT - 80))
 
         # Final map overlay

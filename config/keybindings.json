@@ -1,0 +1,22 @@
+{
+    "players": {
+        "1": {
+            "move_keys": [
+                "w",
+                "a",
+                "s",
+                "d",
+                "space"
+            ]
+        },
+        "2": {
+            "move_keys": [
+                "up",
+                "left",
+                "down",
+                "right",
+                "o"
+            ]
+        }
+    }
+}
