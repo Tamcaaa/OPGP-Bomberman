@@ -213,7 +213,7 @@ TAB_HATS   = 1
 TAB_NAMES  = ["Farby", "Čiapky"]  
 # Hlavné farby UI
 # Panel / pozadie UI
-MENU_PAPER_DARK = (120, 85, 50)      # tmavší hnedý pre panel, kontrastuje s buttonom
+MENU_PAPER_DARK = (211, 161, 105)      # tmavší hnedý pre panel, kontrastuje s buttonom
 MENU_OUTLINE = (95, 68, 46)          # okraje panelov, decentné
 MENU_TEXT = (255, 245, 235)          # svetlý text, aby bol čitateľný na tmavom pozadí
 MENU_DISABLED = (140, 110, 85)       
