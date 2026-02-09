@@ -1,25 +1,30 @@
 import pygame
 import config
+import json
+import socket
 from states.state import State
 from managers.state_manager import StateManager
 from custom_classes.button import Button
+from managers.network_manager import NetworkManager
 
 
 class InputPopup(State):
-    def __init__(self, game):
+    def __init__(self, game,network_manager:NetworkManager):
         State.__init__(self, game)
-        pygame.display.set_caption("BomberMan: Test")
+        pygame.display.set_caption("BomberMan: Multiplayer")
         self.font = pygame.font.Font(None, config.FONT_SIZE)
         self.active_box = None
 
+        # Managers
+        self.network_manager = network_manager
         self.state_manager = StateManager(game)
 
         # Input boxes
         self.username_rect = pygame.Rect(config.SCREEN_WIDTH // 4, config.SCREEN_HEIGHT // 3, config.SCREEN_WIDTH // 2, 40)
         self.address_rect = pygame.Rect(config.SCREEN_WIDTH // 4, config.SCREEN_HEIGHT // 3 + 80, config.SCREEN_WIDTH // 2, 40)
 
-        self.username_text = ""
-        self.address_text = ""
+        self.username_text = 'Test'
+        self.address_text = '192.168.1.13'
 
         self.color_inactive = pygame.Color('lightskyblue3')
         self.color_active = pygame.Color('dodgerblue2')
@@ -28,7 +33,7 @@ class InputPopup(State):
         self.address_color = self.color_inactive
 
         self.result = None
-
+        
         # Buttons
         button_y = config.SCREEN_HEIGHT // 3 + 150
         self.join_button = Button(config.SCREEN_WIDTH // 2 - 110, button_y, 100, 40, "Join",
@@ -41,11 +46,18 @@ class InputPopup(State):
                                   button_color=config.COLOR_BEIGE)
 
     def submit(self):
-        if self.username_text.strip() and self.address_text.strip():
-            self.result = (self.username_text.strip(), self.address_text.strip())
-            self.exit_state()
-            self.state_manager.change_state("MultiplayerLobby",*self.result)
-
+        player_name = self.username_text.strip()
+        ip = self.address_text.strip()
+        if player_name and ip:
+            self.send_join_request(player_name,ip)
+    
+    def send_join_request(self,player_name,ip_to_join):
+        addr = (ip_to_join,config.SERVER_PORT)
+        msg_type = 'JOIN'
+        data = {'player_name' : player_name}
+        scope = 'MultiplayerLobby'
+        self.network_manager.send_packet(addr,msg_type,data,scope)
+    
     def go_back(self):
         self.exit_state()
 
@@ -79,11 +91,42 @@ class InputPopup(State):
                     self.address_text += event.unicode
 
         # Check button clicks
-        if self.join_button.is_clicked():
+        if self.join_button.is_clicked() and self.join_button.action:
             self.join_button.action()
-        if self.back_button.is_clicked():
+        if self.back_button.is_clicked() and self.back_button.action:
             self.back_button.action()
+            
+    # ---------------- Network ----------------
+    def handle_packet(self,packet_poll):
+        packet,addr = packet_poll
 
+        if not (packet.get('scope') in  ['InputPopup','MultiplayerLobby']):
+            print(f'[SCOPE_ERROR] in InputPopup; packet:{packet} from {addr} ')
+            return
+        
+        packet_type = packet.get('type')
+        packet_data = packet.get('data')
+
+        player_name = self.username_text.strip()
+        
+        if not packet_type or not packet_data:
+            raise Exception(f'Invalid packet (data or type missing): {packet} from {addr}')
+        if packet_type == 'PLAYER_LIST':
+            player_list = packet_data.get('player_list',None)
+            if not player_list:
+                print('[PLAYER_LIST ERROR] no player_list in data')
+                return
+            self.exit_state()
+            self.state_manager.change_state('MultiplayerLobby',player_name,self.network_manager,player_list)
+            print(f"Joined successfully to {addr}")
+            return
+        print(f'[PACKET IGNORED] type: {packet_type} from {addr} in InputPopup')        
+    def update(self):
+        packet_poll = self.network_manager.poll()
+        if packet_poll:
+            self.handle_packet(packet_poll)
+        self.network_manager.update()
+        
     def render(self, screen):
         popup_height = 260
         popup_rect = pygame.Rect(config.SCREEN_WIDTH // 4 - 10, config.SCREEN_HEIGHT // 3 - 20, config.SCREEN_WIDTH // 2 + 20, popup_height)

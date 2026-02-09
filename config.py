@@ -54,7 +54,7 @@ CYAN_PLAYER   = (50, 220, 220)
 WIDTH_BETWEEN_PLAYER = 340
 
 # ----------------------------------------------------------------Test_field----------------------------------------------------------------
-PLAYER_IFRAMES = 0.75
+PLAYER_IFRAMES = 750
 MAX_QUEUE = 3
 SPAWN_POINTS = {"spawn1": (0, 30),
                 "spawn2": (930, 30),
@@ -138,7 +138,7 @@ POWERUP_TYPES = [
     "freeze_powerup",  # Freezes the other player
     "live+_powerup",  # Adds an extra life
     "shield_powerup"]  # Temporary invincibility
-POWERUP_SPAWNING_RATE = 0.4
+POWERUP_SPAWNING_RATE = 0.15
 POWERUP_DURATIONS = {
     'shield_powerup': 15,
     'freeze_powerup': 5,
@@ -211,10 +211,14 @@ HATS = [
 TAB_COLORS = 0
 TAB_HATS   = 1
 TAB_NAMES  = ["Farby", "Čiapky"]  
-# Hlavné farby UI
-# Panel / pozadie UI
-MENU_PAPER_DARK = (211, 161, 105)      # tmavší hnedý pre panel, kontrastuje s buttonom
-MENU_OUTLINE = (95, 68, 46)          # okraje panelov, decentné
-MENU_TEXT = (255, 245, 235)          # svetlý text, aby bol čitateľný na tmavom pozadí
-MENU_DISABLED = (140, 110, 85)       
 
+AVAILABLE_COLORS = [
+            WHITE_PLAYER, BLACK_PLAYER, RED_PLAYER,
+            BLUE_PLAYER, DARK_GREEN_PLAYER, LIGHT_GREEN_PLAYER,
+            YELLOW_PLAYER, PINK_PLAYER, ORANGE_PLAYER,
+            PURPLE_PLAYER, BROWN_PLAYER, CYAN_PLAYER
+        ]
+
+
+# ---------------------------------------------------------------Network---------------------------------------------------------------
+SERVER_PORT = 9999
