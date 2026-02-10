@@ -1,4 +1,5 @@
 import pygame
+from typing import Dict, Tuple
 
 # CONSTANTS
 SCREEN_WIDTH, SCREEN_HEIGHT = 960, 540
@@ -67,56 +68,56 @@ PLAYER2_MOVE_KEYS  = [pygame.K_UP, pygame.K_LEFT, pygame.K_DOWN, pygame.K_RIGHT,
 # Player images
 PLAYER1_IMAGES = {
     "idle": [
-        pygame.image.load("assets/player_color/p_1_idle_0.png"),
-        pygame.image.load("assets/player_color/p_1_idle_1.png"),
-        pygame.image.load("assets/player_color/p_1_idle_2.png")
+        pygame.image.load("assets/player_animations/p_1_idle_0.png"),
+        pygame.image.load("assets/player_animations/p_1_idle_1.png"),
+        pygame.image.load("assets/player_animations/p_1_idle_2.png")
     ],
     "down":[
-        pygame.image.load("assets/player_color/p_1_down_0.png"),
-        pygame.image.load("assets/player_color/p_1_down_1.png"),
-        pygame.image.load("assets/player_color/p_1_down_2.png")
+        pygame.image.load("assets/player_animations/p_1_down_0.png"),
+        pygame.image.load("assets/player_animations/p_1_down_1.png"),
+        pygame.image.load("assets/player_animations/p_1_down_2.png")
     ],
     "up": [
-        pygame.image.load("assets/player_color/p_1_up_0.png"),
-        pygame.image.load("assets/player_color/p_1_up_1.png"),
-        pygame.image.load("assets/player_color/p_1_up_2.png")
+        pygame.image.load("assets/player_animations/p_1_up_0.png"),
+        pygame.image.load("assets/player_animations/p_1_up_1.png"),
+        pygame.image.load("assets/player_animations/p_1_up_2.png")
     ],
     "left": [
-        pygame.image.load("assets/player_color/p_1_left_0.png"),
-        pygame.image.load("assets/player_color/p_1_left_1.png"),
-        pygame.image.load("assets/player_color/p_1_left_2.png")
+        pygame.image.load("assets/player_animations/p_1_left_0.png"),
+        pygame.image.load("assets/player_animations/p_1_left_1.png"),
+        pygame.image.load("assets/player_animations/p_1_left_2.png")
     ],
     "right": [
-        pygame.image.load("assets/player_color/p_1_right_0.png"),
-        pygame.image.load("assets/player_color/p_1_right_1.png"),
-        pygame.image.load("assets/player_color/p_1_right_2.png")
+        pygame.image.load("assets/player_animations/p_1_right_0.png"),
+        pygame.image.load("assets/player_animations/p_1_right_1.png"),
+        pygame.image.load("assets/player_animations/p_1_right_2.png")
     ]
 }
 PLAYER2_IMAGES = {
     "idle": [
-        pygame.image.load("assets/player_color/p_1_idle_0.png"),
-        pygame.image.load("assets/player_color/p_1_idle_1.png"),
-        pygame.image.load("assets/player_color/p_1_idle_2.png")
+        pygame.image.load("assets/player_animations/p_1_idle_0.png"),
+        pygame.image.load("assets/player_animations/p_1_idle_1.png"),
+        pygame.image.load("assets/player_animations/p_1_idle_2.png")
     ],
     "down":[
-        pygame.image.load("assets/player_color/p_1_down_0.png"),
-        pygame.image.load("assets/player_color/p_1_down_1.png"),
-        pygame.image.load("assets/player_color/p_1_down_2.png")
+        pygame.image.load("assets/player_animations/p_1_down_0.png"),
+        pygame.image.load("assets/player_animations/p_1_down_1.png"),
+        pygame.image.load("assets/player_animations/p_1_down_2.png")
     ],
     "up": [
-        pygame.image.load("assets/player_color/p_1_up_0.png"),
-        pygame.image.load("assets/player_color/p_1_up_1.png"),
-        pygame.image.load("assets/player_color/p_1_up_2.png")
+        pygame.image.load("assets/player_animations/p_1_up_0.png"),
+        pygame.image.load("assets/player_animations/p_1_up_1.png"),
+        pygame.image.load("assets/player_animations/p_1_up_2.png")
     ],
     "left": [
-        pygame.image.load("assets/player_color/p_1_left_0.png"),
-        pygame.image.load("assets/player_color/p_1_left_1.png"),
-        pygame.image.load("assets/player_color/p_1_left_2.png")
+        pygame.image.load("assets/player_animations/p_1_left_0.png"),
+        pygame.image.load("assets/player_animations/p_1_left_1.png"),
+        pygame.image.load("assets/player_animations/p_1_left_2.png")
     ],
     "right": [
-        pygame.image.load("assets/player_color/p_1_right_0.png"),
-        pygame.image.load("assets/player_color/p_1_right_1.png"),
-        pygame.image.load("assets/player_color/p_1_right_2.png")
+        pygame.image.load("assets/player_animations/p_1_right_0.png"),
+        pygame.image.load("assets/player_animations/p_1_right_1.png"),
+        pygame.image.load("assets/player_animations/p_1_right_2.png")
     ]
 }
 
@@ -168,7 +169,7 @@ GAME_HAT_OFFSETS = {
     "Crown":  (5, -10),
     "Cowboy": (5, -10),
     "Cap":    (5, -6),
-    "Devil":  (15, -8),
+    "Devil":  (7, -8),
     "Cone":   (5, -10),
     "Halo":   (5, -8),
 }
@@ -224,6 +225,17 @@ AVAILABLE_COLORS = [
             PURPLE_PLAYER, BROWN_PLAYER, CYAN_PLAYER
         ]
 
+AVAILABLE_HATS: Dict[str, Dict[str, str | Tuple[int, int]]] = {
+    'None':     {'file': '',            'offset': (0,0)},
+    'Crown':    {'file': 'Crown.png',   'offset': (5, -10)},
+    'Cowboy':   {'file': 'Cowboy.png',  'offset': (5, -10)},
+    'Cap':      {'file': 'Cap.png',     'offset': (5, -6)},
+    'Devil':    {'file': 'Devil.png',   'offset': (15, -8)},
+    'Cone':     {'file': 'Cone.png',    'offset': (5, -10)},
+    'Halo':     {'file': 'Halo.png',    'offset': (5, -8)},
+}
+
+HAT_SCALE_FACTOR = 0.7
 
 # ---------------------------------------------------------------Network---------------------------------------------------------------
 SERVER_PORT = 9999

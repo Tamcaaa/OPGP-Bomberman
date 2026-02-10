@@ -2,11 +2,11 @@ import os
 import pygame
 import config
 
-from states.state import State
+from states.general.state import State
 from custom_classes.button import Button
 from managers.music_manager import MusicManager
-from states.map_selector import MapSelector
-from states.settings import Settings
+from states.singleplayer.map_selector import MapSelector
+from states.general.settings import Settings
 
 
 class PauseState(State):

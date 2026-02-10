@@ -5,10 +5,10 @@ import time
 import random
 import os
 
-from states.state import State
-from player import Player
+from states.general.state import State
+from game_objects.singleplayer.player import Player
 from managers.music_manager import MusicManager
-from power_up import PowerUp
+from game_objects.singleplayer.power_up import PowerUp
 
 
 class TestField(State):

@@ -1,14 +1,22 @@
 import json
 import time
 import socket
-from typing import Dict,Tuple,Any,Optional,List,Set,ItemsView
+from collections import deque
+from typing import Dict, Tuple, Any, Optional, Set, ItemsView, Deque
 
 
-Addr = Tuple[str,int]
-Packet = Dict[str,Any]
+Addr = Tuple[str, int]
+Packet = Dict[str, Any]
 
 class NetworkManager:
-    def __init__(self,socket: socket.socket, *, resend_timeout:float = 0.5,resend_tries: int = 5) -> None:
+    def __init__(
+        self,
+        socket: socket.socket,
+        *,
+        resend_timeout: float = 0.5,
+        resend_tries: int = 5,
+        reorder_buffer_limit: int = 5) -> None:
+        
         self.socket = socket
         self.socket.setblocking(False)
 
@@ -17,9 +25,13 @@ class NetworkManager:
         self._pending: Dict[int, Tuple[Addr,Packet,float,int]] = {}
         self._processed_seq: Dict[Addr,set[int]] = {}  # Track incoming packet seqs (duplicate detection)
         self._completed_seq: Dict[Addr,set[int]] = {}  # Track outgoing packets that got ACKed
+        self._expected_seq: Dict[Addr,int] = {}  # Track next expected seq per address
+        self._reorder_buffer: Dict[Addr,Dict[int,Packet]] = {}
+        self._ready_packets: Deque[Tuple[Packet,Addr]] = deque()
 
         self.resend_tries = resend_tries
         self.resend_timeout  = resend_timeout
+        self.reorder_buffer_limit = max(1, reorder_buffer_limit)
         self.last_cleanup = time.time()
         self.cleanup_interval = 30  # Clean up every 30 seconds
 
@@ -62,11 +74,8 @@ class NetworkManager:
         self.socket.sendto(raw_packet,addr)
     # ---------------- Receiving ----------------
     def poll(self) -> None | Tuple[Packet,Addr]:
-        '''
-        Call every frame/tick.
-        - Reads all available UDP packets
-        - Handles ACKs, duplicates
-        '''
+        if self._ready_packets:
+            return self._ready_packets.popleft()
         try:
             raw, addr = self.socket.recvfrom(65535)
         except BaseException:
@@ -95,9 +104,36 @@ class NetworkManager:
                 self._send_ack(addr,seq)
                 return
             seen.add(seq)
-            print(f'[SEQ RECIEVED] seq: {seq} packet: {packet} from {addr}')
             self._send_ack(addr,seq)
-            return (packet,addr)
+            expected = self._expected_seq.get(addr, 1)
+
+            if seq < expected:
+                # Late packet, ingore them
+                return
+
+            if seq == expected:
+                self._ready_packets.append((packet, addr))
+                self._expected_seq[addr] = expected + 1
+                self._clean_reorder_buffer(addr)
+                if self._ready_packets:
+                    next_packet, next_addr = self._ready_packets.popleft()
+                    print(f'[SEQ RECIEVED] seq: {next_packet.get("seq")} packet: {next_packet} from {next_addr}')
+                    return (next_packet, next_addr)
+                return
+
+            # seq > expected: buffer until missing packet comes
+            buffer = self._reorder_buffer.setdefault(addr, {})
+            buffer[seq] = packet
+            if len(buffer) >= self.reorder_buffer_limit:
+                # Skip to the earliest buffered seq so it doesnt stuck forever
+                print(f'[REORDER BUFFER FULL] Skipping to seq {min(buffer.keys())} for {addr}')
+                self._expected_seq[addr] = min(buffer.keys())
+                self._clean_reorder_buffer(addr)
+                if self._ready_packets:
+                    next_packet, next_addr = self._ready_packets.popleft()
+                    print(f'[SEQ RECIEVED] seq: {next_packet.get("seq")} packet: {next_packet} from {next_addr}')
+                    return (next_packet, next_addr)
+            return
         print(f'[WARN] Packet with no seq: {packet} from {addr}')
         
     def _send_ack(self,addr:Addr,seq:int) -> None: 
@@ -133,6 +169,14 @@ class NetworkManager:
                 self._processed_seq[addr] = set(list(self._processed_seq[addr])[-20:])
             else:
                 del self._processed_seq[addr]
+
+        # Drop reorder state for removed addresses
+        for addr in list(self._expected_seq.keys()):
+            if addr not in self._processed_seq:
+                del self._expected_seq[addr]
+        for addr in list(self._reorder_buffer.keys()):
+            if addr not in self._processed_seq:
+                del self._reorder_buffer[addr]
         
         # Keep only last 20 completed sequences per address
         for addr in list(self._completed_seq.keys()):
@@ -145,6 +189,20 @@ class NetworkManager:
 
     def close_connection(self) -> None:
         self.socket.close()
+
+    def _clean_reorder_buffer(self, addr: Addr) -> None:
+        expected = self._expected_seq.get(addr, 1)
+        buffer = self._reorder_buffer.get(addr)
+        if not buffer:
+            return
+
+        while expected in buffer:
+            self._ready_packets.append((buffer.pop(expected), addr))
+            expected += 1
+
+        self._expected_seq[addr] = expected
+        if not buffer:
+            del self._reorder_buffer[addr]
     # ---------------- Getters and Setters ----------------
     def get_completed_seq(self,addr: Optional[Addr] = None,*, seq: Optional[int] = None) -> ItemsView[Addr,Set[int]] | set[int] | bool | None:
         """Check if outgoing packets got ACKed"""

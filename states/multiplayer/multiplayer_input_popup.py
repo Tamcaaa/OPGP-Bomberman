@@ -2,7 +2,7 @@ import pygame
 import config
 import json
 import socket
-from states.state import State
+from states.general.state import State
 from managers.state_manager import StateManager
 from custom_classes.button import Button
 from managers.network_manager import NetworkManager

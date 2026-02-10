@@ -4,7 +4,7 @@ import random
 import config
 import os
 from typing import Dict
-from states.state import State
+from states.general.state import State
 from maps.test_field_map import all_maps
 from collections import Counter
 from managers.state_manager import StateManager
@@ -14,7 +14,7 @@ Addr = tuple[str, int]
 Packet = Dict[str, any]
 
 class MultiplayerMapSelector(State):
-    def __init__(self, game, player_list, network_manger, my_player_name):
+    def __init__(self, game, player_list, network_manger: NetworkManager, my_player_name: str):
         super().__init__(game)
         pygame.display.set_caption("BomberMan: Map Selector")
         self.bg_image = pygame.image.load(os.path.join("assets", "battlefield-bg.png"))
@@ -61,7 +61,6 @@ class MultiplayerMapSelector(State):
             self.network_manager.send_packet(player.addr, packet_type, packet_data, scope)
 
     def send_packet(self, packet_type, packet_data):
-        """Broadcast packet to all other players"""
         scope = 'MultiplayerMapSelector'
         for player in self.players_list.values():
             if player.addr == self.my_player.addr:
@@ -150,10 +149,14 @@ class MultiplayerMapSelector(State):
         self.state_manager.change_state(new_state, self.final_map, self.network_manager, self.players_list, self.my_player.name)
 
     def broadcast_state_change(self, new_state):
+        if not self.my_player:
+            return
         packet_type = 'STATE_CHANGE'
         packet_data = {'state': new_state}
         scope = 'MultiplayerMapSelector'
         for player in self.players_list.values():
+            if player.addr == self.my_player.addr:
+                continue 
             self.network_manager.send_packet(player.addr, packet_type, packet_data, scope)
 
     # ==================== GAME LOGIC ====================
@@ -224,7 +227,6 @@ class MultiplayerMapSelector(State):
 
     # ==================== RENDERING ====================
     def draw_card(self, screen, i, map_name):
-        """Draw a map card matching single-player style"""
         map_count = len(self.selected_maps)
         total_width = map_count * self.card_width + (map_count - 1) * self.card_spacing
         start_x = (config.SCREEN_WIDTH - total_width) // 2
@@ -259,7 +261,6 @@ class MultiplayerMapSelector(State):
 
     @staticmethod
     def draw_rounded_rect(surface, color, rect, radius, border_width=0):
-        """Draw a rounded rectangle"""
         rect = pygame.Rect(rect)
         pygame.draw.rect(surface, color, rect, border_width, border_radius=radius)
         if border_width != 0:
