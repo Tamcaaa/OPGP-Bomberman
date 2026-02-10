@@ -1,5 +1,7 @@
+import os
 import pygame
 import config
+from typing import List, Dict
 
 def load_images():
     images = {}
@@ -32,3 +34,22 @@ def load_images():
     images['trap_image'] = pygame.transform.scale(pygame.image.load("assets/environment/manhole.png").convert_alpha(), (config.GRID_SIZE, config.GRID_SIZE))
     
     return images
+
+def load_hat_images(hat_names: List[str]) -> Dict[str, pygame.Surface]:
+    hat_images: Dict[str, pygame.Surface] = {}
+    for hat_name in hat_names:
+        if hat_name == 'None':
+            continue
+        if not hat_name in config.AVAILABLE_HATS.keys():
+            raise Exception(f'[ERROR] hat_name: {hat_name} not in config.AVAILABLE_HATS: {config.AVAILABLE_HATS.keys()}')
+        hat_file = config.AVAILABLE_HATS[hat_name]['file']
+        if not isinstance(hat_file, str) or not hat_file:
+            raise ValueError(f'[ERROR] hat_name: {hat_name} has invalid file entry: {hat_file!r}')
+        hat_path = os.path.join('assets', 'player_hats', hat_file)
+        hat_image = pygame.image.load(hat_path).convert_alpha()
+        
+        # Scaling hats for ingame scale
+        size = int(config.GRID_SIZE * config.HAT_SCALE_FACTOR)
+        hat_image = pygame.transform.scale(hat_image, (size, size))
+        hat_images[hat_name] = hat_image
+    return hat_images

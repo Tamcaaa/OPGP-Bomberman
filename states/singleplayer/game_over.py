@@ -2,7 +2,7 @@ import os
 import pygame.image
 import config
 
-from states.state import State
+from states.general.state import State
 from managers.music_manager import MusicManager
 from custom_classes.button import Button
 
