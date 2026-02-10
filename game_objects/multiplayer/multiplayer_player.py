@@ -43,6 +43,7 @@ class Player(pygame.sprite.Sprite):
         self.last_anim_update = pygame.time.get_ticks()
         self.anim_fps = config.ANIM_FPS
         self.frame_duration = 1000 // self.anim_fps
+        self.last_move_anim_time = 0  
 
         # ==================== Idle System ====================
         self.idle_start = pygame.time.get_ticks()
@@ -79,7 +80,6 @@ class Player(pygame.sprite.Sprite):
 
     # ==================== Skin & Hat ===================
     def _apply_skin(self):
-        """Apply color tint to all player animation frames."""
         color = self.player_color
         for key, frames in config.PLAYER1_IMAGES.items():
             tinted_frames = []
@@ -107,7 +107,6 @@ class Player(pygame.sprite.Sprite):
 
     # ==================== Gameplay Logic ====================
     def check_hit(self):
-        """Check if player is hit by an explosion with i-frame protection."""
         now = pygame.time.get_ticks()
         if not now - self.iframe_timer >= config.PLAYER_IFRAMES:
             return
@@ -120,7 +119,6 @@ class Player(pygame.sprite.Sprite):
         return False
 
     def activate_powerup(self, powerup_type, duration=10):
-        """Activate a power-up effect."""
         now = time.time()
 
         if powerup_type == "range_powerup":
@@ -140,26 +138,21 @@ class Player(pygame.sprite.Sprite):
         self.active_powerups[powerup_type] = now + duration
 
     def update_powerups(self):
-        """Remove expired power-ups."""
         now = time.time()
         expired = [powerup for powerup, expire_time in self.active_powerups.items() if now >= expire_time]
         for powerup in expired:
             del self.active_powerups[powerup]
 
     def get_player_location(self):
-        """Return current player position."""
         return self.rect.x, self.rect.y
 
     def get_health(self) -> int:
-        """Return current health."""
         return self.health
 
     def get_max_bombs(self) -> int:
-        """Return max bombs."""
         return self.maxBombs
 
     def handle_queued_keys(self, now):
-        """Process held keys with cooldown, accounting for freeze effect."""
         now = pygame.time.get_ticks()
         move_keys = self.move_keys
 
@@ -168,20 +161,19 @@ class Player(pygame.sprite.Sprite):
         if now - self.last_move_time >= move_delay and self.held_down_keys:
             key = self.held_down_keys[-1]
             if key == move_keys[0]:
-                self.move(0, -1, "up")
+                self.move(0, -1, "up", send_packet=True)
             elif key == move_keys[2]:
-                self.move(0, 1, "down")
+                self.move(0, 1, "down", send_packet=True)
             elif key == move_keys[1]:
-                self.move(-1, 0, "left")
+                self.move(-1, 0, "left", send_packet=True)
             elif key == move_keys[3]:
-                self.move(1, 0, "right")
+                self.move(1, 0, "right", send_packet=True)
             elif key == move_keys[4]:
                 self.deploy_bomb(self.bomb_group, self.explosion_group)
 
             self.last_move_time = now
 
-    def move(self, dx, dy, direction):
-        """Move the player in the specified direction."""
+    def move(self, dx, dy, direction, send_packet: bool = False):
         new_x = self.rect.x + dx * config.GRID_SIZE
         new_y = self.rect.y + dy * config.GRID_SIZE
 
@@ -215,17 +207,18 @@ class Player(pygame.sprite.Sprite):
         self.moving = True
         self.current_direction = direction
         self.idle_start = pygame.time.get_ticks()
+        num_frames = len(self.images.get(direction, self.images["idle"]))
+        self.last_move_anim_time = pygame.time.get_ticks() + (num_frames * (1000 // self.anim_fps))
         self.music_manager.play_sound("walk", "walk_volume")
 
-        packet_data = {
-            "player_name": self.name,
-            "x": self.rect.x,
-            "y": self.rect.y
-        }
-        self.test_field.send_packet('PLAYER_UPDATE', packet_data)
+        if send_packet:
+            packet_data = {
+                "player_name": self.name,
+                "direction": self.current_direction
+            }
+            self.test_field.send_packet('PLAYER_UPDATE', packet_data)
 
     def deploy_bomb(self, bomb_group, explosion_group):
-        """Deploy a bomb at the player's current position."""
         if self.currentBomb > 0:
             self.currentBomb -= 1
             Bomb(self, bomb_group, explosion_group, self.test_field)
@@ -233,7 +226,6 @@ class Player(pygame.sprite.Sprite):
             self.test_field.send_packet('BOMB_UPDATE', packet_data)
 
     def find_paired_teleport(self, teleport_type, current_x, current_y):
-        """Find the paired teleport tile of the same type."""
         tiles = []
         for y, row in enumerate(self.test_field.tile_map):
             for x, tile in enumerate(row):
@@ -246,7 +238,6 @@ class Player(pygame.sprite.Sprite):
         return tiles[0] if tiles else None
 
     def update_animation(self):
-        """Update player animation (idle + movement) with tinted frames."""
         now = pygame.time.get_ticks()
         anim_key = self.current_direction if self.moving else "idle"
 

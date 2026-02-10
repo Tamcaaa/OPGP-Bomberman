@@ -49,7 +49,6 @@ class MultiplayerSelector(State):
             button_color=config.COLOR_BEIGE,)
 
     def handle_events(self, event):
-        """Handle button clicks."""
         if self.host_button.is_clicked():
             self.state_manager.change_state("MultiplayerLobby","Server Host",self.network_manager,is_host=True)
         elif self.join_button.is_clicked():
@@ -62,7 +61,6 @@ class MultiplayerSelector(State):
         pass
 
     def render(self, screen):
-        """Draw the main menu screen."""
         pygame.display.set_caption("BomberMan: Multiplayer Selector")
         screen.blit(self.bg_image, (0, 0))
 

@@ -48,7 +48,6 @@ class PowerUp(pygame.sprite.Sprite):
         self.frozen_until = 0
 
     def create_fallback_image(self):
-        """Create a colored rectangle as fallback for missing images"""
         image = pygame.Surface((config.GRID_SIZE, config.GRID_SIZE))
 
         # Different colors for different power-up types
@@ -77,18 +76,14 @@ class PowerUp(pygame.sprite.Sprite):
         return image
 
     def update(self):
-        """Check if the power-up should disappear due to time limit"""
-        # Only visible power-ups should expire
         if not self.hidden and not self.collected and time.time() - self.reveal_time > self.field_duration:
-            self.kill()  # Remove power-up if it's been on the field too long
+            self.kill()
 
     def reveal(self):
-        """Reveal the power-up when the brick hiding it is destroyed"""
         self.hidden = False
-        self.reveal_time = time.time()  # Reset timer when revealed
+        self.reveal_time = time.time()
 
     def apply_effect(self, player):
-        """Apply the power-up effect to the player who collected it"""
         self.collected = True
         if self.type == "bomb_powerup":
             if player.maxBombs < player.max_bomb_limit:  # optional limit if you want

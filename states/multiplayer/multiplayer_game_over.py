@@ -38,7 +38,6 @@ class MultiplayerGameOver(State):
             self.exit_state()
             self.network_manager.close_socket()
     def render(self, screen):
-        """Draw the main menu screen."""
         screen.blit(self.bg_image, (0, 0))
         self.game.draw_text(screen, "GAME OVER", config.COLOR_BLACK, config.SCREEN_WIDTH // 2, config.SCREEN_HEIGHT // 4)
         self.game.draw_text(screen, f"{self.winner} won!", config.COLOR_BLACK, config.SCREEN_WIDTH // 2, config.SCREEN_HEIGHT // 3)

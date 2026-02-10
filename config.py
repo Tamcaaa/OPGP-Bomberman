@@ -171,7 +171,7 @@ GAME_HAT_OFFSETS = {
     "Crown":  (5, -10),
     "Cowboy": (5, -10),
     "Cap":    (5, -6),
-    "Devil":  (15, -8),
+    "Devil":  (7, -8),
     "Cone":   (5, -10),
     "Halo":   (5, -8),
 }

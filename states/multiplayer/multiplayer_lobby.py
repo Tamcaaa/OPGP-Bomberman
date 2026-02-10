@@ -120,8 +120,6 @@ class MultiplayerLobby(State):
 
     # ---------------- SKIN ASSETS ----------------
     def load_skin_assets(self):
-        """Load color list, hat images, and idle animations for preview"""
-        # Available colors
         self.available_colors = config.AVAILABLE_COLORS
         # Load idle frames for player preview
         self.idle_frames = []
@@ -140,7 +138,7 @@ class MultiplayerLobby(State):
             file = hat["file"]
             
             if file is None:
-                self.hat_images[name] = None
+                self.hat_images[name] = 'None'
                 continue
                 
             path = os.path.join(self.game.photos_dir, "../assets/player_hats", file)
@@ -150,9 +148,9 @@ class MultiplayerLobby(State):
                 img = pygame.transform.smoothscale(img, (50, 50))
                 self.hat_images[name] = img
             else:
-                self.hat_images[name] = None
+                self.hat_images[name] = 'None'
         
-        # Font for skin selector
+        # Font for skin selectors
         self.skin_font = pygame.font.Font("CaveatBrush-Regular.ttf", 20)
     
     def _load_tinted_images(self,color_index: int|None = None) -> None:
@@ -168,7 +166,6 @@ class MultiplayerLobby(State):
             self.tinted_idle_images.setdefault(color_index,tuple(tinted_images))
 
     def tint_image(self, image, color) -> pygame.Surface:
-        '''Apply color tint to player sprite'''
         tinted = image.copy()
         tint = pygame.Surface(image.get_size(), pygame.SRCALPHA)
         tint.fill((*color, 255))
@@ -176,7 +173,6 @@ class MultiplayerLobby(State):
         return tinted
 
     def update_idle_animation(self):
-        '''Update idle animation frame'''
         now = pygame.time.get_ticks()
         if now - self.last_idle_update >= 1000 // self.idle_fps:
             self.idle_index = (self.idle_index + 1) % len(self.idle_frames)
@@ -399,14 +395,17 @@ class MultiplayerLobby(State):
                 self.network_manager.send_packet(player.addr,packet_type,data,scope)
 
     def broadcast_state_change(self,new_state:str) -> None:
+        if not self.my_player:
+            return
         packet_type = 'STATE_CHANGE'
         data = {'state' : new_state}
         scope = 'MultiplayerLobby'
         for player in self.players_list.values():
+            if player.addr == self.my_player.addr:
+                continue 
             self.network_manager.send_packet(player.addr,packet_type,data,scope)
 
     def check_leave_seq(self) -> None:
-        '''Check if leave packet got Ack'ed'''
         if self.leave_seq and self.my_player and self.network_manager.get_completed_seq(self.my_player.addr,seq=self.leave_seq):
             print(f'[LEFT LOBBY] {self.my_player.name} has left the lobby.')
             self.network_manager.close_socket()
