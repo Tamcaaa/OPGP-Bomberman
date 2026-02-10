@@ -65,7 +65,6 @@ class BomberManApp:
         text_rect.center = (x, y)
         screen.blit(text_surface, text_rect)
 
-
 # Start the game
 
 if __name__ == '__main__':
