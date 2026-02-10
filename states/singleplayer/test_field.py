@@ -59,56 +59,34 @@ class TestField(State):
         self.sand_bg = pygame.image.load("assets/sand-bg.png").convert_alpha()
         self.ruins_bg = pygame.image.load("assets/ruins_bg.png").convert_alpha()
         self.urban_bg = pygame.image.load("assets/urban_bg.png").convert_alpha()
-
+        
+        
         # --- Load tiles ---
-        self.unbreakable_stone = pygame.transform.scale(
-            pygame.image.load("assets/stone-black.png").convert_alpha(), (30, 30)
-        )
-        self.breakable_barrel = pygame.transform.scale(
-            pygame.image.load("assets/environment/barrel.png").convert_alpha(), (30, 30)
-        )
-        self.breakable_bush = pygame.transform.scale(
-            pygame.image.load("assets/environment/bush.png").convert_alpha(), (30, 30)
-        )
-        self.unbreakable_rock = pygame.transform.scale(
-            pygame.image.load("assets/environment/black-block-rock.png").convert_alpha(), (30, 30)
-        )
-        self.breakable_rock = pygame.transform.scale(
-            pygame.image.load("assets/environment/rock.png").convert_alpha(), (30, 30)
-        )
-        self.breakable_diamond = pygame.transform.scale(
-            pygame.image.load("assets/environment/diamond.png").convert_alpha(), (30, 30)
-        )
-        self.breakable_cactus = pygame.transform.scale(
-            pygame.image.load("assets/environment/cactus.png").convert_alpha(), (30, 30)
-        )
-        self.unbreakable_box = pygame.transform.scale(
-            pygame.image.load("assets/environment/box.png").convert_alpha(), (30, 30)
-        )
-        self.heart_image = pygame.transform.scale(
-            pygame.image.load("assets/menu_items/heart.png").convert_alpha(), (30, 30)
-        )
-        self.pause_icon = pygame.transform.scale(
-            pygame.image.load("assets/pauseicon.png").convert_alpha(), (30, 30)
-        )
-        self.breakable_wall = pygame.transform.scale(
-            pygame.image.load("assets/environment/wall.png").convert_alpha(), (30, 30)
-        )
-        self.unbreakable_wall = pygame.transform.scale(
-            pygame.image.load("assets/environment/brick.png").convert_alpha(), (30, 30)
-        )
-        self.blue_cave = pygame.transform.scale(
-            pygame.image.load("assets/environment/blue_cave.png").convert_alpha(), (30, 30)
-        )
-        self.red_cave = pygame.transform.scale(
-            pygame.image.load("assets/environment/red_cave.png").convert_alpha(), (30, 30)
-        )
-        self.bomb_icon = pygame.transform.scale(
-            pygame.image.load("assets/bomb.png").convert_alpha(), (30, 30)
-        )
-        self.trap_image = pygame.transform.scale(
-            pygame.image.load("assets/environment/manhole.png").convert_alpha(), (config.GRID_SIZE, config.GRID_SIZE)
-        )
+        TILE = (config.GRID_SIZE, config.GRID_SIZE)
+        def load_image(path, size):
+            return pygame.transform.scale(
+                pygame.image.load(path).convert_alpha(),
+                size
+            )
+        self.images = {
+            "unbreakable_stone": load_image("assets/stone-black.png", TILE),
+            "breakable_barrel": load_image("assets/environment/barrel.png", TILE),
+            "breakable_bush": load_image("assets/environment/bush.png", TILE),
+            "unbreakable_rock": load_image("assets/environment/black-block-rock.png", TILE),
+            "breakable_rock": load_image("assets/environment/rock.png", TILE),
+            "breakable_diamond": load_image("assets/environment/diamond.png", TILE),
+            "breakable_cactus": load_image("assets/environment/cactus.png", TILE),
+            "unbreakable_box": load_image("assets/environment/box.png", TILE),
+            "breakable_wall": load_image("assets/environment/wall.png", TILE),
+            "unbreakable_wall": load_image("assets/environment/brick.png", TILE),
+            "blue_cave": load_image("assets/environment/blue_cave.png", TILE),
+            "red_cave": load_image("assets/environment/red_cave.png", TILE),
+            "bomb_icon": load_image("assets/bomb.png", TILE),
+            "heart_image": load_image("assets/menu_items/heart.png", TILE),
+            "pause_icon": load_image("assets/pauseicon.png", TILE),
+            "trap_image": load_image("assets/environment/manhole.png", TILE),
+        }
+
 
         self.tile_map = copy.deepcopy(selected_map)
         self.available_powerups = ["bomb_powerup", "range_powerup", "freeze_powerup", "live+_powerup", "shield_powerup"]
@@ -116,7 +94,6 @@ class TestField(State):
         
         self.load_music()
         self.place_hidden_powerups()
-
 
     def place_hidden_powerups(self):
         brick_positions = []
@@ -195,13 +172,13 @@ class TestField(State):
         player2_lives_text = self.game.font.render(f"x {self.player2.get_health()}", True, config.COLOR_BLACK)
         screen.blit(player1_lives_text, (config.GRID_SIZE, 10))
         screen.blit(player2_lives_text, (config.SCREEN_WIDTH - 3 * config.GRID_SIZE, 10))
-        screen.blit(self.heart_image, (0, 0))
-        screen.blit(self.heart_image, (config.SCREEN_WIDTH - 4 * config.GRID_SIZE, 0))
+        screen.blit(self.images["heart_image"], (0, 0))
+        screen.blit(self.images["heart_image"], (config.SCREEN_WIDTH - 4 * config.GRID_SIZE, 0))
 
         player1_bombs = self.game.font.render(f"x {self.player1.get_max_bombs()}", True, config.COLOR_BLACK)
         player2_bombs = self.game.font.render(f"x {self.player2.get_max_bombs()}", True, config.COLOR_BLACK)
-        screen.blit(self.bomb_icon, (config.GRID_SIZE * 2, 0))
-        screen.blit(self.bomb_icon, (config.SCREEN_WIDTH - 2 * config.GRID_SIZE, 0))
+        screen.blit(self.images["bomb_icon"], (config.GRID_SIZE * 2, 0))
+        screen.blit(self.images["bomb_icon"], (config.SCREEN_WIDTH - 2 * config.GRID_SIZE, 0))
         screen.blit(player1_bombs, (config.GRID_SIZE * 3, 10))
         screen.blit(player2_bombs, (config.SCREEN_WIDTH - config.GRID_SIZE, 10))
 
@@ -261,19 +238,19 @@ class TestField(State):
                         color = config.COLOR_DARK_GREEN if (x + y) % 2 == 0 else config.COLOR_LIGHT_GREEN
                         pygame.draw.rect(screen, color, rect)
                 elif tile == 1:
-                    if self.map_name == "Crystal Caves": screen.blit(self.unbreakable_stone, (px, py))
-                    elif self.map_name in ["Classic", "Desert Maze"]: screen.blit(self.unbreakable_box, (px, py))
-                    elif self.map_name == "Ancient Ruins": screen.blit(self.unbreakable_rock, (px, py))
-                    else: screen.blit(self.unbreakable_wall, (px, py))
+                    if self.map_name == "Crystal Caves": screen.blit(self.images["unbreakable_stone"], (px, py))
+                    elif self.map_name in ["Classic", "Desert Maze"]: screen.blit(self.images["unbreakable_box"], (px, py))
+                    elif self.map_name == "Ancient Ruins": screen.blit(self.images["unbreakable_rock"], (px, py))
+                    else: screen.blit(self.images["unbreakable_wall"], (px, py))
                 elif tile == 2:
-                    if self.map_name == "Desert Maze": screen.blit(self.breakable_cactus, (px, py))
-                    elif self.map_name == "Classic": screen.blit(self.breakable_bush, (px, py))
-                    elif self.map_name == "Crystal Caves": screen.blit(self.breakable_diamond, (px, py))
-                    elif self.map_name == "Ancient Ruins": screen.blit(self.breakable_rock, (px, py))
-                    else: screen.blit(self.breakable_wall, (px, py))
-                if tile == 4: screen.blit(self.blue_cave, (px, py))
-                if tile == 5: screen.blit(self.red_cave, (px, py))
-                elif tile == config.TRAP: screen.blit(self.trap_image, (px, py))
+                    if self.map_name == "Desert Maze": screen.blit(self.images["breakable_cactus"], (px, py))
+                    elif self.map_name == "Classic": screen.blit(self.images["breakable_bush"], (px, py))
+                    elif self.map_name == "Crystal Caves": screen.blit(self.images["breakable_diamond"], (px, py))
+                    elif self.map_name == "Ancient Ruins": screen.blit(self.images["breakable_rock"], (px, py))
+                    else: screen.blit(self.images["breakable_wall"], (px, py))
+                if tile == 4: screen.blit(self.images["blue_cave"], (px, py))
+                if tile == 5: screen.blit(self.images["red_cave"], (px, py))
+                elif tile == config.TRAP: screen.blit(self.images["trap_image"], (px, py))
 
 
     def draw_players(self, screen):
@@ -293,17 +270,19 @@ class TestField(State):
 
                             # zisťujeme smer pohybu podľa kláves
                             if player.player_id == 1:
-                                going_right = pygame.K_d in player.held_down_keys
-                            else:  # player 2
-                                going_right = pygame.K_RIGHT in player.held_down_keys
+                                keys = config.PLAYER1_MOVE_KEYS
+                            else:
+                                keys = config.PLAYER2_MOVE_KEYS
+
+                            going_left  = keys[1] in player.held_down_keys
+                            going_right = keys[3] in player.held_down_keys
 
                             # extra posun pre Devil rohy
                             if hat_name == "Devil":
-                                corner_spread = 10
-                                if going_right:
-                                    ox += corner_spread
-                                else:
-                                    ox -= corner_spread
+                                corner_spread = 8
+                                ox -= corner_spread
+                            if hat_name == "Devil" and going_left:
+                                ox -= corner_spread - 4
 
                             anim_offsets = config.HAT_ANIM_OFFSETS.get(player.current_animation, [0, 0, 0])
                             frame_index = player.current_frame_index % len(anim_offsets)
@@ -318,20 +297,18 @@ class TestField(State):
 
     def update(self):
         now = pygame.time.get_ticks()
-        self.player1.moving = False
-        self.player2.moving = False
-        self.player1.handle_queued_keys(now)
-        self.player2.handle_queued_keys(now)
-        self.player1.update_movement_status()
-        self.player2.update_movement_status()
-        self.player1.update_animation()
-        self.player2.update_animation()
+        for player in self.players:
+            player.moving = False
+            player.handle_queued_keys(now)
+            player.update_movement_status()
+            player.update_animation()
+            player.update_powerups()
+
         self.handle_explosions()
         self.check_powerup_collisions()
-        self.player1.update_powerups()
-        self.player2.update_powerups()
         self.powerup_group.update()
         self.check_trap_collisions()
+
         if self.message_timer > 0 and now - self.message_timer > 3000:
             self.powerup_message = ""
             self.message_timer = 0

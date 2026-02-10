@@ -61,11 +61,9 @@ SPAWN_POINTS = {"spawn1": (0, 30),
                 "spawn2": (930, 30),
                 "spawn3": (0, 510),
                 "spawn4": (930, 510)}
-DEFAULT_PLAYER1_MOVE_KEYS = [pygame.K_w, pygame.K_a, pygame.K_s, pygame.K_d, pygame.K_SPACE]
-DEFAULT_PLAYER2_MOVE_KEYS = [pygame.K_UP, pygame.K_LEFT, pygame.K_DOWN, pygame.K_RIGHT, pygame.K_KP0]
+PLAYER1_MOVE_KEYS = [pygame.K_w, pygame.K_a, pygame.K_s, pygame.K_d, pygame.K_SPACE]
+PLAYER2_MOVE_KEYS  = [pygame.K_UP, pygame.K_LEFT, pygame.K_DOWN, pygame.K_RIGHT, pygame.K_KP0]
 
-PLAYER1_MOVE_KEYS = DEFAULT_PLAYER1_MOVE_KEYS.copy()
-PLAYER2_MOVE_KEYS = DEFAULT_PLAYER2_MOVE_KEYS.copy()
 
 # Player images
 PLAYER1_IMAGES = {
@@ -214,10 +212,11 @@ HATS = [
 TAB_COLORS = 0
 TAB_HATS   = 1
 TAB_NAMES  = ["Farby", "Čiapky"]  
-MENU_OUTLINE = (140, 105, 65)     
-MENU_TEXT = (95, 68, 46)         
-MENU_DISABLED = (190, 170, 145)
+
 MENU_PAPER_DARK = (211, 161, 105)
+MENU_OUTLINE = (95, 68, 46) 
+MENU_TEXT = (255, 245, 235) 
+MENU_DISABLED = (140, 110, 85)
 
 AVAILABLE_COLORS = [
             WHITE_PLAYER, BLACK_PLAYER, RED_PLAYER,
