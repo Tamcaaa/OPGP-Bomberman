@@ -28,7 +28,7 @@ class TestField(State):
         self.bomb_group = pygame.sprite.Group()
         self.explosion_group = pygame.sprite.Group()
         self.powerup_group = pygame.sprite.Group()
-        self.hidden_powerups = {}  # {(x, y): powerup_type}
+        self.hidden_powerups = {}  
 
         self.player1 = Player(1, "spawn1", self, skin=self.selected_skins.get(1))
         self.player2 = Player(2, "spawn4", self, skin=self.selected_skins.get(2))
@@ -45,7 +45,7 @@ class TestField(State):
         for hat_def in config.HATS:
             name = hat_def["name"]
             if name != "None":
-                file_name = f"{name.lower()}.png"  # alebo použij presný názov súboru
+                file_name = f"{name.lower()}.png"  
                 path = os.path.join(game.photos_dir, "../assets/player_hats", file_name)
                 img = pygame.image.load(path).convert_alpha()
                 scale_factor = 0.7 
@@ -87,10 +87,8 @@ class TestField(State):
             "trap_image": load_image("assets/environment/manhole.png", TILE),
         }
 
-
         self.tile_map = copy.deepcopy(selected_map)
         self.available_powerups = ["bomb_powerup", "range_powerup", "freeze_powerup", "live+_powerup", "shield_powerup"]
-
         
         self.load_music()
         self.place_hidden_powerups()
