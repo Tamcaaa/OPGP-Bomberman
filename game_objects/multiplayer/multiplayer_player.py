@@ -36,7 +36,7 @@ class Player(pygame.sprite.Sprite):
         self.iframe_timer = config.IFRAME_TIMER
 
         # ==================== Animations ====================
-        self.move_keys = config.DEFAULT_PLAYER1_MOVE_KEYS
+        self.move_keys = config.PLAYER1_MOVE_KEYS
         self.current_direction = "idle"
         self.moving = False
         self.frame_index = config.FRAME_INDEX
