@@ -1,29 +1,34 @@
 import random
 import pygame
-import json
 import copy
 import config
 import time
 
-from typing import Dict,List,Tuple
-from multiplayer_power_up import PowerUp
-from states.state import State
-from multiplayer_player import Player
+from typing import Dict,Tuple
+from game_objects.multiplayer.multiplayer_power_up import PowerUp
+from states.general.state import State
+from game_objects.multiplayer.multiplayer_player import Player
 from managers.music_manager import MusicManager
 from managers.network_manager import NetworkManager
 from managers.state_manager import StateManager
 from maps.test_field_map import all_maps
-from image_loader import load_images
-from bomb import Bomb
+from image_loader import load_images, load_hat_images
+from game_objects.general.bomb import Bomb
+from states.multiplayer.multiplayer_lobby import PlayerData
 
 class MultiplayerTestField(State):
-    def __init__(self, game, selected_map, network_manager, players_list, player_name):
+    def __init__(self, game, selected_map, network_manager: NetworkManager, players_list: Dict[str, PlayerData], player_name: str):
         super().__init__(game)
         
-        self.network_manager = network_manager
+        self.network_manager: NetworkManager  = network_manager
         self.players_list = players_list
-        self.player_name = player_name
-        self.my_player = players_list.get(player_name)
+        self.player_name: str = player_name
+        
+        player = players_list.get(player_name)
+        if player is None:
+            raise Exception(f'player_name: {player_name} not found in player_list: {players_list}')
+        
+        self.my_player: PlayerData = player
         self.state_manager = StateManager(self.game)
         
         # Get map name from selected_map if it's a tuple, otherwise use as is
@@ -48,18 +53,21 @@ class MultiplayerTestField(State):
         self.hidden_powerups : Dict[Tuple[int,int], str] = {}
         # Load images
         self.images = load_images()
-
+        hats = [player.final_hat for player in self.players_list.values()]
+        self.hat_images = load_hat_images(hats)
         # Feedback message for power-ups
         self.powerup_message = ""
         self.message_timer = 0
 
-        self.players = {}
+        self.players: Dict[str,Player] = {}
+        self.remote_last_input: Dict[str, int] = {}
+        self.remote_idle_timeout_ms = 250
         
         if self.my_player.is_host:
             # Players: dict player_name -> Player object
-            for player_name in self.players_list:
-                spawn = "spawn1" if player_name == self.player_name else "spawn4"
-                self.players[player_name] = Player(1 if spawn == "spawn1" else 2, spawn, self, name=player_name)
+            for player in self.players_list.values():
+                spawn = "spawn1" if player.name == self.player_name else "spawn4"
+                self.players[player.name] = Player(spawn, self, player.name, player.final_color, player.final_hat)
             self.send_player_list()
             self.place_hidden_powerups()
 
@@ -91,27 +99,35 @@ class MultiplayerTestField(State):
             self._handle_powerup_update_packet(packet_data, addr)
 
     def _handle_player_list_packet(self, packet_data, addr):
-        """Receive initial player list"""
         for player_name, spawn in packet_data.get('list').items():
             if player_name not in self.players:
-                self.players[player_name] = Player(1 if player_name == self.player_name else 2, spawn, self, name=player_name)
+                player_color = self.players_list[player_name].final_color
+                player_hat = self.players_list[player_name].final_hat
+                self.players[player_name] = Player(spawn, self, player_name, player_color, player_hat)
 
     def _handle_player_update_packet(self, packet_data, addr):
-        """Update player position"""
         player_name = packet_data.get('player_name')
-        x = packet_data.get('x')
-        y = packet_data.get('y')
+        direction = packet_data.get('direction')
         if player_name in self.players and player_name != self.player_name:
-            self.players[player_name].rect.topleft = (x, y)
+            if direction in ("up", "down", "left", "right"):
+                self.remote_last_input[player_name] = pygame.time.get_ticks()
+                dx, dy = 0, 0
+                if direction == "up":
+                    dy = -1
+                elif direction == "down":
+                    dy = 1
+                elif direction == "left":
+                    dx = -1
+                elif direction == "right":
+                    dx = 1
+                self.players[player_name].move(dx, dy, direction, send_packet=False)
 
     def _handle_bomb_update_packet(self, packet_data, addr):
-        """Receive bomb placement from other player"""
         player_name = packet_data.get('player_name')
         if player_name in self.players:
             Bomb(self.players.get(player_name), self.bomb_group, self.explosion_group, self)
 
     def _handle_powerup_update_packet(self, packet_data, addr):
-        """Receive powerup spawn from other player"""
         x, y = map(int, packet_data.get('pos').split(','))
         powerup_type = packet_data.get('powerup_type')
         powerup = PowerUp(int(x), int(y), powerup_type)
@@ -124,7 +140,6 @@ class MultiplayerTestField(State):
         self.send_packet('PLAYER_LIST', packet_data)
 
     def send_packet(self, packet_type, packet_data):
-        """Broadcast packet to all other players"""
         scope = 'MultiplayerTestField'
         for player in self.players_list.values():
             if player.addr == self.my_player.addr:
@@ -135,12 +150,9 @@ class MultiplayerTestField(State):
         player = self.players.get(self.player_name)
         if not player:
             return
-        
         elif event.type == pygame.KEYDOWN:
             if event.key in player.move_keys and event.key not in player.held_down_keys:
                 player.held_down_keys.append(event.key)
-            if event.key == pygame.K_p and self.players_list.get(self.player_name).is_host:
-                self.game.state_manager.change_state("Pause", self.map_name, self.map_name)
         elif event.type == pygame.KEYUP:
             if event.key in player.held_down_keys:
                 player.held_down_keys.remove(event.key)
@@ -148,18 +160,29 @@ class MultiplayerTestField(State):
     # ---------------- Update ----------------
     def update(self):
         now = pygame.time.get_ticks()
-        # Update network first
+
         self.handle_network_packets()
         # Move local player based on held keys
         if self.players:
             local_player = self.players.get(self.player_name)
             if not local_player:
                 return
-            local_player.moving = False
             local_player.handle_queued_keys(now)
-            # Powerup updates
             local_player.update_powerups()
-                # Clear power-up message after 3 seconds
+            # Only stop animation if no keys held AND animation cycle finished
+            if not local_player.held_down_keys and now >= local_player.last_move_anim_time:
+                local_player.moving = False
+
+            # Stop remote player animation if no input received recently
+            for name, player in self.players.items():
+                if name == self.player_name:
+                    continue
+                last_input = self.remote_last_input.get(name)
+                if last_input is None:
+                    continue
+                if now - last_input > self.remote_idle_timeout_ms:
+                    player.moving = False
+
         if self.powerup_group:
             self.check_powerup_collisions()
         if self.explosion_group:
@@ -169,16 +192,13 @@ class MultiplayerTestField(State):
             self.message_timer = 0
     # --------------- Game Logic ----------------
     def destroy_tile(self, x, y):
-        # Only handle brick tiles (2)
         if self.tile_map[y][x] == 2:
-            # Check if there's a power-up hidden under this brick
             if (x, y) in self.hidden_powerups:
                 powerup_type = self.hidden_powerups[(x, y)]
                 powerup = PowerUp(x, y, powerup_type)
                 powerup.reveal()
                 self.powerup_group.add(powerup)
                 
-                # Send the powerup to other players
                 packet_data = {
                     'pos': f"{x},{y}",
                     'powerup_type': powerup_type
@@ -199,8 +219,6 @@ class MultiplayerTestField(State):
 
         # Determine how many power-ups to place
         num_powerups = int(len(brick_positions) * config.POWERUP_SPAWNING_RATE)
-
-        # Randomly select bricks to hide power-ups under
         selected_bricks = random.sample(brick_positions, min(num_powerups, len(brick_positions)))
 
         # Place power-ups under selected bricks
@@ -211,7 +229,6 @@ class MultiplayerTestField(State):
     def check_powerup_collisions(self):
         if self.powerup_group is None:
             return
-        # Only collect visible (not hidden) power-ups
         visible_powerups = [p for p in self.powerup_group.sprites() if not p.hidden]
 
         for powerup in visible_powerups:
@@ -219,8 +236,8 @@ class MultiplayerTestField(State):
                 if pygame.sprite.collide_rect(player_obj, powerup):
                     self.powerup_message = powerup.apply_effect(player_obj)
                     self.message_timer = pygame.time.get_ticks()
-                    self.music_manager.play_sound("walk", "walk_volume")  # Play pickup sound
-                    powerup.kill()  # Remove from sprite group
+                    self.music_manager.play_sound("walk", "walk_volume")
+                    powerup.kill()
 
     def draw_active_powerups(self, screen):
         powerups_texts = []
@@ -235,7 +252,6 @@ class MultiplayerTestField(State):
                     elif powerup == 'freeze_powerup':
                         powerups_texts.append(f'Freeze: {remaining}s')
 
-        # Display power-ups
         y_offset = 40
         for text in powerups_texts:
             powerup_text = self.game.font.render(text, True, config.COLOR_BLACK)
@@ -249,7 +265,7 @@ class MultiplayerTestField(State):
             if player_obj.check_hit() and player_obj.get_health() <= 0:
                 self.exit_state()
                 winner = [player_name for player_name in list(self.players.keys()) if hit_player_name != player_name][0]
-                self.state_manager.change_state("MultiplayerGameOver", winner, self.map_name, self.network_manager, self.players_list)
+                self.state_manager.change_state("MultiplayerGameOver", winner, self.map_name, self.network_manager)
             
     # ---------------- Render ---------------
     def draw_menu(self, screen):
@@ -342,8 +358,36 @@ class MultiplayerTestField(State):
                         screen.blit(self.images['red_cave'], (x, y))
                     elif tile == config.TRAP:  # Poklop
                         screen.blit(self.images['trap_image'], (x, y))
-
-
+    
+    def _draw_player_hat(self, screen: pygame.Surface, player: Player) -> None:
+        if not player.has_hat():
+            return
+        hat_name = player.get_player_hat()
+        hat_image = self.hat_images[hat_name]
+        
+        # Get the current player animation to calculate offset for drawing hat
+        anim_offsets = config.HAT_ANIM_OFFSETS.get(player.current_animation, [0, 0, 0])
+        frame_index = player.current_frame_index % len(anim_offsets)
+        anim_offset_y = anim_offsets[frame_index]
+        
+        going_left = pygame.K_a in player.held_down_keys
+        
+        # Applying the offset to player rect
+        ox, oy = config.GAME_HAT_OFFSETS.get(hat_name, (0, 0))
+        hx = player.rect.x + ox
+        hy = player.rect.y + oy + anim_offset_y
+        hat_to_draw = pygame.transform.flip(hat_image, True, False) if going_left else hat_image
+        
+        screen.blit(hat_to_draw, (hx, hy))
+    
+    def _draw_players(self, screen: pygame.Surface) -> None:
+        if not self.players:
+            return
+        for player in self.players.values():
+            player.update_animation()
+            screen.blit(player.image, player.rect)
+            self._draw_player_hat(screen, player)
+    
     def render(self, screen):
         screen.fill(config.COLOR_WHITE)
 
@@ -351,20 +395,16 @@ class MultiplayerTestField(State):
         self.draw_walls(screen)
         self.draw_menu(screen)
 
-        # Draw players
-        if self.players:
-            for player in self.players.values():
-                player.update_animation()
-                screen.blit(player.image, player.rect)
+        self._draw_players(screen)
 
-        # 🔥 Update explosions
+        # Update explosions
         self.bomb_group.update(self.explosion_group)
         self.explosion_group.update()
 
-        # 🎮 Draw visible power-ups
+        # Draw visible power-ups
         self.powerup_group.draw(screen)
 
-        # 🎨 Draw objects
+        # Draw objects
         self.bomb_group.draw(screen)
         self.explosion_group.draw(screen)
 
