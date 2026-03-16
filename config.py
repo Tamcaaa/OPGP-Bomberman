@@ -36,6 +36,24 @@ BACKGROUND_COLOR = (162, 235, 154)
 BUTTON_COLOR = (88, 94, 149)
 BUTTON_HOVER_COLOR = (0, 100, 200)
 TEXT_COLOR = (95, 68, 46)
+
+
+BG_BASE       = (10, 12, 18)
+BG_PANEL      = (19, 21, 31)
+BORDER_SUBTLE = (30, 34, 52)
+TEXT_PRIMARY  = (232, 230, 240)
+TEXT_MUTED    = (90, 95, 130)
+TEXT_HINT     = (45, 50, 75)
+BTN_BEIGE     = (210, 185, 145)
+BG_LIST       = (13, 15, 24)
+BG_ITEM_SEL   = (26, 30, 46)
+BORDER_FOCUS  = (50, 55, 85)
+SLIDER_TRACK  = (30, 34, 52)
+SLIDER_FILL   = (210, 185, 145)
+BG_TAB_BAR    = (10, 12, 20)
+BG_TAB_ACTIVE = (30, 34, 54)
+SCROLLBAR_TRK = (25, 28, 42)
+SCROLLBAR_KNB = (60, 66, 100)
 # ----------------------------------------------------------------Player_colors-------------------------------------------------------------
 WHITE_PLAYER  = (255, 255, 255)   
 BLACK_PLAYER  = (103, 103, 103)    
@@ -62,7 +80,7 @@ SPAWN_POINTS = {"spawn1": (0, 30),
                 "spawn3": (0, 510),
                 "spawn4": (930, 510)}
 PLAYER1_MOVE_KEYS = [pygame.K_w, pygame.K_a, pygame.K_s, pygame.K_d, pygame.K_SPACE]
-PLAYER2_MOVE_KEYS  = [pygame.K_UP, pygame.K_LEFT, pygame.K_DOWN, pygame.K_RIGHT, pygame.K_KP0]
+PLAYER2_MOVE_KEYS  = [pygame.K_UP, pygame.K_LEFT, pygame.K_DOWN, pygame.K_RIGHT, pygame.K_0]
 
 
 # Player images
@@ -202,12 +220,12 @@ SEL_CARD_SPACING = 60
 #------SKIN SELECTOR CONSTANTS------
 HATS = [
     {"name": "None",      "file": None,             "offset": (0, 0)},
-    {"name": "Crown",     "file": "Crown.png",      "offset": (79, -30)},
-    {"name": "Halo",     "file": "Halo.png",        "offset": (79, -20)},
-    {"name": "Cowboy",    "file": "Cowboy.png",     "offset": (79, -25)},
-    {"name": "Devil",     "file": "Devil.png",      "offset": (79, -10)},
-    {"name": "Cone",      "file": "Cone.png",       "offset": (79, -20)},
-    {"name": "Cap",       "file": "Cap.png",        "offset": (79, -20)},
+    {"name": "Crown",     "file": "Crown.png",      "offset": (25, -15)},
+    {"name": "Halo",     "file": "Halo.png",        "offset": (25, -10)},
+    {"name": "Cowboy",    "file": "Cowboy.png",     "offset": (25, -15)},
+    {"name": "Devil",     "file": "Devil.png",      "offset": (20, -10)},
+    {"name": "Cone",      "file": "Cone.png",       "offset": (25, -20)},
+    {"name": "Cap",       "file": "Cap.png",        "offset": (25, -10)},
 ]
 TAB_COLORS = 0
 TAB_HATS   = 1
