@@ -128,18 +128,29 @@ class TestField(State):
 
 
     def handle_explosions(self):
-        if not self.explosion_group:
-            return
-        if self.player1.check_hit() and self.player1.get_health() == 0:
-            self.music_manager.play_sound("death", "death_volume")
-            pygame.mixer_music.stop()
-            self.exit_state()
-            self.game.state_manager.change_state("GameOver", self.player2.player_id, self.selected_map, self.map_name)
-        elif self.player2.check_hit() and self.player2.get_health() == 0:
-            self.music_manager.play_sound("death", "death_volume")
-            pygame.mixer_music.stop()
-            self.exit_state()
-            self.game.state_manager.change_state("GameOver", self.player1.player_id, self.selected_map, self.map_name)
+        for player in self.players:
+            player_hit = False
+            for explosion in self.explosion_group:
+                if pygame.sprite.collide_rect(player, explosion):
+                    player_hit = True
+                    break
+            if player_hit:
+                if not hasattr(player, 'hit_this_frame') or not player.hit_this_frame:
+                    player.health = max(0, player.health - 1)
+                    player.hit_this_frame = True
+                    self.music_manager.play_sound("death", "death_volume")
+                    self.powerup_message = f"Player {player.player_id} hit! Lives left: {player.health}"
+                    self.message_timer = pygame.time.get_ticks()
+                    
+                    if player.health <= 0:
+                        self.music_manager.play_sound("death", "death_volume")
+                        pygame.mixer_music.stop()
+                        self.exit_state()
+                        winner = self.player2.player_id if player.player_id == 1 else self.player1.player_id
+                        self.game.state_manager.change_state("GameOver", winner, self.selected_map, self.map_name, selected_skins=self.selected_skins)
+            else:
+                player.hit_this_frame = False
+
 
 
     def destroy_tile(self, x, y):
@@ -277,10 +288,10 @@ class TestField(State):
 
                             # extra posun pre Devil rohy
                             if hat_name == "Devil":
-                                corner_spread = 8
+                                corner_spread = 0
                                 ox -= corner_spread
                             if hat_name == "Devil" and going_left:
-                                ox -= corner_spread - 4
+                                ox -= corner_spread + 2
 
                             anim_offsets = config.HAT_ANIM_OFFSETS.get(player.current_animation, [0, 0, 0])
                             frame_index = player.current_frame_index % len(anim_offsets)
@@ -301,7 +312,7 @@ class TestField(State):
             player.update_movement_status()
             player.update_animation()
             player.update_powerups()
-
+        
         self.handle_explosions()
         self.check_powerup_collisions()
         self.powerup_group.update()
@@ -326,8 +337,7 @@ class TestField(State):
                         pygame.mixer_music.stop()
                         self.exit_state()
                         winner = self.player2.player_id if player.player_id == 1 else self.player1.player_id
-                        self.game.state_manager.change_state("GameOver", winner, self.selected_map, self.map_name)
-                    else:
+                        self.game.state_manager.change_state("GameOver", winner, self.selected_map, self.map_name, selected_skins=self.selected_skins)
                         self.music_manager.play_sound("death", "death_volume")
                         self.powerup_message = f"Player {player.player_id} fell in a sewer!"
                         self.message_timer = pygame.time.get_ticks()
