@@ -70,7 +70,7 @@ class SkinSelector(State):
                 continue
             path = os.path.join(game.photos_dir, "../assets/player_hats", file)
             if not os.path.exists(path):
-                print("❌ Missing hat image:", path)
+                print("Missing hat image:", path)
                 self.hat_images[name] = None
                 self.hat_thumbs[name] = None
                 continue
@@ -363,8 +363,7 @@ class SkinSelector(State):
 
             # Checkmark ak selected
             if selected:
-                self._text(screen, "✓", self.font_sm, acc,
-                           (area.right - 22, row_y + 10))
+                self._text(screen, "\u2022", self.font_sm, acc, (area.right - 22, row_y + 10))
 
         screen.set_clip(prev_clip)
         self._draw_scrollbar(screen, area, top, vis, total, acc)
@@ -415,7 +414,7 @@ class SkinSelector(State):
             self._text(screen, hat["name"], self.font_md, col, (tx + 44, row_y + 10))
 
             if selected:
-                self._text(screen, "✓", self.font_sm, acc, (area.right - 22, row_y + 10))
+                self._text(screen, "\u2022", self.font_sm, acc, (area.right - 22, row_y + 10))
 
         screen.set_clip(prev_clip)
         self._draw_scrollbar(screen, area, top, vis, total, acc)

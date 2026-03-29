@@ -226,12 +226,12 @@ class MapSelector(State):
         voted = self.players[player_id].vote_index is not None
 
         if player_id == 1:
-            nav    = "← →  move"
-            action = "Enter  =  vote" if not voted else "✓  voted"
+            nav    = "LEFT/RIGHT  move"
+            action = "Enter  =  vote" if not voted else "\u2022  voted"
             cx = 80
         else:
             nav    = "A D  move"
-            action = "Shift  =  vote" if not voted else "✓  voted"
+            action = "Shift  =  vote" if not voted else "\u2022  voted"
             cx = config.SCREEN_WIDTH - 80
 
         hy = config.SCREEN_HEIGHT - 52
