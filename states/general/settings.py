@@ -3,6 +3,8 @@ import config
 import os
 from states.general.state import State
 from custom_classes.button import Button
+from managers.settings_manager import save_settings
+
 
 class Settings(State):
     def __init__(self, game):
@@ -184,6 +186,7 @@ class Settings(State):
             self.mute_button.image = self.sound_off_img
         pygame.mixer.music.set_volume(self.volume)
         self.game.settings["volume"] = self.volume
+        save_settings(self.game.settings)
 
     def toggle_mute(self):
         if self.volume > 0.0:
@@ -195,12 +198,15 @@ class Settings(State):
             self.mute_button.image = self.sound_on_img
         pygame.mixer.music.set_volume(self.volume)
         self.game.settings["volume"] = self.volume
+        save_settings(self.game.settings)
 
     def update_player_config(self):
-        config.PLAYER1_MOVE_KEYS[:]          = self.key_bindings["player1"]
-        config.PLAYER2_MOVE_KEYS[:]          = self.key_bindings["player2"]
+        config.PLAYER1_MOVE_KEYS[:] = self.key_bindings["player1"]
+        config.PLAYER2_MOVE_KEYS[:] = self.key_bindings["player2"]
         config.PLAYER_CONFIG[1]['move_keys'] = config.PLAYER1_MOVE_KEYS
         config.PLAYER_CONFIG[2]['move_keys'] = config.PLAYER2_MOVE_KEYS
+        # ← TOTO CHÝBALO:
+        save_settings(self.game.settings)
 
     # ------------------------------------------------------------------ render
     def render(self, screen):

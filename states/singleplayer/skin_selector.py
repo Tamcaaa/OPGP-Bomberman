@@ -54,9 +54,9 @@ class SkinSelector(State):
             w, h = frame.get_size()
             frame = pygame.transform.scale(frame, (w * 3, h * 3))
             self.idle_frames.append(frame)
-        self.idle_index = 0
+        self.idle_index = config.IDLE_INDEX
         self.last_idle_update = pygame.time.get_ticks()
-        self.idle_fps = 4
+        self.idle_fps = config.IDLE_FPS
 
         # Čiapky
         self.hat_images = {}
@@ -77,7 +77,7 @@ class SkinSelector(State):
             img = pygame.image.load(path).convert_alpha()
             img = pygame.transform.smoothscale(img, (48,48))
             self.hat_images[name] = img
-            tw = 36
+            tw = config.TW
             scale = tw / max(img.get_width(), img.get_height())
             thumb = pygame.transform.smoothscale(
                 img, (int(img.get_width() * scale), int(img.get_height() * scale))
@@ -106,27 +106,27 @@ class SkinSelector(State):
         self.font_xs   = pygame.font.Font("CaveatBrush-Regular.ttf", 15)
 
         # Layout
-        PANEL_W = 340
-        PANEL_H = 480
-        top_y   = 55
+        panel_w = config.PANEL_W
+        panel_h = config.PANEL_H
+        top_y   = config.TOP_Y
 
         self.panel_rects = {
-            1: pygame.Rect(30,                          top_y, PANEL_W, PANEL_H),
-            2: pygame.Rect(config.SCREEN_WIDTH - 30 - PANEL_W, top_y, PANEL_W, PANEL_H),
+            1: pygame.Rect(30,                          top_y, panel_w, panel_h),
+            2: pygame.Rect(config.SCREEN_WIDTH - 30 - panel_w, top_y, panel_w, panel_h),
         }
 
         # Výška zón vo vnútri panelu (zhora):
         #   [preview_zone]  130 px
         #   [tab_bar]        36 px  (s 8px medzere nad/pod)
         #   [list_area]      zvyšok – 48px pre hint + button
-        self.PREVIEW_H   = 130
-        self.TAB_H       = 36
-        self.TAB_PAD     = 8       # medzera nad tabbar
-        self.LIST_PAD    = 8       # medzera pod tabbar
-        self.HINT_H      = 48
-        self.PANEL_PAD   = 14
-        self.ROW_H       = 42
-        self.CHIP_R      = 12
+        self.preview_h   = config.PREVIEW_H
+        self.tab_h       = config.TAB_H
+        self.tab_pad     = config.TAB_PAD
+        self.list_pad    = config.LIST_PAD
+        self.hint_h      = config.HINT_H
+        self.panel_pad   = config.PANEL_PAD
+        self.row_h       = config.ROW_H
+        self.chip_r      = config.CHIP_R
 
         # Ovládanie (nezmenené)
         self.controls = {
@@ -138,24 +138,24 @@ class SkinSelector(State):
 
     # ------------------------------------------------------------------ helpers
     def _preview_rect(self, panel: pygame.Rect) -> pygame.Rect:
-        return pygame.Rect(panel.x, panel.y, panel.width, self.PREVIEW_H)
+        return pygame.Rect(panel.x, panel.y, panel.width, self.preview_h)
 
     def _tabbar_rect(self, panel: pygame.Rect) -> pygame.Rect:
-        y = panel.y + self.PREVIEW_H + self.TAB_PAD
+        y = panel.y + self.preview_h + self.tab_pad
         return pygame.Rect(
-            panel.x + self.PANEL_PAD, y,
-            panel.width - 2 * self.PANEL_PAD, self.TAB_H
+            panel.x + self.panel_pad, y,
+            panel.width - 2 * self.panel_pad, self.tab_h
         )
 
     def _list_rect(self, panel: pygame.Rect) -> pygame.Rect:
         tab = self._tabbar_rect(panel)
-        y   = tab.bottom + self.LIST_PAD
-        h   = panel.bottom - y - self.HINT_H
-        return pygame.Rect(panel.x + self.PANEL_PAD, y,
-                           panel.width - 2 * self.PANEL_PAD, max(40, h))
+        y   = tab.bottom + self.list_pad
+        h   = panel.bottom - y - self.hint_h
+        return pygame.Rect(panel.x + self.panel_pad, y,
+                           panel.width - 2 * self.panel_pad, max(40, h))
 
     def _visible_count(self, panel: pygame.Rect) -> int:
-        return max(1, self._list_rect(panel).height // self.ROW_H)
+        return max(1, self._list_rect(panel).height // self.row_h)
 
     def _clamp_scroll(self, pid, tab, total, panel):
         vis = self._visible_count(panel)
@@ -331,8 +331,8 @@ class SkinSelector(State):
             idx = top + i
             if idx >= total:
                 break
-            row_y = area.y + i * self.ROW_H
-            row_rect = pygame.Rect(area.x, row_y, area.width, self.ROW_H)
+            row_y = area.y + i * self.row_h
+            row_rect = pygame.Rect(area.x, row_y, area.width, self.row_h)
 
             selected = self.selected_index[player_id][config.TAB_COLORS] == idx
             taken    = (self.players[2 if player_id == 1 else 1]["color"] == color_keys[idx])
@@ -340,21 +340,21 @@ class SkinSelector(State):
             if selected:
                 self._draw_rrect(screen, config.BG_ITEM_SEL, row_rect, radius=8, alpha=255)
                 # accent rail vľavo
-                rail = pygame.Surface((3, self.ROW_H - 10), pygame.SRCALPHA)
+                rail = pygame.Surface((3, self.row_h - 10), pygame.SRCALPHA)
                 rail.fill((*acc, 220))
                 screen.blit(rail, (area.x + 2, row_y + 5))
 
             # Color chip
             chip_x = area.x + 18
-            chip_y = row_y + self.ROW_H // 2
+            chip_y = row_y + self.row_h // 2
             r, g, b = color_keys[idx]
             if taken:
                 r, g, b = int(r * 0.3), int(g * 0.3), int(b * 0.3)
-            pygame.draw.circle(screen, (r, g, b), (chip_x, chip_y), self.CHIP_R)
+            pygame.draw.circle(screen, (r, g, b), (chip_x, chip_y), self.chip_r)
             if selected:
-                pygame.draw.circle(screen, acc, (chip_x, chip_y), self.CHIP_R + 4, 2)
+                pygame.draw.circle(screen, acc, (chip_x, chip_y), self.chip_r + 4, 2)
             elif not taken:
-                pygame.draw.circle(screen, config.BORDER_FOCUS, (chip_x, chip_y), self.CHIP_R + 1, 1)
+                pygame.draw.circle(screen, config.BORDER_FOCUS, (chip_x, chip_y), self.chip_r + 1, 1)
 
             # Meno farby
             name = AVAILABLE_COLORS[color_keys[idx]]
@@ -386,20 +386,20 @@ class SkinSelector(State):
             if idx >= total:
                 break
             hat = config.HATS[idx]
-            row_y    = area.y + i * self.ROW_H
-            row_rect = pygame.Rect(area.x, row_y, area.width, self.ROW_H)
+            row_y    = area.y + i * self.row_h
+            row_rect = pygame.Rect(area.x, row_y, area.width, self.row_h)
             selected = self.selected_index[player_id][config.TAB_HATS] == idx
 
             if selected:
                 self._draw_rrect(screen, config.BG_ITEM_SEL, row_rect, radius=8, alpha=255)
-                rail = pygame.Surface((3, self.ROW_H - 10), pygame.SRCALPHA)
+                rail = pygame.Surface((3, self.row_h - 10), pygame.SRCALPHA)
                 rail.fill((*acc, 220))
                 screen.blit(rail, (area.x + 2, row_y + 5))
 
             # Thumbnail
             thumb = self.hat_thumbs.get(hat["name"])
             tx = area.x + 10
-            ty = row_y + (self.ROW_H - 36) // 2
+            ty = row_y + (self.row_h - 36) // 2
             if thumb is not None:
                 screen.blit(thumb, (tx, ty))
             else:
@@ -435,7 +435,7 @@ class SkinSelector(State):
 
     # ------------------------------------------------------------------ hint bar
     def draw_hint_bar(self, screen, panel: pygame.Rect, player_id: int):
-        y = panel.bottom - self.HINT_H + 6
+        y = panel.bottom - self.hint_h + 6
         acc = self._player_color(player_id)
 
         if player_id == 1:
@@ -496,10 +496,10 @@ class SkinSelector(State):
             self.draw_player_preview(screen, pid, panel)
 
             # Oddeľovač preview / list
-            sep_y = panel.y + self.PREVIEW_H
-            sep_s = pygame.Surface((panel.width - 2 * self.PANEL_PAD, 1), pygame.SRCALPHA)
+            sep_y = panel.y + self.preview_h
+            sep_s = pygame.Surface((panel.width - 2 * self.panel_pad, 1), pygame.SRCALPHA)
             sep_s.fill((*config.BORDER_SUBTLE, 180))
-            screen.blit(sep_s, (panel.x + self.PANEL_PAD, sep_y))
+            screen.blit(sep_s, (panel.x + self.panel_pad, sep_y))
 
             # Tab bar
             self.draw_tab_bar(screen, panel, pid)

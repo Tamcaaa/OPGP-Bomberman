@@ -3,7 +3,7 @@ import random
 import config
 import os
 from states.general.state import State
-from maps.test_field_map import all_maps
+from maps.test_field_map import MAP_NAMES, get_map
 from dataclasses import dataclass
 from managers.music_manager import MusicManager
 from managers.state_manager import StateManager
@@ -37,7 +37,6 @@ class MapSelector(State):
             1: PlayerSelection(),
             2: PlayerSelection()
         }
-        self.all_maps = all_maps
 
         # Fonty – rovnaký CaveatBrush ako SkinSelector
         self.font_lg = pygame.font.Font("CaveatBrush-Regular.ttf", 30)
@@ -46,16 +45,16 @@ class MapSelector(State):
         self.font_xs = pygame.font.Font("CaveatBrush-Regular.ttf", 15)
 
         # Karta
-        self.CARD_W      = 220
-        self.CARD_H      = 160
-        self.CARD_GAP    = 24
-        self.CARD_RADIUS = 14
-        self.CARD_Y      = config.SCREEN_HEIGHT // 2 - 80
+        self.card_w      = config.CARD_W
+        self.card_h      = config.CARD_H
+        self.card_gap    = config.CARD_GAP
+        self.card_radius = config.CARD_RADIUS
+        self.card_y      = config.SCREEN_HEIGHT // 2 - 80
 
         self.select_random_maps()
 
         # Animácia final overlay (fade in)
-        self.overlay_alpha = 0
+        self.overlay_alpha = config.OVERLAY_ALPHA
 
     # ------------------------------------------------------------------ helpers
     def _player_color(self, player_id: int) -> tuple:
@@ -98,8 +97,7 @@ class MapSelector(State):
 
     # ------------------------------------------------------------------ logic
     def select_random_maps(self):
-        available = list(self.all_maps.items())
-        self.selected_maps = random.sample(available, min(3, len(available)))
+        self.selected_maps = random.sample(MAP_NAMES, min(3, len(MAP_NAMES)))
 
     def move_selection(self, player_id, direction):
         p = self.players[player_id]
@@ -114,18 +112,18 @@ class MapSelector(State):
         votes = [p.vote_index for p in self.players.values() if p.vote_index is not None]
         vote_counts = {idx: votes.count(idx) for idx in set(votes)}
         winning_index = max(vote_counts, key=vote_counts.get)
-        self.final_map = self.selected_maps[winning_index]
+        self.final_map = self.selected_maps[winning_index]  # string
 
     # ------------------------------------------------------------------ card
     def _card_x(self, i):
-        total_w = len(self.selected_maps) * self.CARD_W + (len(self.selected_maps) - 1) * self.CARD_GAP
+        total_w = len(self.selected_maps) * self.card_w + (len(self.selected_maps) - 1) * self.card_gap
         start_x = (config.SCREEN_WIDTH - total_w) // 2
-        return start_x + i * (self.CARD_W + self.CARD_GAP)
+        return start_x + i * (self.card_w + self.card_gap)
 
     def draw_card(self, screen, i, map_name):
         x = self._card_x(i)
-        y = self.CARD_Y
-        rect = pygame.Rect(x, y, self.CARD_W, self.CARD_H)
+        y = self.card_y
+        rect = pygame.Rect(x, y, self.card_w, self.card_h)
 
         # Zisti či niekto hráč ukazuje na túto kartu
         p1_here = self.players[1].selection_index == i
@@ -134,7 +132,7 @@ class MapSelector(State):
         p2_voted = self.players[2].vote_index == i
 
         # Pozadie karty
-        self._draw_rrect(screen, config.BG_PANEL, rect, radius=self.CARD_RADIUS, alpha=220)
+        self._draw_rrect(screen, config.BG_PANEL, rect, radius=self.card_radius, alpha=220)
 
         # Map preview obrázok
         try:
@@ -142,23 +140,23 @@ class MapSelector(State):
                 os.path.join("assets", "map_previews",
                              f"{map_name.lower().replace(' ', '_')}_preview.png")
             ).convert()
-            preview = pygame.transform.smoothscale(preview, (self.CARD_W - 20, self.CARD_H - 50))
-            preview_rect = pygame.Rect(x + 10, y + 36, self.CARD_W - 20, self.CARD_H - 50)
+            preview = pygame.transform.smoothscale(preview, (self.card_w - 20, self.card_h - 50))
+            preview_rect = pygame.Rect(x + 10, y + 36, self.card_w - 20, self.card_h - 50)
             screen.blit(preview, preview_rect.topleft)
             # Jemný overlay na preview aby text bol čitateľný
-            ov = pygame.Surface((self.CARD_W - 20, self.CARD_H - 50), pygame.SRCALPHA)
+            ov = pygame.Surface((self.card_w - 20, self.card_h - 50), pygame.SRCALPHA)
             ov.fill((10, 12, 18, 60))
             screen.blit(ov, preview_rect.topleft)
         except Exception:
             # Placeholder ak nie je preview
-            ph = pygame.Rect(x + 10, y + 36, self.CARD_W - 20, self.CARD_H - 50)
+            ph = pygame.Rect(x + 10, y + 36, self.card_w - 20, self.card_h - 50)
             self._draw_rrect(screen, config.BG_LIST, ph, radius=8, alpha=180)
             self._text(screen, "no preview", self.font_xs, config.TEXT_HINT,
                        (ph.centerx, ph.centery - 8), align="center")
 
         # Meno mapy
         self._text(screen, map_name, self.font_sm, config.TEXT_PRIMARY,
-                   (x + self.CARD_W // 2, y + 10), align="center")
+                   (x + self.card_w // 2, y + 10), align="center")
 
         # Orámovanie podľa hráčov – P1 a P2 môžu byť na tej istej karte
         borders = []
@@ -172,20 +170,20 @@ class MapSelector(State):
             c1, w1 = borders[0]
             c2, w2 = borders[1]
             # Ľavá polovica = P1, pravá = P2
-            pygame.draw.rect(screen, c1, pygame.Rect(x, y, self.CARD_W // 2, self.CARD_H),
-                             width=w1, border_top_left_radius=self.CARD_RADIUS,
-                             border_bottom_left_radius=self.CARD_RADIUS)
-            pygame.draw.rect(screen, c2, pygame.Rect(x + self.CARD_W // 2, y, self.CARD_W // 2, self.CARD_H),
-                             width=w2, border_top_right_radius=self.CARD_RADIUS,
-                             border_bottom_right_radius=self.CARD_RADIUS)
+            pygame.draw.rect(screen, c1, pygame.Rect(x, y, self.card_w // 2, self.card_h),
+                             width=w1, border_top_left_radius=self.card_radius,
+                             border_bottom_left_radius=self.card_radius)
+            pygame.draw.rect(screen, c2, pygame.Rect(x + self.card_w // 2, y, self.card_w // 2, self.card_h),
+                             width=w2, border_top_right_radius=self.card_radius,
+                             border_bottom_right_radius=self.card_radius)
         elif len(borders) == 1:
             c, w = borders[0]
-            pygame.draw.rect(screen, c, rect, width=w, border_radius=self.CARD_RADIUS)
+            pygame.draw.rect(screen, c, rect, width=w, border_radius=self.card_radius)
             # Glow nad kartou v farbe hráča
             self._glow_line(screen, rect, c, alpha=80)
 
         # Vote badge – malý krúžok s farbou hráča ak voted
-        badge_x = x + self.CARD_W - 14
+        badge_x = x + self.card_w - 14
         badge_y = y + 14
         if p1_voted:
             pygame.draw.circle(screen, self._player_color(1), (badge_x - 14, badge_y), 7)
@@ -210,7 +208,7 @@ class MapSelector(State):
                    (config.SCREEN_WIDTH // 2, 38), align="center")
 
         # Karty
-        for i, (name, _) in enumerate(self.selected_maps):
+        for i, name in enumerate(self.selected_maps):
             self.draw_card(screen, i, name)
 
         # Player hint bary – rovnaký štýl ako SkinSelector hint bar
@@ -249,7 +247,7 @@ class MapSelector(State):
         if self.overlay_alpha < 100:
             return
 
-        map_name = self.final_map[0]
+        map_name = self.final_map
 
         # Centrálny panel
         pw, ph = 420, 120
@@ -300,8 +298,8 @@ class MapSelector(State):
                 self.confirm_vote(2)
 
         if event.key == pygame.K_SPACE and self.final_map:
-            map_name   = self.final_map[0]
-            selected_map = self.final_map[1]
+            map_name = self.final_map
+            selected_map = get_map(map_name)  
             self.state_manager.change_state(
                 "TestField", selected_map, map_name, selected_skins=self.selected_skins
             )

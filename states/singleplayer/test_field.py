@@ -35,9 +35,9 @@ class TestField(State):
         self.players = [self.player1, self.player2]
 
         self.powerup_message = ""
-        self.message_timer = 0
+        self.message_timer = config.MESSAGE_TIMER
         self.current_animation = "idle"  # idle, walk_up, walk_down, walk_left, walk_right
-        self.current_frame_index = 0      # 0, 1, 2 pre animácie
+        self.current_frame_index = config.CURRENT_FRAME_INDEX # 0, 1, 2 pre animácie
 
         # --- Load hat images directly in TestField ---
         self.hat_images = {}
@@ -62,34 +62,37 @@ class TestField(State):
         
         
         # --- Load tiles ---
-        TILE = (config.GRID_SIZE, config.GRID_SIZE)
+        tile = (config.GRID_SIZE, config.GRID_SIZE)
         def load_image(path, size):
             return pygame.transform.scale(
                 pygame.image.load(path).convert_alpha(),
                 size
             )
         self.images = {
-            "unbreakable_stone": load_image("assets/stone-black.png", TILE),
-            "breakable_barrel": load_image("assets/environment/barrel.png", TILE),
-            "breakable_bush": load_image("assets/environment/bush.png", TILE),
-            "unbreakable_rock": load_image("assets/environment/black-block-rock.png", TILE),
-            "breakable_rock": load_image("assets/environment/rock.png", TILE),
-            "breakable_diamond": load_image("assets/environment/diamond.png", TILE),
-            "breakable_cactus": load_image("assets/environment/cactus.png", TILE),
-            "unbreakable_box": load_image("assets/environment/box.png", TILE),
-            "breakable_wall": load_image("assets/environment/wall.png", TILE),
-            "unbreakable_wall": load_image("assets/environment/brick.png", TILE),
-            "blue_cave": load_image("assets/environment/blue_cave.png", TILE),
-            "red_cave": load_image("assets/environment/red_cave.png", TILE),
-            "bomb_icon": load_image("assets/bomb.png", TILE),
-            "heart_image": load_image("assets/menu_items/heart.png", TILE),
-            "pause_icon": load_image("assets/pauseicon.png", TILE),
-            "trap_image": load_image("assets/environment/manhole.png", TILE),
+            "unbreakable_stone": load_image("assets/stone-black.png", tile),
+            "breakable_barrel": load_image("assets/environment/barrel.png", tile),
+            "breakable_bush": load_image("assets/environment/bush.png", tile),
+            "unbreakable_rock": load_image("assets/environment/black-block-rock.png", tile),
+            "breakable_rock": load_image("assets/environment/rock.png", tile),
+            "breakable_diamond": load_image("assets/environment/diamond.png", tile),
+            "breakable_cactus": load_image("assets/environment/cactus.png", tile),
+            "unbreakable_box": load_image("assets/environment/box.png", tile),
+            "breakable_wall": load_image("assets/environment/wall.png", tile),
+            "unbreakable_wall": load_image("assets/environment/brick.png", tile),
+            "blue_cave": load_image("assets/environment/blue_cave.png", tile),
+            "red_cave": load_image("assets/environment/red_cave.png", tile),
+            "bomb_icon": load_image("assets/bomb.png", tile),
+            "heart_image": load_image("assets/menu_items/heart.png", tile),
+            "pause_icon": load_image("assets/pauseicon.png", tile),
+            "trap_image": load_image("assets/environment/manhole.png", tile),
         }
 
         self.tile_map = copy.deepcopy(selected_map)
         self.available_powerups = ["bomb_powerup", "range_powerup", "freeze_powerup", "live+_powerup", "shield_powerup"]
-        
+
+        if self.map_name == "Crystal Caves":
+            self.available_powerups.append("darkness_powerup")
+        self.darkness_timer = config.DARKNESS_TIMER
         self.load_music()
         self.place_hidden_powerups()
 
@@ -136,20 +139,31 @@ class TestField(State):
                     break
             if player_hit:
                 if not hasattr(player, 'hit_this_frame') or not player.hit_this_frame:
-                    player.health = max(0, player.health - 1)
-                    player.hit_this_frame = True
-                    self.music_manager.play_sound("death", "death_volume")
-                    self.powerup_message = f"Player {player.player_id} hit! Lives left: {player.health}"
-                    self.message_timer = pygame.time.get_ticks()
-                    
-                    if player.health <= 0:
+                    # Skontroluj či má hráč aktívny shield
+                    has_shield = (
+                        "shield_powerup" in player.active_powerups and
+                        player.active_powerups["shield_powerup"] > time.time()
+                    )
+                    if not has_shield:
+                        player.health = max(0, player.health - 1)
                         self.music_manager.play_sound("death", "death_volume")
-                        pygame.mixer_music.stop()
-                        self.exit_state()
-                        winner = self.player2.player_id if player.player_id == 1 else self.player1.player_id
-                        self.game.state_manager.change_state("GameOver", winner, self.selected_map, self.map_name, selected_skins=self.selected_skins)
+                        self.powerup_message = f"Player {player.player_id} hit! Lives left: {player.health}"
+                        self.message_timer = pygame.time.get_ticks()
+                        
+                        if player.health <= 0:
+                            self.music_manager.play_sound("death", "death_volume")
+                            pygame.mixer_music.stop()
+                            self.exit_state()
+                            winner = self.player2.player_id if player.player_id == 1 else self.player1.player_id
+                            self.game.state_manager.change_state("GameOver", winner, self.selected_map, self.map_name, selected_skins=self.selected_skins)
+                    else:
+                        self.powerup_message = f"Player {player.player_id} is shielded!"
+                        self.message_timer = pygame.time.get_ticks()
+                    
+                    player.hit_this_frame = True
             else:
                 player.hit_this_frame = False
+                    
 
 
 
@@ -303,6 +317,8 @@ class TestField(State):
 
                             screen.blit(hat_to_draw, (hx, hy))
 
+    def activate_darkness(self, duration):
+        self.darkness_timer = time.time() + duration
 
     def update(self):
         now = pygame.time.get_ticks()
@@ -322,7 +338,17 @@ class TestField(State):
             self.powerup_message = ""
             self.message_timer = 0
 
-
+    def check_powerup_explosion_collisions(self):
+        for powerup in self.powerup_group.sprites():
+            if powerup.hidden:
+                continue
+            # Delay 1 sekunda po odhalení aby explózia ktorá zničila brick nestihla zničiť aj powerup
+            if time.time() - powerup.reveal_time < 1.0:
+                continue
+            for explosion in self.explosion_group:
+                if pygame.sprite.collide_rect(powerup, explosion):
+                    powerup.kill()
+                    break
     def check_trap_collisions(self):
         for player in self.players:
             grid_x = player.rect.x // config.GRID_SIZE
@@ -342,6 +368,32 @@ class TestField(State):
                         self.powerup_message = f"Player {player.player_id} fell in a sewer!"
                         self.message_timer = pygame.time.get_ticks()
 
+    def _draw_darkness(self, screen):
+        if time.time() >= self.darkness_timer:
+            return
+
+        dark = pygame.Surface((config.SCREEN_WIDTH, config.SCREEN_HEIGHT), pygame.SRCALPHA)
+        dark.fill((0, 0, 0, 250))
+
+        radius = config.GRID_SIZE   # plne viditeľná zóna
+        fade_steps = config.FADE_STEPS # počet vrstiev fade-u
+        fade_extra = config.GRID_SIZE   # ako ďaleko fade siaha za radius
+
+        for player in self.players:
+            cx = player.rect.centerx
+            cy = player.rect.centery
+
+            # Plne priehľadný stred
+            pygame.draw.circle(dark, (0, 0, 0, 0), (cx, cy), radius)
+
+            # Fade vrstvy od priehľadnej po tmavú
+            for i in range(fade_steps):
+                progress = (i + 1) / fade_steps          # 0.0 → 1.0
+                alpha = int(250 * (progress ** 1.5))      # exponenciálny fade
+                r = radius + int(fade_extra * progress)
+                pygame.draw.circle(dark, (0, 0, 0, alpha), (cx, cy), r, width=max(1, int(fade_extra / fade_steps) + 2))
+
+        screen.blit(dark, (0, 0))
 
     def render(self, screen):
         screen.fill(config.COLOR_WHITE)
@@ -354,4 +406,6 @@ class TestField(State):
         self.powerup_group.draw(screen)
         self.bomb_group.draw(screen)
         self.explosion_group.draw(screen)
+        self._draw_darkness(screen)
+        self.check_powerup_explosion_collisions()
 

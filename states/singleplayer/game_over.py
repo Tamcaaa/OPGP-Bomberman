@@ -34,10 +34,10 @@ class GameOver(State):
         self.font_sm = pygame.font.Font("CaveatBrush-Regular.ttf", 18)
         self.font_xs = pygame.font.Font("CaveatBrush-Regular.ttf", 15)
 
-        btn_w = 160
-        btn_h = 46
-        gap_x = 12
-        gap_y = 10
+        btn_w = config.BTN_W
+        btn_h = config.BTN_H
+        gap_x = config.GAP_X
+        gap_y = config.GAP_Y
         cx    = config.SCREEN_WIDTH  // 2
         by    = config.SCREEN_HEIGHT // 2 + 50
 
@@ -51,28 +51,28 @@ class GameOver(State):
             col_l, row1, btn_w, btn_h,
             "Retry",
             font="CaveatBrush-Regular.ttf",
-            font_size=22,
+            font_size=config.FONT_SIZE_GAMEOVER,
             style="filled",
         )
         self.exit_button = Button(
             col_r, row1, btn_w, btn_h,
             "Exit",
             font="CaveatBrush-Regular.ttf",
-            font_size=22,
+            font_size=config.FONT_SIZE_GAMEOVER,
             style="outline",
         )
         self.map_select_button = Button(
             col_l, row2, btn_w, btn_h,
             "Map Select",
             font="CaveatBrush-Regular.ttf",
-            font_size=22,
+            font_size=config.FONT_SIZE_GAMEOVER,
             style="outline",
         )
         self.main_menu_button = Button(
             col_r, row2, btn_w, btn_h,
             "Main Menu",
             font="CaveatBrush-Regular.ttf",
-            font_size=22,
+            font_size=config.FONT_SIZE_GAMEOVER,
             style="outline",
         )
 
@@ -162,7 +162,7 @@ class GameOver(State):
         cy = config.SCREEN_HEIGHT // 2
 
         # Centrálny panel
-        pw, ph = 400, 260
+        pw, ph = config.PW, config.PH
         panel  = pygame.Rect(cx - pw // 2, cy - ph // 2 - 30, pw, ph)
         self._draw_rrect(screen, config.BG_PANEL, panel, radius=18, alpha=220,
                          border=1, border_color=self.winner_color)
