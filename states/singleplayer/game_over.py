@@ -16,14 +16,12 @@ class GameOver(State):
         self.winner         = winner
         self.selected_skins = selected_skins or {}
 
-        # Farba víťaza – použije sa na oramovanie panelu a glow
         self.winner_color = (
             self.selected_skins[winner][0]
             if winner in self.selected_skins
             else config.BTN_BEIGE
         )
 
-        # Pozadie
         try:
             self.bg = pygame.image.load(
                 os.path.join(game.photos_dir, "bg.png")
@@ -31,34 +29,53 @@ class GameOver(State):
         except Exception:
             self.bg = None
 
-        # Fonty
         self.font_lg = pygame.font.Font("CaveatBrush-Regular.ttf", 30)
         self.font_md = pygame.font.Font("CaveatBrush-Regular.ttf", 22)
         self.font_sm = pygame.font.Font("CaveatBrush-Regular.ttf", 18)
         self.font_xs = pygame.font.Font("CaveatBrush-Regular.ttf", 15)
 
-        # Tlačidlá – štýl "outline" pre Retry, "filled" pre Exit (výraznejší)
-        btn_w = 160
-        btn_h = 46
+        btn_w = config.BTN_W
+        btn_h = config.BTN_H
+        gap_x = config.GAP_X
+        gap_y = config.GAP_Y
         cx    = config.SCREEN_WIDTH  // 2
-        by    = config.SCREEN_HEIGHT // 2 + 60
+        by    = config.SCREEN_HEIGHT // 2 + 50
+
+        # 2×2 grid
+        col_l = cx - btn_w - gap_x // 2
+        col_r = cx + gap_x // 2
+        row1  = by
+        row2  = by + btn_h + gap_y
 
         self.retry_button = Button(
-            cx - btn_w - 12, by, btn_w, btn_h,
+            col_l, row1, btn_w, btn_h,
             "Retry",
             font="CaveatBrush-Regular.ttf",
-            font_size=22,
+            font_size=config.FONT_SIZE_GAMEOVER,
             style="filled",
         )
         self.exit_button = Button(
-            cx + 12, by, btn_w, btn_h,
+            col_r, row1, btn_w, btn_h,
             "Exit",
             font="CaveatBrush-Regular.ttf",
-            font_size=22,
+            font_size=config.FONT_SIZE_GAMEOVER,
+            style="outline",
+        )
+        self.map_select_button = Button(
+            col_l, row2, btn_w, btn_h,
+            "Map Select",
+            font="CaveatBrush-Regular.ttf",
+            font_size=config.FONT_SIZE_GAMEOVER,
+            style="outline",
+        )
+        self.main_menu_button = Button(
+            col_r, row2, btn_w, btn_h,
+            "Main Menu",
+            font="CaveatBrush-Regular.ttf",
+            font_size=config.FONT_SIZE_GAMEOVER,
             style="outline",
         )
 
-        # Fade-in animácia
         self.fade_alpha = 0
 
         self.music_manager = MusicManager()
@@ -109,6 +126,16 @@ class GameOver(State):
             self.music_manager.play_music('title', 'main_menu_volume', True)
             self.exit_state()
             self.exit_state()
+        elif self.map_select_button.is_clicked():
+            pygame.mixer_music.stop()
+            self.music_manager.play_music('title', 'main_menu_volume', True)
+            self.exit_state()
+            self.game.state_manager.change_state("MapSelector")
+        elif self.main_menu_button.is_clicked():
+            pygame.mixer_music.stop()
+            self.music_manager.play_music('title', 'main_menu_volume', True)
+            self.exit_state()
+            self.game.state_manager.change_state("MainMenu")
 
     def enter_single_player(self):
         self.exit_state()
@@ -116,10 +143,8 @@ class GameOver(State):
 
     # ------------------------------------------------------------------ render
     def render(self, screen):
-        # Fade-in
         self.fade_alpha = min(self.fade_alpha + 8, 255)
 
-        # Pozadie
         screen.fill(config.BG_BASE)
         if self.bg:
             bg_s = pygame.transform.scale(self.bg, (config.SCREEN_WIDTH, config.SCREEN_HEIGHT))
@@ -128,7 +153,6 @@ class GameOver(State):
             screen.blit(bg_s, (0, 0))
             screen.blit(dark, (0, 0))
 
-        # Fade-in overlay
         if self.fade_alpha < 255:
             fade = pygame.Surface((config.SCREEN_WIDTH, config.SCREEN_HEIGHT), pygame.SRCALPHA)
             fade.fill((10, 12, 18, 255 - self.fade_alpha))
@@ -138,7 +162,7 @@ class GameOver(State):
         cy = config.SCREEN_HEIGHT // 2
 
         # Centrálny panel
-        pw, ph = 400, 200
+        pw, ph = config.PW, config.PH
         panel  = pygame.Rect(cx - pw // 2, cy - ph // 2 - 30, pw, ph)
         self._draw_rrect(screen, config.BG_PANEL, panel, radius=18, alpha=220,
                          border=1, border_color=self.winner_color)
@@ -170,3 +194,5 @@ class GameOver(State):
         # Tlačidlá
         self.retry_button.draw(screen)
         self.exit_button.draw(screen)
+        self.map_select_button.draw(screen)
+        self.main_menu_button.draw(screen)

@@ -1,5 +1,6 @@
 import os
 import pygame
+from pygame import event
 import pygame.image
 import config
 
@@ -19,8 +20,6 @@ class MainMenu(State):
             ).convert()
         except Exception:
             self.bg_image = None
-
-        # Title image – zachovaný, ale použijeme ako fallback
         try:
             self.text_bomberman = pygame.image.load(
                 os.path.join(game.photos_dir, "bomber-man-text.png")
@@ -36,14 +35,15 @@ class MainMenu(State):
         self.font_lg = pygame.font.Font("CaveatBrush-Regular.ttf", 30)
         self.font_md = pygame.font.Font("CaveatBrush-Regular.ttf", 22)
         self.font_xs = pygame.font.Font("CaveatBrush-Regular.ttf", 15)
+        self._click_cooldown = 0
 
         # Fade-in
-        self.fade_alpha = 255
+        self.fade_alpha = config.FADE_ALPHA
 
         # Layout tlačidiel – stĺpec vycentrovaný
         btn_w  = config.BUTTON_WIDTH
         btn_h  = config.BUTTON_HEIGHT
-        gap    = 14
+        gap    = config.BUTTON_GAP
         cx     = config.SCREEN_WIDTH // 2
         # 3 tlačidlá pod sebou, vycentrované
         total_h = btn_h * 3 + gap * 2
@@ -69,6 +69,8 @@ class MainMenu(State):
         )
 
     # ------------------------------------------------------------------ helpers
+    def is_clicked(self):
+        return self.rect.collidepoint(pygame.mouse.get_pos()) and pygame.mouse.get_pressed()[0]
     def _draw_rrect(self, surf, color, rect, radius=14, alpha=255, border=0, border_color=None):
         if alpha < 255:
             s = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
@@ -101,19 +103,26 @@ class MainMenu(State):
         screen.blit(glow, (rect.x, rect.y))
 
     # ------------------------------------------------------------------ events
+    def update(self):
+        if self._click_cooldown > 0:
+            self._click_cooldown -= 1
+
     def handle_events(self, event):
-        if self.singleplayer_button.is_clicked():
+        if self._click_cooldown > 0:
+            return
+        if self.singleplayer_button.is_clicked(event):  # ← pridaj event
+            self._click_cooldown = 30
             self.enter_single_player()
-        elif self.multiplayer_button.is_clicked():
+        elif self.multiplayer_button.is_clicked(event):  # ← pridaj event
+            self._click_cooldown = 30
             self.state_manager.change_state("MultiplayerSelector")
-        elif self.settings_button.is_clicked():
+        elif self.settings_button.is_clicked(event):    # ← pridaj event
+            self._click_cooldown = 30
             self.state_manager.change_state("Settings")
+
 
     def load_music(self):
         self.music_manager.play_music('title', 'main_menu_volume', True)
-
-    def update(self):
-        pass
 
     def enter_single_player(self):
         self.exit_state()

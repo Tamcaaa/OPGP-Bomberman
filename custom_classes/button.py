@@ -43,7 +43,6 @@ class Button:
             border_col = (20, 22, 35) if hovered else config.BORDER_SUBTLE
             pygame.draw.rect(screen, border_col, self.rect, width=1, border_radius=self.radius)
         else:
-            # Filled – jemný svetlejší okraj
             pygame.draw.rect(screen, (225, 200, 160), self.rect, width=1, border_radius=self.radius)
 
         # Text so shadow
@@ -54,9 +53,30 @@ class Button:
         screen.blit(shadow, (cx + 1, cy + 1))
         screen.blit(label,  (cx, cy))
 
-    def is_clicked(self):
+    def is_clicked(self, event=None):
+        """
+        Volaj s eventom z handle_events():
+            if self.btn.is_clicked(event): ...
+
+        Reaguje na MOUSEBUTTONDOWN (myš / touchpad) aj FINGERDOWN (macOS touch).
+        """
         if not (self.visible and self.enabled):
             return False
+
+        if event is not None:
+            # Štandardný klik myšou / touchpadom
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                return self.rect.collidepoint(event.pos)
+
+            # macOS FINGERDOWN – súradnice sú normalizované 0.0–1.0
+            if event.type == pygame.FINGERDOWN:
+                surf = pygame.display.get_surface()
+                fx = int(event.x * surf.get_width())
+                fy = int(event.y * surf.get_height())
+                return self.rect.collidepoint(fx, fy)
+
+            return False
+
         return (self.rect.collidepoint(pygame.mouse.get_pos())
                 and pygame.mouse.get_pressed()[0])
 

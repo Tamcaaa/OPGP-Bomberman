@@ -1,11 +1,13 @@
 import pygame
 from typing import Dict, Tuple
+from managers.settings_manager import load_settings
 
 # CONSTANTS
 SCREEN_WIDTH, SCREEN_HEIGHT = 960, 540
 FONT_SIZE = 30
 H1_SIZE = 54
 BUTTON_WIDTH, BUTTON_HEIGHT = 120, 30
+BUTTON_GAP = 14
 BUTTON_RADIUS = 4
 GRID_SIZE = 30
 GRID_WIDTH, GRID_HEIGHT = SCREEN_WIDTH // GRID_SIZE, SCREEN_HEIGHT // GRID_SIZE
@@ -42,8 +44,8 @@ BG_BASE       = (10, 12, 18)
 BG_PANEL      = (19, 21, 31)
 BORDER_SUBTLE = (30, 34, 52)
 TEXT_PRIMARY  = (232, 230, 240)
-TEXT_MUTED    = (90, 95, 130)
-TEXT_HINT     = (45, 50, 75)
+TEXT_MUTED    = (180, 185, 210)
+TEXT_HINT     = (150, 155, 180)
 BTN_BEIGE     = (210, 185, 145)
 BG_LIST       = (13, 15, 24)
 BG_ITEM_SEL   = (26, 30, 46)
@@ -71,7 +73,22 @@ CYAN_PLAYER   = (50, 220, 220)
 
 # ----------------------------------------------------------------Skin_selector-----------------------------------------------------------------
 WIDTH_BETWEEN_PLAYER = 340
-
+IDLE_INDEX = 0
+IDLE_FPS = 4
+TW = 36
+# Layout
+PANEL_W = 340
+PANEL_H = 480
+TOP_Y   = 55
+# Výška zón vo vnútri panelu (zhora):
+PREVIEW_H   = 130
+TAB_H       = 36
+TAB_PAD     = 8       # medzera nad tabbar
+LIST_PAD    = 8       # medzera pod tabbar
+HINT_H      = 48
+PANEL_PAD   = 14
+ROW_H       = 42
+CHIP_R      = 12
 # ----------------------------------------------------------------Test_field----------------------------------------------------------------
 PLAYER_IFRAMES = 750
 MAX_QUEUE = 3
@@ -150,18 +167,23 @@ PLAYER_CONFIG = {
     }
 }
 # -----------------------------------------------------------------Power_up-----------------------------------------------------------------
-
+# Power-up types and properties
 POWERUP_TYPES = [
     "bomb_powerup",  # Increases max bombs
     "range_powerup",  # Increases explosion range
     "freeze_powerup",  # Freezes the other player
     "live+_powerup",  # Adds an extra life
-    "shield_powerup"]  # Temporary invincibility
+    "shield_powerup"  # Temporary invincibility
+]  
+FROZEN_UNTIL = 0 # Timestamp until which the player is frozen
+FIELD_DURATION = 30  # Power-up remains on the field for 30 seconds
+EFFECT_DURATION = 30  # Duration of effect in seconds after collection
 POWERUP_SPAWNING_RATE = 0.15
 POWERUP_DURATIONS = {
     'shield_powerup': 15,
     'freeze_powerup': 5,
 }
+
 # ------------------------------------------------------------------Player------------------------------------------------------------------
 PLAYER_MAX_HEALTH = 5
 HEALTH = 3
@@ -174,8 +196,16 @@ SCORE = 0
 LAST_TRAP_TIME = 0 
 TRAP = 8
 # ------------------------------------------------------------------Power-up effects------------------------------------------------------------------
+#message timer
+MESSAGE_TIMER = 0
+CURRENT_FRAME_INDEX = 0
+# Freeze and invincibility timers
 FREEZE_TIMER = 0
 IFRAME_TIMER = 0
+#darkness power-up: reduces visibility for the other player for a short time
+DARKNESS_TIMER = 0
+FADE_ALPHA = 255
+FADE_STEPS = 12
 # ----------------------------------------------------------------------Animations--------------------------------------------------------------------
 FRAME_INDEX = 0
 # Walking animation slower
@@ -199,6 +229,52 @@ HAT_ANIM_OFFSETS = {
     "left":  [0, -1, 0],
 }
 
+# ---------------------------------------------------------------Map_generator-----------------------------------------------------------------
+# Konštanty
+ROWS = 18
+COLS = 32
+
+# Tile hodnoty
+MENU    = 3
+GROUND  = 0
+WALL    = 1   # unbreakable – pevná mriežka
+BRICK   = 2   # breakable – náhodné
+PORTAL_BLUE = 4
+PORTAL_RED  = 5
+SEWER   = 8
+
+# Koľko percent voľných buniek dostane brick
+BRICK_DENSITY = 0.49
+# Mapy a ich pevné špeciály (portály, sewers) sú definované v map_selector.py, keďže sú úzko späté s výberom mapy.
+# ── pevné pozície portálov a seweru pre každú mapu ──────────────────────────
+# Formát: (row, col) – riadok 0 je menu bar
+MAP_FIXED_SPECIALS = {
+    "Crystal Caves": {
+        "portals_blue": [(4, 28), (13, 3)],   
+        "portals_red":  [(4, 3), (13, 28)], 
+        "sewers": 0,
+    },
+    "Urban Assault": {
+        "portals_blue": [],
+        "portals_red":  [],
+        "sewers": 1,
+    },
+    "Classic": {
+        "portals_blue": [],
+        "portals_red":  [],
+        "sewers": 0,
+    },
+    "Ancient Ruins": {
+        "portals_blue": [],
+        "portals_red":  [],
+        "sewers": 0,
+    },
+    "Desert Maze": {
+        "portals_blue": [],
+        "portals_red":  [],
+        "sewers": 0,
+    },
+}
 
 # ---------------------------------------------------------------Map_Selector---------------------------------------------------------------
 
@@ -213,10 +289,12 @@ SELECTOR_COLORS = {
     'selected_border': (255, 255, 255),
     'instructions': (180, 180, 180)
 }
-SEL_CARD_WIDTH = 240
-SEL_CARD_HEIGHT = 180
-SEL_CARD_SPACING = 60
-
+# Kartové dimenzie a rozostupy
+CARD_W      = 220
+CARD_H      = 160
+CARD_GAP    = 24
+CARD_RADIUS = 14
+OVERLAY_ALPHA = 0
 #------SKIN SELECTOR CONSTANTS------
 HATS = [
     {"name": "None",      "file": None,             "offset": (0, 0)},
@@ -254,6 +332,14 @@ AVAILABLE_HATS: Dict[str, Dict[str, str | Tuple[int, int]]] = {
 }
 
 HAT_SCALE_FACTOR = 0.7
-
+# ------------------------------------------------------------------Game_over------------------------------------------------------------------
+FONT_SIZE_GAMEOVER = 22
+PW = 400,
+PH = 260
+BTN_W = 160
+BTN_H = 46
+GAP_X = 12
+GAP_Y = 10
 # ---------------------------------------------------------------Network---------------------------------------------------------------
 SERVER_PORT = 9999
+load_settings()

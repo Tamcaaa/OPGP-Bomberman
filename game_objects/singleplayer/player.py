@@ -83,9 +83,7 @@ class Player(pygame.sprite.Sprite):
         # Aplikuj skin (ak je)
         self.apply_skin()
 
-    # =======================
     # Pomocné / Skin & Hat
-    # =======================
     def _normalize_skin(self, skin: SkinPayload):
         """
         Vráti čisté RGB(A) pre farbenie. Ak príde ((r,g,b[,(a)]), "HatName"),
@@ -152,9 +150,7 @@ class Player(pygame.sprite.Sprite):
         # aktívny frame nech ostane konzistentný s aktuálnym smerom
         self.image = self.images[self.current_direction][self.frame_index]
 
-    # =======================
     # Gameplay logika
-    # =======================
     def check_hit(self):
         """Check if player is hit by an explosion (s i-frame ochrannou)."""
         now = time.time()
@@ -208,26 +204,26 @@ class Player(pygame.sprite.Sprite):
         return self.maxBombs
 
     def handle_queued_keys(self, now):
-        """Spracuje „držané“ klávesy s cooldownom (zahŕňa freeze spomalenie)."""
-        now = pygame.time.get_ticks()
-        move_keys = self.move_keys
+        now_ticks = pygame.time.get_ticks()
+        move_keys = self.move_keys  # ← toto chýbalo!
 
-        move_delay = config.MOVE_COOLDOWN * 2 if now < self.freeze_timer else config.MOVE_COOLDOWN
+        is_frozen = time.time() < self.freeze_timer
+        move_delay = config.MOVE_COOLDOWN * 2 if is_frozen else config.MOVE_COOLDOWN
 
-        if now - self.last_move_time >= move_delay and self.held_down_keys:
+        if now_ticks - self.last_move_time >= move_delay and self.held_down_keys:
             key = self.held_down_keys[-1]
-            if key == move_keys[0]:      # Up
+            if key == move_keys[0]:
                 self.move(0, -1, "up")
-            elif key == move_keys[2]:    # Down
+            elif key == move_keys[2]:
                 self.move(0, 1, "down")
-            elif key == move_keys[1]:    # Left
+            elif key == move_keys[1]:
                 self.move(-1, 0, "left")
-            elif key == move_keys[3]:    # Right
+            elif key == move_keys[3]:
                 self.move(1, 0, "right")
-            elif key == move_keys[4]:    # Bomb
+            elif key == move_keys[4]:
                 self.deploy_bomb(self.bomb_group, self.explosion_group)
 
-            self.last_move_time = now
+            self.last_move_time = now_ticks
 
     def move(self, dx, dy, direction):
         """Move the player in the specified direction."""
@@ -267,10 +263,14 @@ class Player(pygame.sprite.Sprite):
         self.music_manager.play_sound("walk", "walk_volume")
 
     def deploy_bomb(self, bomb_group, explosion_group):
-        """Deploy a bomb at the player's current position."""
         if self.currentBomb > 0:
+            # Skontroluj či na tejto pozícii už bomba leží
+            for bomb in bomb_group:
+                if bomb.rect.topleft == self.rect.topleft:
+                    return  # Už tam je bomba, nič nepokladaj
+            
             Bomb(self, bomb_group, explosion_group, self.test_field)
-            self.currentBomb -= 1  # Decrement available bombs
+            self.currentBomb -= 1
 
     def find_paired_teleport(self, teleport_type, current_x, current_y):
         tiles = []
@@ -331,6 +331,7 @@ class Player(pygame.sprite.Sprite):
         return tinted
     def update_movement_status(self):
         self.moving = False
+        
         if self.held_down_keys:
             if pygame.K_w in self.held_down_keys or pygame.K_UP in self.held_down_keys:
                 self.current_direction = "up"
