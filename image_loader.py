@@ -44,9 +44,11 @@ def load_images():
     # Icons and other
     images['heart_image'] = pygame.image.load("assets/menu_items/heart.png").convert_alpha()
     images['heart_image'] = pygame.transform.scale(images['heart_image'], (30, 30))
-    images["bomb_icon"] = pygame.image.load("assets/player_items/bomb.png").convert_alpha()
+    images["bomb_icon"] = pygame.image.load("assets/player_bombs/classic_bomb.png").convert_alpha()
     images["bomb_icon"] = pygame.transform.scale(images["bomb_icon"], (30, 30))
+    
     return images
+
 
 def load_hat_images():
     hat_images = {}
@@ -63,15 +65,49 @@ def load_hat_images():
 
         path = os.path.join("assets/player_hats", file)
         img = pygame.image.load(path).convert_alpha()
-        img = pygame.transform.smoothscale(img, (48, 48))
 
-        hat_images[name] = img
-
-        scale = config.TW / max(img.get_width(), img.get_height())
-        thumb = pygame.transform.smoothscale(
-            img,
-            (int(img.get_width() * scale), int(img.get_height() * scale))
-        )
-        hat_thumbs[name] = thumb
+        hat_images[name] = pygame.transform.smoothscale(img, (48, 48))
+        hat_thumbs[name] = pygame.transform.smoothscale(img, (36, 36))
 
     return hat_images, hat_thumbs
+
+
+def load_game_hat_images():
+    hat_images = {}
+
+    for name, hat_data in config.AVAILABLE_HATS.items():
+        file = hat_data["file"]
+
+        if not file:
+            hat_images[name] = None
+            continue
+
+        path = os.path.join("assets/player_hats", file)
+        img = pygame.image.load(path).convert_alpha()
+        game_size = int(config.GRID_SIZE * config.HAT_SCALE_FACTOR)
+        hat_images[name] = pygame.transform.smoothscale(img, (game_size, game_size))
+
+    return hat_images
+
+
+def load_bomb_images():
+    images, thumbs = {}, {}
+    for bomb in config.BOMBS:
+        name = bomb["name"]
+        path = os.path.join("assets", "player_bombs", bomb["file"])
+        if os.path.exists(path):
+            img = pygame.image.load(path).convert_alpha()
+            images[name] = pygame.transform.scale(img, (48, 48))
+            thumbs[name]  = pygame.transform.scale(img, (36, 36))
+    return images, thumbs
+
+def load_explosion_images():
+    images, thumbs = {}, {}
+    for expl in config.EXPLOSIONS:
+        name = expl["name"]
+        path = os.path.join("assets", "player_explosions", expl["file"])
+        if os.path.exists(path):
+            img = pygame.image.load(path).convert_alpha()
+            images[name] = pygame.transform.scale(img, (48, 48))
+            thumbs[name]  = pygame.transform.scale(img, (36, 36))
+    return images, thumbs

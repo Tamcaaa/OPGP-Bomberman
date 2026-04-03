@@ -4,7 +4,7 @@ from states.general.state import State
 import config
 from managers.state_manager import StateManager
 from managers.music_manager import MusicManager
-
+from image_loader import load_bomb_images, load_explosion_images
 # Akcenty hráčov
 ACCENT = {
     1: (124, 106, 247),   # violet
@@ -55,21 +55,29 @@ class SkinSelector(State):
         # Čiapky
         self.hat_images, self.hat_thumbs = load_hat_images()
         
+        # Bomby a explózie
+        self.bomb_images,      self.bomb_thumbs      = load_bomb_images()
+        self.explosion_images, self.explosion_thumbs = load_explosion_images()
 
         # Stav výberu
         self.players = {
-            1: {"color": None, "hat": None},
-            2: {"color": None, "hat": None},
+            1: {"color": None, "hat": None, "bomb": None, "explosion": None},
+            2: {"color": None, "hat": None, "bomb": None, "explosion": None},
         }
+        # extend selected_index and scroll_top for new tabs:
         self.selected_index = {
-            1: {config.TAB_COLORS: 0, config.TAB_HATS: 0},
-            2: {config.TAB_COLORS: 0, config.TAB_HATS: 0},
+            1: {config.TAB_COLORS: 0, config.TAB_HATS: 0,
+                config.TAB_BOMBS: 0,  config.TAB_EXPLOSIONS: 0},
+            2: {config.TAB_COLORS: 0, config.TAB_HATS: 0,
+                config.TAB_BOMBS: 0,  config.TAB_EXPLOSIONS: 0},
+        }
+        self.scroll_top = {
+            1: {config.TAB_COLORS: 0, config.TAB_HATS: 0,
+                config.TAB_BOMBS: 0,  config.TAB_EXPLOSIONS: 0},
+            2: {config.TAB_COLORS: 0, config.TAB_HATS: 0,
+                config.TAB_BOMBS: 0,  config.TAB_EXPLOSIONS: 0},
         }
         self.active_tab = {1: config.TAB_COLORS, 2: config.TAB_COLORS}
-        self.scroll_top = {
-            1: {config.TAB_COLORS: 0, config.TAB_HATS: 0},
-            2: {config.TAB_COLORS: 0, config.TAB_HATS: 0},
-        }
 
         # Fonty – zachovaný CaveatBrush
         self.font_lg   = pygame.font.Font("CaveatBrush-Regular.ttf", 30)
@@ -263,27 +271,29 @@ class SkinSelector(State):
         tab_rect = self._tabbar_rect(panel)
         acc = self._player_color(player_id)
 
-        # Pozadie tab baru
         self._draw_rrect(screen, config.BG_TAB_BAR, tab_rect, radius=10, alpha=200,
-                         border=1, border_color=config.BORDER_SUBTLE)
+                        border=1, border_color=config.BORDER_SUBTLE)
 
-        half = (tab_rect.width - 4) // 2
-        tabs = [
-            pygame.Rect(tab_rect.x + 2, tab_rect.y + 2, half, tab_rect.height - 4),
-            pygame.Rect(tab_rect.x + half + 2, tab_rect.y + 2, half, tab_rect.height - 4),
-        ]
+        num_tabs = len(config.TAB_NAMES)
+        tab_w = (tab_rect.width - 4) // num_tabs  # ← rovnomerne rozdelené
         active = self.active_tab[player_id]
-        for i, tr in enumerate(tabs):
+
+        for i, label in enumerate(config.TAB_NAMES):
+            tr = pygame.Rect(
+                tab_rect.x + 2 + i * tab_w,
+                tab_rect.y + 2,
+                tab_w,
+                tab_rect.height - 4
+            )
             if i == active:
                 self._draw_rrect(screen, config.BG_TAB_ACTIVE, tr, radius=8, alpha=255)
-                # farebná čiarka dole
-                line_surf = pygame.Surface((tr.width - 16, 2), pygame.SRCALPHA)
+                line_surf = pygame.Surface((tr.width - 8, 2), pygame.SRCALPHA)
                 line_surf.fill((*acc, 200))
-                screen.blit(line_surf, (tr.x + 8, tr.bottom - 4))
-            label = config.TAB_NAMES[i]
+                screen.blit(line_surf, (tr.x + 4, tr.bottom - 4))
+
             color = config.TEXT_PRIMARY if i == active else config.TEXT_MUTED
-            self._text(screen, label, self.font_sm, color,
-                       (tr.centerx, tr.y + 8), align="center")
+            self._text(screen, label, self.font_xs, color,   # ← font_xs lebo 4 labely
+                    (tr.centerx, tr.y + 8), align="center")
 
     # ------------------------------------------------------------------ color list
     def draw_colors_list(self, screen, player_id: int, panel: pygame.Rect):
@@ -390,7 +400,101 @@ class SkinSelector(State):
 
         screen.set_clip(prev_clip)
         self._draw_scrollbar(screen, area, top, vis, total, acc)
+    
+    def draw_bombs_list(self, screen, player_id: int, panel: pygame.Rect):
+        area  = self._list_rect(panel)
+        acc   = self._player_color(player_id)
+        total = len(config.BOMBS)
+        vis   = self._visible_count(panel)
+        top   = self.scroll_top[player_id][config.TAB_BOMBS]
 
+        self._draw_rrect(screen, config.BG_LIST, area, radius=12, alpha=220)
+        prev_clip = screen.get_clip()
+        screen.set_clip(area)
+
+        for i in range(vis):
+            idx = top + i
+            if idx >= total:
+                break
+            bomb     = config.BOMBS[idx]
+            row_y    = area.y + i * self.row_h
+            row_rect = pygame.Rect(area.x, row_y, area.width, self.row_h)
+            selected = self.selected_index[player_id][config.TAB_BOMBS] == idx
+
+            if selected:
+                self._draw_rrect(screen, config.BG_ITEM_SEL, row_rect, radius=8, alpha=255)
+                rail = pygame.Surface((3, self.row_h - 10), pygame.SRCALPHA)
+                rail.fill((*acc, 220))
+                screen.blit(rail, (area.x + 2, row_y + 5))
+
+            # Thumbnail
+            thumb = self.bomb_thumbs.get(bomb["name"])
+            tx = area.x + 10
+            ty = row_y + (self.row_h - 36) // 2
+            if thumb is not None:
+                screen.blit(thumb, (tx, ty))
+            else:
+                # "None" placeholder
+                placeholder = pygame.Surface((36, 36), pygame.SRCALPHA)
+                pygame.draw.rect(placeholder, (*config.BORDER_SUBTLE, 120), placeholder.get_rect(), border_radius=6)
+                pygame.draw.line(placeholder, (*config.TEXT_MUTED, 150), (8, 28), (28, 8), 2)
+                screen.blit(placeholder, (tx, ty))
+
+            col = config.TEXT_PRIMARY if selected else (160, 165, 200)
+            self._text(screen, bomb["name"], self.font_md, col, (tx + 44, row_y + 10))
+            if selected:
+                self._text(screen, "•", self.font_sm, acc, (area.right - 22, row_y + 10))
+
+        screen.set_clip(prev_clip)
+        self._draw_scrollbar(screen, area, top, vis, total, acc)
+
+
+    def draw_explosions_list(self, screen, player_id: int, panel: pygame.Rect):
+        area  = self._list_rect(panel)
+        acc   = self._player_color(player_id)
+        total = len(config.EXPLOSIONS)
+        vis   = self._visible_count(panel)
+        top   = self.scroll_top[player_id][config.TAB_EXPLOSIONS]
+
+        self._draw_rrect(screen, config.BG_LIST, area, radius=12, alpha=220)
+        prev_clip = screen.get_clip()
+        screen.set_clip(area)
+
+        for i in range(vis):
+            idx = top + i
+            if idx >= total:
+                break
+            expl     = config.EXPLOSIONS[idx]
+            row_y    = area.y + i * self.row_h
+            row_rect = pygame.Rect(area.x, row_y, area.width, self.row_h)
+            selected = self.selected_index[player_id][config.TAB_EXPLOSIONS] == idx
+
+            if selected:
+                self._draw_rrect(screen, config.BG_ITEM_SEL, row_rect, radius=8, alpha=255)
+                rail = pygame.Surface((3, self.row_h - 10), pygame.SRCALPHA)
+                rail.fill((*acc, 220))
+                screen.blit(rail, (area.x + 2, row_y + 5))
+
+            # Thumbnail
+            thumb = self.explosion_thumbs.get(expl["name"])
+            tx = area.x + 10
+            ty = row_y + (self.row_h - 36) // 2
+            if thumb is not None:
+                screen.blit(thumb, (tx, ty))
+            else:
+                # "None" placeholder
+                placeholder = pygame.Surface((36, 36), pygame.SRCALPHA)
+                pygame.draw.rect(placeholder, (*config.BORDER_SUBTLE, 120), placeholder.get_rect(), border_radius=6)
+                pygame.draw.line(placeholder, (*config.TEXT_MUTED, 150), (8, 28), (28, 8), 2)
+                screen.blit(placeholder, (tx, ty))
+
+            col = config.TEXT_PRIMARY if selected else (160, 165, 200)
+            self._text(screen, expl["name"], self.font_md, col, (tx + 44, row_y + 10))
+            if selected:
+                self._text(screen, "•", self.font_sm, acc, (area.right - 22, row_y + 10))
+
+        screen.set_clip(prev_clip)
+        self._draw_scrollbar(screen, area, top, vis, total, acc)
     # ------------------------------------------------------------------ scrollbar
     def _draw_scrollbar(self, screen, area, top, vis, total, accent):
         if total <= vis:
@@ -479,8 +583,12 @@ class SkinSelector(State):
             # Zoznam
             if self.active_tab[pid] == config.TAB_COLORS:
                 self.draw_colors_list(screen, pid, panel)
-            else:
+            elif self.active_tab[pid] == config.TAB_HATS:
                 self.draw_hats_list(screen, pid, panel)
+            elif self.active_tab[pid] == config.TAB_BOMBS:
+                self.draw_bombs_list(screen, pid, panel)
+            else:
+                self.draw_explosions_list(screen, pid, panel)
 
             # Hint
             self.draw_hint_bar(screen, panel, pid)
@@ -506,7 +614,10 @@ class SkinSelector(State):
             return
 
         def total_count(tab):
-            return len(color_keys) if tab == config.TAB_COLORS else len(config.HATS)
+            if tab == config.TAB_COLORS:     return len(color_keys)
+            if tab == config.TAB_HATS:       return len(config.HATS)
+            if tab == config.TAB_BOMBS:      return len(config.BOMBS)
+            if tab == config.TAB_EXPLOSIONS: return len(config.EXPLOSIONS)
 
         # Player 1
         if event.key == self.controls[1]['left']:
@@ -528,8 +639,9 @@ class SkinSelector(State):
             chosen_color = color_keys[color_idx]
             if chosen_color != self.players[2]["color"]:
                 self.players[1]["color"] = chosen_color
-            hat_idx = self.selected_index[1][config.TAB_HATS]
-            self.players[1]["hat"] = config.HATS[hat_idx]["name"]
+            self.players[1]["hat"]       = config.HATS      [self.selected_index[1][config.TAB_HATS]]      ["name"]
+            self.players[1]["bomb"]      = config.BOMBS     [self.selected_index[1][config.TAB_BOMBS]]     ["name"]
+            self.players[1]["explosion"] = config.EXPLOSIONS[self.selected_index[1][config.TAB_EXPLOSIONS]]["name"]
 
         # Player 2
         if event.key == self.controls[2]['left']:
@@ -551,16 +663,19 @@ class SkinSelector(State):
             chosen_color = color_keys[color_idx]
             if chosen_color != self.players[1]["color"]:
                 self.players[2]["color"] = chosen_color
-            hat_idx = self.selected_index[2][config.TAB_HATS]
-            self.players[2]["hat"] = config.HATS[hat_idx]["name"]
+            self.players[2]["hat"]       = config.HATS      [self.selected_index[2][config.TAB_HATS]]      ["name"]
+            self.players[2]["bomb"]      = config.BOMBS     [self.selected_index[2][config.TAB_BOMBS]]     ["name"]
+            self.players[2]["explosion"] = config.EXPLOSIONS[self.selected_index[2][config.TAB_EXPLOSIONS]]["name"]
 
-        # Pokračovanie
+        # Continue
         if event.key == pygame.K_SPACE and self.players[1]["color"] and self.players[2]["color"]:
             payload = {
-                1: (self.players[1]["color"], self.players[1]["hat"]),
-                2: (self.players[2]["color"], self.players[2]["hat"]),
+                1: (self.players[1]["color"], self.players[1]["hat"],
+                    self.players[1]["bomb"],  self.players[1]["explosion"]),
+                2: (self.players[2]["color"], self.players[2]["hat"],
+                    self.players[2]["bomb"],  self.players[2]["explosion"]),
             }
             self.state_manager.change_state("MapSelector", payload)
-
+    
     def render(self, screen):
         self.draw(screen)

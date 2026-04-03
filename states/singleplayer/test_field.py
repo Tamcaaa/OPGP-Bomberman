@@ -8,7 +8,7 @@ import os
 from states.general.state import State
 from game_objects.singleplayer.player import Player
 from managers.music_manager import MusicManager
-from image_loader import load_images, load_hat_images
+from image_loader import load_images, load_game_hat_images
 from game_objects.singleplayer.power_up import PowerUp
 
 
@@ -44,7 +44,7 @@ class TestField(State):
         self.images = load_images()
 
         # --- Load hat images ---
-        self.hat_images, self.hat_thumbs = load_hat_images()
+        self.hat_images = load_game_hat_images()
 
         self.tile_map = copy.deepcopy(selected_map)
         self.available_powerups = ["bomb_powerup", "range_powerup", "freeze_powerup", "live+_powerup", "shield_powerup"]
