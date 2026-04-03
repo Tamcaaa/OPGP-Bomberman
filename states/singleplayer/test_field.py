@@ -157,7 +157,7 @@ class TestField(State):
                             winner = self.player2.player_id if player.player_id == 1 else self.player1.player_id
                             self.game.state_manager.change_state("GameOver", winner, self.selected_map, self.map_name, selected_skins=self.selected_skins)
                     else:
-                        self.powerup_message = f"Player {player.player_id} is shielded!"
+                        self.powerup_message = f"Player {player.player_id} has shield!"
                         self.message_timer = pygame.time.get_ticks()
                     
                     player.hit_this_frame = True
@@ -215,12 +215,12 @@ class TestField(State):
     def draw_active_powerups(self, screen):
         p1_texts, p2_texts = [], []
         for powerup, expire in self.player1.active_powerups.items():
-            remaining = round(expire - time.time(), 2)
+            remaining = int(expire - time.time()) + 1
             if remaining > 0:
                 if powerup == "shield_powerup": p1_texts.append(f"Shield: {remaining}s")
                 elif powerup == "freeze_powerup": p2_texts.append(f"Freeze: {remaining}s")
         for powerup, expire in self.player2.active_powerups.items():
-            remaining = round(expire - time.time(), 2)
+            remaining = int(expire - time.time()) + 1
             if remaining > 0:
                 if powerup == "shield_powerup": p2_texts.append(f"Shield: {remaining}s")
                 elif powerup == "freeze_powerup": p1_texts.append(f"Freeze: {remaining}s")
@@ -395,6 +395,36 @@ class TestField(State):
 
         screen.blit(dark, (0, 0))
 
+    def offset_timers(self, pause_duration):
+        # Power-ups on the field
+        for powerup in self.powerup_group.sprites():
+            powerup.reveal_time += pause_duration
+
+        # Bombs and explosions
+        for bomb in self.bomb_group.sprites():
+            if hasattr(bomb, 'place_time'):
+                bomb.place_time += pause_duration
+            if hasattr(bomb, 'explode_time'):
+                bomb.explode_time += pause_duration
+
+        # Darkness timer
+        if self.darkness_timer > 0:
+            self.darkness_timer += pause_duration
+
+        # Per-player timers
+        for player in self.players:
+            # Active powerup expiry timestamps (shield, freeze)
+            for key in player.active_powerups:
+                player.active_powerups[key] += pause_duration
+
+            # Freeze timestamp
+            if hasattr(player, 'frozen_until') and player.frozen_until:
+                player.frozen_until += pause_duration
+
+            # Trap cooldown
+            if hasattr(player, 'last_trap_time') and player.last_trap_time:
+                player.last_trap_time += pause_duration
+        
     def render(self, screen):
         screen.fill(config.COLOR_WHITE)
         self.draw_grid(screen)
