@@ -4,6 +4,7 @@ import pygame
 import config
 from typing import Tuple, Any, Dict 
 from dataclasses import dataclass,asdict 
+from image_loader import load_images, load_hat_images
 from states.general.state import State
 from custom_classes.button import Button
 from managers.music_manager import MusicManager
@@ -49,7 +50,8 @@ class MultiplayerLobby(State):
     def __init__(self, game, player_name,network_manager:NetworkManager, players_list = {},*, is_host=False):
         super().__init__(game)
         pygame.display.set_caption("BomberMan: Multiplayer Lobby")
-        self.bg_image = pygame.image.load(os.path.join(game.photos_dir, "bg.png"))
+        self.images = load_images()
+        self.bg = self.images['skinselector_bg']
 
         self.music_manager = MusicManager()
         self.state_manager = StateManager(game)
@@ -419,7 +421,7 @@ class MultiplayerLobby(State):
         self.network_manager.update()
     # ---------------- Render ---------------
     def render(self, screen):
-        screen.blit(self.bg_image, (0, 0))
+        screen.blit(self.bg, (0, 0))
 
         # Title
         self.game.draw_text(screen, 'Multiplayer Lobby', config.COLOR_BLACK, config.SCREEN_WIDTH // 2, 30)

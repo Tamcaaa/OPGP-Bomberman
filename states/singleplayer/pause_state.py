@@ -51,7 +51,7 @@ class PauseState(State):
         # Pozadie (voliteľné)
         try:
             self.background_image = pygame.transform.scale(
-                pygame.image.load(os.path.join("assets", "pause.png")).convert_alpha(),
+                pygame.image.load(os.path.join("assets", "backgrounds", "menu", "pause.png")).convert_alpha(),
                 (config.SCREEN_WIDTH, config.SCREEN_HEIGHT)
             )
         except Exception:

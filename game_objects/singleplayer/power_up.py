@@ -4,7 +4,7 @@ import config
 import time
 import os
 
-from game_objects.singleplayer import player  # Import os directly
+from game_objects.singleplayer import player 
 
 
 class PowerUp(pygame.sprite.Sprite):

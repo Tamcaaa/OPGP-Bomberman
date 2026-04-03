@@ -2,6 +2,7 @@ import os
 import pygame
 import config
 
+from image_loader import load_images, load_hat_images
 from states.general.state import State
 from managers.music_manager import MusicManager
 from custom_classes.button import Button
@@ -22,12 +23,8 @@ class GameOver(State):
             else config.BTN_BEIGE
         )
 
-        try:
-            self.bg = pygame.image.load(
-                os.path.join(game.photos_dir, "bg.png")
-            ).convert()
-        except Exception:
-            self.bg = None
+        self.images = load_images()
+        self.bg = self.images['skinselector_bg']
 
         self.font_lg = pygame.font.Font("CaveatBrush-Regular.ttf", 30)
         self.font_md = pygame.font.Font("CaveatBrush-Regular.ttf", 22)

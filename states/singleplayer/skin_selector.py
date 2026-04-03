@@ -1,4 +1,5 @@
 import pygame, os
+from image_loader import load_images, load_hat_images
 from states.general.state import State
 import config
 from managers.state_manager import StateManager
@@ -36,53 +37,24 @@ class SkinSelector(State):
         super().__init__(game)
         pygame.display.set_caption("BomberMan: Skin Selection")
         self.state_manager = StateManager(self.game)
+        self.images = load_images()
+        self.bg = self.images['skinselector_bg']
 
-        # Pozadie (stále načítame, ale len ako fallback – kreslíme cez config.BG_BASE)
-        try:
-            self.bg = pygame.image.load(
-                os.path.join(game.photos_dir, "skinselector_bg.png")
-            ).convert()
-        except Exception:
-            self.bg = None
-
-        # Sprite hráča (idle animácia) – zachovaná presne ako bola
         self.idle_frames = []
-        for i in range(3):
-            frame = pygame.image.load(
-                os.path.join(game.photos_dir, "player_animations", f"p_1_idle_{i}.png")
-            ).convert_alpha()
-            w, h = frame.get_size()
-            frame = pygame.transform.scale(frame, (w * 3, h * 3))
-            self.idle_frames.append(frame)
+        self.idle_frames = [
+            pygame.transform.scale(
+                frame,
+                (frame.get_width() * 3, frame.get_height() * 3)
+            )
+            for frame in self.images['player_idle']
+        ]
         self.idle_index = config.IDLE_INDEX
         self.last_idle_update = pygame.time.get_ticks()
         self.idle_fps = config.IDLE_FPS
 
         # Čiapky
-        self.hat_images = {}
-        self.hat_thumbs = {}
-        for hat in config.HATS:
-            name = hat["name"]
-            file = hat["file"]
-            if file is None:
-                self.hat_images[name] = None
-                self.hat_thumbs[name] = None
-                continue
-            path = os.path.join(game.photos_dir, "../assets/player_hats", file)
-            if not os.path.exists(path):
-                print("Missing hat image:", path)
-                self.hat_images[name] = None
-                self.hat_thumbs[name] = None
-                continue
-            img = pygame.image.load(path).convert_alpha()
-            img = pygame.transform.smoothscale(img, (48,48))
-            self.hat_images[name] = img
-            tw = config.TW
-            scale = tw / max(img.get_width(), img.get_height())
-            thumb = pygame.transform.smoothscale(
-                img, (int(img.get_width() * scale), int(img.get_height() * scale))
-            )
-            self.hat_thumbs[name] = thumb
+        self.hat_images, self.hat_thumbs = load_hat_images()
+        
 
         # Stav výberu
         self.players = {

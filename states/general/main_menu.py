@@ -8,25 +8,15 @@ from states.general.state import State
 from managers.music_manager import MusicManager
 from managers.state_manager import StateManager
 from custom_classes.button import Button
-
+from image_loader import load_images, load_hat_images
 class MainMenu(State):
     def __init__(self, game):
         State.__init__(self, game)
         pygame.display.set_caption("BomberMan: MainMenu")
 
-        try:
-            self.bg_image = pygame.image.load(
-                os.path.join(game.photos_dir, "bg.png")
-            ).convert()
-        except Exception:
-            self.bg_image = None
-        try:
-            self.text_bomberman = pygame.image.load(
-                os.path.join(game.photos_dir, "bomber-man-text.png")
-            ).convert_alpha()
-        except Exception:
-            self.text_bomberman = None
-
+        self.images = load_images()
+        self.bg_image = self.images['menu_bg']
+        self.text_bomberman = self.images['title']
         self.music_manager = MusicManager()
         self.state_manager = StateManager(game)
         self.load_music()
@@ -131,7 +121,8 @@ class MainMenu(State):
     # ------------------------------------------------------------------ render
     def render(self, screen):
         pygame.display.set_caption("BomberMan: MainMenu")
-
+        if self.bg_image:
+            screen.blit(pygame.transform.scale(self.bg_image, (config.SCREEN_WIDTH, config.SCREEN_HEIGHT)), (0, 0))
         # Fade-in
         self.fade_alpha = max(self.fade_alpha - 8, 0)
 
