@@ -9,14 +9,15 @@ from managers.music_manager import MusicManager
 from managers.state_manager import StateManager
 from custom_classes.button import Button
 from managers.network_manager import NetworkManager
+from image_loader import load_images
 
 class MultiplayerSelector(State):
     def __init__(self, game):
         State.__init__(self, game)
         pygame.display.set_caption("BomberMan: Multiplayer Selector")
-        self.bg_image = pygame.image.load(os.path.join(game.photos_dir, "bg.png"))
-        self.text_bomberman = pygame.image.load(os.path.join(game.photos_dir, "bomber-man-text.png"))
-
+        self.images = load_images()
+        self.bg_image = self.images['menu_bg']
+        self.text_bomberman = self.images['title']
         self.music_manager = MusicManager()
         self.state_manager = StateManager(game)
         _socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)

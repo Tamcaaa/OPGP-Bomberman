@@ -1,3 +1,4 @@
+import time
 import os
 import pygame
 import config
@@ -9,6 +10,7 @@ from managers.music_manager import MusicManager
 class PauseState(State):
     def __init__(self, game, map_selected, map_name):
         super().__init__(game)
+        self.pause_start = time.time()
         self.map_selected = map_selected
         self.map_name     = map_name
         self.selected_option = 0
@@ -49,7 +51,7 @@ class PauseState(State):
         # Pozadie (voliteľné)
         try:
             self.background_image = pygame.transform.scale(
-                pygame.image.load(os.path.join("assets", "pause.png")).convert_alpha(),
+                pygame.image.load(os.path.join("assets", "backgrounds", "menu", "pause.png")).convert_alpha(),
                 (config.SCREEN_WIDTH, config.SCREEN_HEIGHT)
             )
         except Exception:
@@ -161,6 +163,12 @@ class PauseState(State):
             self.game.state_manager.change_state("MainMenu")
 
     def exit_state(self):
+        pause_duration = time.time() - self.pause_start
+        # Find TestField in the state stack beneath the pause state
+        for state in self.game.state_stack:
+            if state.__class__.__name__ == "TestField":
+                state.offset_timers(pause_duration)
+                break
         if self.prev_music_playing:
             self.music_manager.play_music('level', 'level_volume', True)
         super().exit_state()

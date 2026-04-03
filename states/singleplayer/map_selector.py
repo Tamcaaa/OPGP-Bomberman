@@ -7,7 +7,7 @@ from maps.test_field_map import MAP_NAMES, get_map
 from dataclasses import dataclass
 from managers.music_manager import MusicManager
 from managers.state_manager import StateManager
-
+from image_loader import load_images, load_hat_images
 @dataclass
 class PlayerSelection:
     selection_index: int = 0
@@ -20,13 +20,8 @@ class MapSelector(State):
         self.selected_skins = selected_skins or {}
         pygame.display.set_caption("BomberMan: Map Selection")
 
-        # Pozadie – rovnaký prístup ako SkinSelector
-        try:
-            self.bg = pygame.image.load(
-                os.path.join(game.photos_dir, "battlefield-bg.png")
-            ).convert()
-        except Exception:
-            self.bg = None
+        self.images = load_images()
+        self.bg = self.images['battlefield_bg']
 
         self.selected_maps = []
         self.final_map = None

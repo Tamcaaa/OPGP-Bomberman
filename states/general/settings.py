@@ -23,7 +23,7 @@ class Settings(State):
         # Pozadie
         try:
             self.background_image = pygame.transform.scale(
-                pygame.image.load(os.path.join("assets", "bg.png")).convert_alpha(),
+                pygame.image.load(os.path.join("assets","backgrounds", "menu", "bg.png")).convert_alpha(),
                 (config.SCREEN_WIDTH, config.SCREEN_HEIGHT)
             )
         except Exception:
@@ -31,9 +31,9 @@ class Settings(State):
 
         # Zvukové ikony
         self.sound_on_img  = pygame.transform.scale(
-            pygame.image.load("assets/not_muted.png").convert_alpha(), (20, 20))
+            pygame.image.load("assets/menu_items/not_muted.png").convert_alpha(), (20, 20))
         self.sound_off_img = pygame.transform.scale(
-            pygame.image.load("assets/mute.png").convert_alpha(), (20, 20))
+            pygame.image.load("assets/menu_items/mute.png").convert_alpha(), (20, 20))
 
         # Key bindings
         self.key_bindings = {

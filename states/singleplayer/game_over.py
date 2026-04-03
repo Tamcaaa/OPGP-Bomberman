@@ -2,6 +2,7 @@ import os
 import pygame
 import config
 
+from image_loader import load_images, load_hat_images
 from states.general.state import State
 from managers.music_manager import MusicManager
 from custom_classes.button import Button
@@ -22,12 +23,8 @@ class GameOver(State):
             else config.BTN_BEIGE
         )
 
-        try:
-            self.bg = pygame.image.load(
-                os.path.join(game.photos_dir, "bg.png")
-            ).convert()
-        except Exception:
-            self.bg = None
+        self.images = load_images()
+        self.bg = self.images['skinselector_bg']
 
         self.font_lg = pygame.font.Font("CaveatBrush-Regular.ttf", 30)
         self.font_md = pygame.font.Font("CaveatBrush-Regular.ttf", 22)
@@ -123,9 +120,8 @@ class GameOver(State):
             self.enter_single_player()
         elif self.exit_button.is_clicked():
             pygame.mixer_music.stop()
-            self.music_manager.play_music('title', 'main_menu_volume', True)
-            self.exit_state()
-            self.exit_state()
+            pygame.quit()
+            exit()
         elif self.map_select_button.is_clicked():
             pygame.mixer_music.stop()
             self.music_manager.play_music('title', 'main_menu_volume', True)
@@ -162,7 +158,8 @@ class GameOver(State):
         cy = config.SCREEN_HEIGHT // 2
 
         # Centrálny panel
-        pw, ph = config.PW, config.PH
+        pw = config.PW
+        ph = config.PH
         panel  = pygame.Rect(cx - pw // 2, cy - ph // 2 - 30, pw, ph)
         self._draw_rrect(screen, config.BG_PANEL, panel, radius=18, alpha=220,
                          border=1, border_color=self.winner_color)
