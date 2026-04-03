@@ -334,7 +334,7 @@ AVAILABLE_HATS: Dict[str, Dict[str, str | Tuple[int, int]]] = {
 HAT_SCALE_FACTOR = 0.7
 # ------------------------------------------------------------------Game_over------------------------------------------------------------------
 FONT_SIZE_GAMEOVER = 22
-PW = 400,
+PW = 400
 PH = 260
 BTN_W = 160
 BTN_H = 46

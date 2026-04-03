@@ -123,9 +123,8 @@ class GameOver(State):
             self.enter_single_player()
         elif self.exit_button.is_clicked():
             pygame.mixer_music.stop()
-            self.music_manager.play_music('title', 'main_menu_volume', True)
-            self.exit_state()
-            self.exit_state()
+            pygame.quit()
+            exit()
         elif self.map_select_button.is_clicked():
             pygame.mixer_music.stop()
             self.music_manager.play_music('title', 'main_menu_volume', True)
@@ -162,7 +161,8 @@ class GameOver(State):
         cy = config.SCREEN_HEIGHT // 2
 
         # Centrálny panel
-        pw, ph = config.PW, config.PH
+        pw = config.PW
+        ph = config.PH
         panel  = pygame.Rect(cx - pw // 2, cy - ph // 2 - 30, pw, ph)
         self._draw_rrect(screen, config.BG_PANEL, panel, radius=18, alpha=220,
                          border=1, border_color=self.winner_color)
