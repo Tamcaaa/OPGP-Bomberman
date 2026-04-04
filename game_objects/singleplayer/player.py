@@ -78,29 +78,31 @@ class Player(pygame.sprite.Sprite):
 
         # --- Skin & Hat podpora ---
         self.hat: Optional[str] = None
-        self.skin: Optional[Tuple[int, int, int] | Tuple[int, int, int, int]] = self._normalize_skin(skin)
+        self.bomb: Optional[str] = "Classic"
+        self.explosion: Optional[str] = "Classic"
 
-        # Aplikuj skin (ak je)
+        self.skin = self._normalize_skin(skin)
+
         self.apply_skin()
 
     # Pomocné / Skin & Hat
     def _normalize_skin(self, skin: SkinPayload):
-        """
-        Vráti čisté RGB(A) pre farbenie. Ak príde ((r,g,b[,(a)]), "HatName"),
-        uloží hat do self.hat a vráti len farbu. Ak formát nesedí -> None.
-        """
         if skin is None:
             return None
 
-        # (color_like, "HatName")
-        if isinstance(skin, (tuple, list)) and len(skin) == 2:
+        # (color, hat, bomb, explosion) — nový 4-prvkový formát
+        if isinstance(skin, (tuple, list)) and len(skin) == 4:
+            color_part, maybe_hat, maybe_bomb, maybe_explosion = skin
+            self.hat       = str(maybe_hat)       if maybe_hat       is not None else None
+            self.bomb      = str(maybe_bomb)      if maybe_bomb      is not None else None
+            self.explosion = str(maybe_explosion) if maybe_explosion is not None else None
+            skin = color_part
+
+        # (color, hat) — starý 2-prvkový formát (zachovaná kompatibilita)
+        elif isinstance(skin, (tuple, list)) and len(skin) == 2:
             color_part, maybe_hat = skin
-            # ulož hat (aj keby neskôr nebol použitý)
-            try:
-                self.hat = str(maybe_hat) if maybe_hat is not None else None
-            except Exception:
-                self.hat = None
-            skin = color_part  # ďalej budeme riešiť už len farbu
+            self.hat = str(maybe_hat) if maybe_hat is not None else None
+            skin = color_part
 
         # pygame.Color -> RGBA tuple
         if isinstance(skin, pygame.Color):
@@ -108,7 +110,6 @@ class Player(pygame.sprite.Sprite):
 
         # (r,g,b) alebo (r,g,b,a)
         if isinstance(skin, (tuple, list)) and len(skin) in (3, 4):
-            # validácia zložiek
             try:
                 comps = tuple(int(c) for c in skin)
                 if len(comps) == 3:
@@ -125,8 +126,8 @@ class Player(pygame.sprite.Sprite):
             except Exception:
                 return None
 
-        # nič z vyššie uvedeného – ignoruj
         return None
+        
 
     def apply_skin(self):
         """Aplikuje farebný skin na všetky snímky hráča (bezpečne)."""
@@ -269,7 +270,7 @@ class Player(pygame.sprite.Sprite):
                 if bomb.rect.topleft == self.rect.topleft:
                     return  # Už tam je bomba, nič nepokladaj
             
-            Bomb(self, bomb_group, explosion_group, self.test_field)
+            Bomb(self, bomb_group, explosion_group, self.test_field, self.bomb, self.explosion)
             self.currentBomb -= 1
 
     def find_paired_teleport(self, teleport_type, current_x, current_y):
