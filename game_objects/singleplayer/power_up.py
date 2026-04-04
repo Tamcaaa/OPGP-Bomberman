@@ -30,7 +30,7 @@ class PowerUp(pygame.sprite.Sprite):
             # Try to load the image, but if the file doesn't exist, create a fallback
             if os.path.exists(image_path):
                 self.image = pygame.image.load(image_path).convert_alpha()
-                self.image = pygame.transform.scale(self.image, (config.GRID_SIZE, config.GRID_SIZE))
+                self.image = pygame.transform.scale(self.image, (25, 25))
             else:
                 self.image = self.create_fallback_image()
         except (pygame.error, FileNotFoundError):
@@ -121,6 +121,6 @@ class PowerUp(pygame.sprite.Sprite):
             return f"Player {player.player_id} is invincible for {shield_duration}s!"
 
         elif self.type == "darkness_powerup":
-            player.test_field.activate_darkness(30)
+            player.test_field.activate_darkness(15)
             return "Darkness falls!"
         return f"Player {player.player_id} collected a power-up!"

@@ -298,8 +298,10 @@ OVERLAY_ALPHA = 0
 #------SKIN SELECTOR CONSTANTS------
 BOMBS = [
     {"name": "Classic",  "file": "classic_bomb.png"},
-    {"name": "Neon",     "file": "neon_bomb.png"},
     {"name": "Skull",    "file": "skull_bomb.png"},
+    {"name": "Dragon",  "file": "dragon_bomb.png"},
+    {"name": "Rune",     "file": "rune_bomb.png"},
+    {"name": "Ice",    "file": "ice_bomb.png"},
     {"name": "Pumpkin",  "file": "pumpkin_bomb.png"},
 ]
 
@@ -307,6 +309,7 @@ EXPLOSIONS = [
     {"name": "Classic",  "file": "classic_a.png"},
     {"name": "Ice",      "file": "ice_a.png"},
     {"name": "Electric", "file": "electric_a.png"},
+    {"name": "Rune",     "file": "rune_a.png"},
 ]
 HATS = [
     {"name": "None",      "file": None,             "offset": (0, 0)},
