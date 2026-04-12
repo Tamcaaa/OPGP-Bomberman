@@ -13,12 +13,8 @@ brick   = config.BRICK
 portal_blue  = config.PORTAL_BLUE
 portal_red   = config.PORTAL_RED
 sewer   = config.SEWER
-
-# Koľko percent voľných buniek dostane brick
 brick_density = config.BRICK_DENSITY
 
-# Rohové "bezpečné" zóny – bunky ktoré musia ostať ground (spawn oblasti)
-# Každý spawn má 2×2 prázdne bunky + 1 riadok/stĺpec buffer
 corner_safe = {
     "spawn1": [(r, c) for r in range(1, 4) for c in range(0, 3)],       # ľavý horný
     "spawn2": [(r, c) for r in range(1, 4) for c in range(29, 32)],     # pravý horný
@@ -35,8 +31,6 @@ def is_fixed_wall(row, col):
     # row 0 = menu bar – preskočíme
     if row == 0:
         return False
-    # Pevná mriežka: každý párny riadok (2,4,6…) A každý párny stĺpec (0,2,4…)
-    # Presne ako v pôvodných mapách: tile 1 na (r%2==0, c%2==0)
     return (row % 2 == 0) and (col % 2 == 0)
 
 
