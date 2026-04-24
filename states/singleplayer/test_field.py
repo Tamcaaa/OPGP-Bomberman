@@ -8,6 +8,7 @@ import os
 from states.general.state import State
 from game_objects.singleplayer.player import Player
 from managers.music_manager import MusicManager
+from image_loader import load_images, load_game_hat_images
 from game_objects.singleplayer.power_up import PowerUp
 
 
@@ -28,70 +29,29 @@ class TestField(State):
         self.bomb_group = pygame.sprite.Group()
         self.explosion_group = pygame.sprite.Group()
         self.powerup_group = pygame.sprite.Group()
-        self.hidden_powerups = {}  # {(x, y): powerup_type}
+        self.hidden_powerups = {}
 
         self.player1 = Player(1, "spawn1", self, skin=self.selected_skins.get(1))
         self.player2 = Player(2, "spawn4", self, skin=self.selected_skins.get(2))
         self.players = [self.player1, self.player2]
 
         self.powerup_message = ""
-        self.message_timer = 0
-        self.current_animation = "idle"  # idle, walk_up, walk_down, walk_left, walk_right
-        self.current_frame_index = 0      # 0, 1, 2 pre animácie
+        self.message_timer = config.MESSAGE_TIMER
+        self.current_animation = "idle"
+        self.current_frame_index = config.CURRENT_FRAME_INDEX
 
-        # --- Load hat images directly in TestField ---
-        self.hat_images = {}
+        # --- Load images ---
+        self.images = load_images()
 
-        for hat_def in config.HATS:
-            name = hat_def["name"]
-            if name != "None":
-                file_name = f"{name.lower()}.png"  # alebo použij presný názov súboru
-                path = os.path.join(game.photos_dir, "../assets/player_hats", file_name)
-                img = pygame.image.load(path).convert_alpha()
-                scale_factor = 0.7 
-                size = int(config.GRID_SIZE * scale_factor)
-                img = pygame.transform.scale(img, (size, size))
-                self.hat_images[name] = img
-
-        # --- Load backgrounds ---
-        self.cave_bg = pygame.image.load("assets/cave-bg.png").convert_alpha()
-        self.grass_bg = pygame.image.load("assets/grass-bg.png").convert_alpha()
-        self.sand_bg = pygame.image.load("assets/sand-bg.png").convert_alpha()
-        self.ruins_bg = pygame.image.load("assets/ruins_bg.png").convert_alpha()
-        self.urban_bg = pygame.image.load("assets/urban_bg.png").convert_alpha()
-        
-        
-        # --- Load tiles ---
-        TILE = (config.GRID_SIZE, config.GRID_SIZE)
-        def load_image(path, size):
-            return pygame.transform.scale(
-                pygame.image.load(path).convert_alpha(),
-                size
-            )
-        self.images = {
-            "unbreakable_stone": load_image("assets/stone-black.png", TILE),
-            "breakable_barrel": load_image("assets/environment/barrel.png", TILE),
-            "breakable_bush": load_image("assets/environment/bush.png", TILE),
-            "unbreakable_rock": load_image("assets/environment/black-block-rock.png", TILE),
-            "breakable_rock": load_image("assets/environment/rock.png", TILE),
-            "breakable_diamond": load_image("assets/environment/diamond.png", TILE),
-            "breakable_cactus": load_image("assets/environment/cactus.png", TILE),
-            "unbreakable_box": load_image("assets/environment/box.png", TILE),
-            "breakable_wall": load_image("assets/environment/wall.png", TILE),
-            "unbreakable_wall": load_image("assets/environment/brick.png", TILE),
-            "blue_cave": load_image("assets/environment/blue_cave.png", TILE),
-            "red_cave": load_image("assets/environment/red_cave.png", TILE),
-            "bomb_icon": load_image("assets/bomb.png", TILE),
-            "heart_image": load_image("assets/menu_items/heart.png", TILE),
-            "pause_icon": load_image("assets/pauseicon.png", TILE),
-            "trap_image": load_image("assets/environment/manhole.png", TILE),
-        }
-
+        # --- Load hat images ---
+        self.hat_images = load_game_hat_images()
 
         self.tile_map = copy.deepcopy(selected_map)
         self.available_powerups = ["bomb_powerup", "range_powerup", "freeze_powerup", "live+_powerup", "shield_powerup"]
 
-        
+        if self.map_name == "Crystal Caves":
+            self.available_powerups.append("darkness_powerup")
+        self.darkness_timer = config.DARKNESS_TIMER
         self.load_music()
         self.place_hidden_powerups()
 
@@ -109,10 +69,8 @@ class TestField(State):
             powerup_type = random.choice(self.available_powerups)
             self.hidden_powerups[(x, y)] = powerup_type
 
-
     def load_music(self):
         self.music_manager.play_music('level', 'level_volume', True)
-
 
     def handle_events(self, event):
         if event.type == pygame.KEYDOWN:
@@ -128,21 +86,38 @@ class TestField(State):
             if event.key in config.PLAYER2_MOVE_KEYS and event.key in self.player2.held_down_keys:
                 self.player2.held_down_keys.remove(event.key)
 
-
     def handle_explosions(self):
-        if not self.explosion_group:
-            return
-        if self.player1.check_hit() and self.player1.get_health() == 0:
-            self.music_manager.play_sound("death", "death_volume")
-            pygame.mixer_music.stop()
-            self.exit_state()
-            self.game.state_manager.change_state("GameOver", self.player2.player_id, self.selected_map, self.map_name)
-        elif self.player2.check_hit() and self.player2.get_health() == 0:
-            self.music_manager.play_sound("death", "death_volume")
-            pygame.mixer_music.stop()
-            self.exit_state()
-            self.game.state_manager.change_state("GameOver", self.player1.player_id, self.selected_map, self.map_name)
+        for player in self.players:
+            player_hit = False
+            for explosion in self.explosion_group:
+                if pygame.sprite.collide_rect(player, explosion):
+                    player_hit = True
+                    break
+            if player_hit:
+                if not hasattr(player, 'hit_this_frame') or not player.hit_this_frame:
+                    has_shield = (
+                        "shield_powerup" in player.active_powerups and
+                        player.active_powerups["shield_powerup"] > time.time()
+                    )
+                    if not has_shield:
+                        player.health = max(0, player.health - 1)
+                        self.music_manager.play_sound("death", "death_volume")
+                        self.powerup_message = f"Player {player.player_id} hit! Lives left: {player.health}"
+                        self.message_timer = pygame.time.get_ticks()
 
+                        if player.health <= 0:
+                            self.music_manager.play_sound("death", "death_volume")
+                            pygame.mixer_music.stop()
+                            self.exit_state()
+                            winner = self.player2.player_id if player.player_id == 1 else self.player1.player_id
+                            self.game.state_manager.change_state("GameOver", winner, self.selected_map, self.map_name, selected_skins=self.selected_skins)
+                    else:
+                        self.powerup_message = f"Player {player.player_id} has shield!"
+                        self.message_timer = pygame.time.get_ticks()
+
+                    player.hit_this_frame = True
+            else:
+                player.hit_this_frame = False
 
     def destroy_tile(self, x, y):
         if self.tile_map[y][x] == 2:
@@ -154,7 +129,6 @@ class TestField(State):
                 del self.hidden_powerups[(x, y)]
             self.tile_map[y][x] = 0
 
-
     def check_powerup_collisions(self):
         visible_powerups = [p for p in self.powerup_group.sprites() if not p.hidden]
         for powerup in visible_powerups:
@@ -164,7 +138,6 @@ class TestField(State):
                     self.message_timer = pygame.time.get_ticks()
                     self.music_manager.play_sound("walk", "walk_volume")
                     powerup.kill()
-
 
     # --- Draw methods ---
     def draw_menu(self, screen):
@@ -188,16 +161,15 @@ class TestField(State):
             message_text = self.game.font.render(self.powerup_message, True, config.COLOR_BLACK)
             screen.blit(message_text, (config.SCREEN_WIDTH // 2 - message_text.get_width() // 2, 10))
 
-
     def draw_active_powerups(self, screen):
         p1_texts, p2_texts = [], []
         for powerup, expire in self.player1.active_powerups.items():
-            remaining = round(expire - time.time(), 2)
+            remaining = int(expire - time.time()) + 1
             if remaining > 0:
                 if powerup == "shield_powerup": p1_texts.append(f"Shield: {remaining}s")
                 elif powerup == "freeze_powerup": p2_texts.append(f"Freeze: {remaining}s")
         for powerup, expire in self.player2.active_powerups.items():
-            remaining = round(expire - time.time(), 2)
+            remaining = int(expire - time.time()) + 1
             if remaining > 0:
                 if powerup == "shield_powerup": p2_texts.append(f"Shield: {remaining}s")
                 elif powerup == "freeze_powerup": p1_texts.append(f"Freeze: {remaining}s")
@@ -212,13 +184,12 @@ class TestField(State):
             screen.blit(rendered, (config.SCREEN_WIDTH - rendered.get_width() - 10, y))
             y += 20
 
-
     def draw_grid(self, screen):
-        if self.map_name == "Crystal Caves": screen.blit(self.cave_bg, (0, 0))
-        elif self.map_name == "Classic": screen.blit(self.grass_bg, (0, 0))
-        elif self.map_name == "Desert Maze": screen.blit(self.sand_bg, (0, 0))
-        elif self.map_name == "Ancient Ruins": screen.blit(self.ruins_bg, (0, 0))
-        elif self.map_name == "Urban Assault": screen.blit(self.urban_bg, (0, 0))
+        if self.map_name == "Crystal Caves":   screen.blit(self.images["cave_bg"], (0, 0))
+        elif self.map_name == "Classic":        screen.blit(self.images["grass_bg"], (0, 0))
+        elif self.map_name == "Desert Maze":    screen.blit(self.images["sand_bg"], (0, 0))
+        elif self.map_name == "Ancient Ruins":  screen.blit(self.images["ruins_bg"], (0, 0))
+        elif self.map_name == "Urban Assault":  screen.blit(self.images["urban_bg"], (0, 0))
         else:
             for line in range((config.SCREEN_WIDTH // config.GRID_SIZE) + 1):
                 pygame.draw.line(screen, config.COLOR_BLACK, (line * config.GRID_SIZE, 30),
@@ -226,7 +197,6 @@ class TestField(State):
             for line in range((config.SCREEN_HEIGHT // config.GRID_SIZE) - 1):
                 pygame.draw.line(screen, config.COLOR_BLACK, (0, line * config.GRID_SIZE + 30),
                                  (config.SCREEN_WIDTH, line * config.GRID_SIZE + 30))
-
 
     def draw_walls(self, screen):
         for y, row in enumerate(self.tile_map):
@@ -238,37 +208,33 @@ class TestField(State):
                         color = config.COLOR_DARK_GREEN if (x + y) % 2 == 0 else config.COLOR_LIGHT_GREEN
                         pygame.draw.rect(screen, color, rect)
                 elif tile == 1:
-                    if self.map_name == "Crystal Caves": screen.blit(self.images["unbreakable_stone"], (px, py))
+                    if self.map_name == "Crystal Caves":            screen.blit(self.images["unbreakable_stone"], (px, py))
                     elif self.map_name in ["Classic", "Desert Maze"]: screen.blit(self.images["unbreakable_box"], (px, py))
-                    elif self.map_name == "Ancient Ruins": screen.blit(self.images["unbreakable_rock"], (px, py))
-                    else: screen.blit(self.images["unbreakable_wall"], (px, py))
+                    elif self.map_name == "Ancient Ruins":           screen.blit(self.images["unbreakable_rock"], (px, py))
+                    else:                                            screen.blit(self.images["unbreakable_wall"], (px, py))
                 elif tile == 2:
-                    if self.map_name == "Desert Maze": screen.blit(self.images["breakable_cactus"], (px, py))
-                    elif self.map_name == "Classic": screen.blit(self.images["breakable_bush"], (px, py))
+                    if self.map_name == "Desert Maze":    screen.blit(self.images["breakable_cactus"], (px, py))
+                    elif self.map_name == "Classic":      screen.blit(self.images["breakable_bush"], (px, py))
                     elif self.map_name == "Crystal Caves": screen.blit(self.images["breakable_diamond"], (px, py))
                     elif self.map_name == "Ancient Ruins": screen.blit(self.images["breakable_rock"], (px, py))
-                    else: screen.blit(self.images["breakable_wall"], (px, py))
-                if tile == 4: screen.blit(self.images["blue_cave"], (px, py))
-                if tile == 5: screen.blit(self.images["red_cave"], (px, py))
+                    else:                                  screen.blit(self.images["breakable_wall"], (px, py))
+                if tile == 4:            screen.blit(self.images["blue_cave"], (px, py))
+                if tile == 5:            screen.blit(self.images["red_cave"], (px, py))
                 elif tile == config.TRAP: screen.blit(self.images["trap_image"], (px, py))
-
 
     def draw_players(self, screen):
         for player in [self.player1, self.player2]:
-            # --- Hráč ---
             screen.blit(player.image, player.rect)
 
-            # --- Čiapka podľa skinu ---
             if player.skin:
                 hat_name = player.hat
                 if hat_name and hat_name != "None":
                     hat_def = next((h for h in config.HATS if h["name"] == hat_name), None)
                     if hat_def:
-                        hat_img = self.hat_images[hat_name]
+                        hat_img = self.hat_images.get(hat_name)
                         if hat_img:
                             ox, oy = config.GAME_HAT_OFFSETS.get(hat_name, (0, 0))
 
-                            # zisťujeme smer pohybu podľa kláves
                             if player.player_id == 1:
                                 keys = config.PLAYER1_MOVE_KEYS
                             else:
@@ -277,12 +243,11 @@ class TestField(State):
                             going_left  = keys[1] in player.held_down_keys
                             going_right = keys[3] in player.held_down_keys
 
-                            # extra posun pre Devil rohy
                             if hat_name == "Devil":
-                                corner_spread = 8
+                                corner_spread = 0
                                 ox -= corner_spread
                             if hat_name == "Devil" and going_left:
-                                ox -= corner_spread - 4
+                                ox -= corner_spread + 2
 
                             anim_offsets = config.HAT_ANIM_OFFSETS.get(player.current_animation, [0, 0, 0])
                             frame_index = player.current_frame_index % len(anim_offsets)
@@ -294,6 +259,8 @@ class TestField(State):
 
                             screen.blit(hat_to_draw, (hx, hy))
 
+    def activate_darkness(self, duration):
+        self.darkness_timer = time.time() + duration
 
     def update(self):
         now = pygame.time.get_ticks()
@@ -313,6 +280,16 @@ class TestField(State):
             self.powerup_message = ""
             self.message_timer = 0
 
+    def check_powerup_explosion_collisions(self):
+        for powerup in self.powerup_group.sprites():
+            if powerup.hidden:
+                continue
+            if time.time() - powerup.reveal_time < 1.0:
+                continue
+            for explosion in self.explosion_group:
+                if pygame.sprite.collide_rect(powerup, explosion):
+                    powerup.kill()
+                    break
 
     def check_trap_collisions(self):
         for player in self.players:
@@ -328,12 +305,58 @@ class TestField(State):
                         pygame.mixer_music.stop()
                         self.exit_state()
                         winner = self.player2.player_id if player.player_id == 1 else self.player1.player_id
-                        self.game.state_manager.change_state("GameOver", winner, self.selected_map, self.map_name)
-                    else:
+                        self.game.state_manager.change_state("GameOver", winner, self.selected_map, self.map_name, selected_skins=self.selected_skins)
                         self.music_manager.play_sound("death", "death_volume")
                         self.powerup_message = f"Player {player.player_id} fell in a sewer!"
                         self.message_timer = pygame.time.get_ticks()
 
+    def _draw_darkness(self, screen):
+        if time.time() >= self.darkness_timer:
+            return
+
+        dark = pygame.Surface((config.SCREEN_WIDTH, config.SCREEN_HEIGHT), pygame.SRCALPHA)
+        dark.fill((0, 0, 0, 250))
+
+        radius = config.GRID_SIZE
+        fade_steps = config.FADE_STEPS
+        fade_extra = config.GRID_SIZE
+
+        for player in self.players:
+            cx = player.rect.centerx
+            cy = player.rect.centery
+
+            pygame.draw.circle(dark, (0, 0, 0, 0), (cx, cy), radius)
+
+            for i in range(fade_steps):
+                progress = (i + 1) / fade_steps
+                alpha = int(250 * (progress ** 1.5))
+                r = radius + int(fade_extra * progress)
+                pygame.draw.circle(dark, (0, 0, 0, alpha), (cx, cy), r, width=max(1, int(fade_extra / fade_steps) + 2))
+
+        screen.blit(dark, (0, 0))
+
+    def offset_timers(self, pause_duration):
+        for powerup in self.powerup_group.sprites():
+            powerup.reveal_time += pause_duration
+
+        for bomb in self.bomb_group.sprites():
+            if hasattr(bomb, 'place_time'):
+                bomb.place_time += pause_duration
+            if hasattr(bomb, 'explode_time'):
+                bomb.explode_time += pause_duration
+
+        if self.darkness_timer > 0:
+            self.darkness_timer += pause_duration
+
+        for player in self.players:
+            for key in player.active_powerups:
+                player.active_powerups[key] += pause_duration
+
+            if hasattr(player, 'frozen_until') and player.frozen_until:
+                player.frozen_until += pause_duration
+
+            if hasattr(player, 'last_trap_time') and player.last_trap_time:
+                player.last_trap_time += pause_duration
 
     def render(self, screen):
         screen.fill(config.COLOR_WHITE)
@@ -346,4 +369,5 @@ class TestField(State):
         self.powerup_group.draw(screen)
         self.bomb_group.draw(screen)
         self.explosion_group.draw(screen)
-
+        self._draw_darkness(screen)
+        self.check_powerup_explosion_collisions()

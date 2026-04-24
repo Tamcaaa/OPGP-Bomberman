@@ -1,121 +1,114 @@
 import pygame, os
+from image_loader import load_images, load_hat_images
 from states.general.state import State
 import config
 from managers.state_manager import StateManager
 from managers.music_manager import MusicManager
+from image_loader import load_bomb_images, load_explosion_images
+# Akcenty hráčov
+ACCENT = {
+    1: (124, 106, 247),   # violet
+    2: (249, 115, 22),    # orange
+}
+ACCENT_DIM = {
+    1: (124, 106, 247, 30),
+    2: (249, 115, 22, 30),
+}
 
 # --- Dostupné farby ---
 AVAILABLE_COLORS = {
-    config.WHITE_PLAYER: "White",
-    config.BLACK_PLAYER: "Black",
-    config.RED_PLAYER: "Red",
-    config.BLUE_PLAYER: "Blue",
-    config.DARK_GREEN_PLAYER: "Green",
+    config.WHITE_PLAYER:       "White",
+    config.BLACK_PLAYER:       "Black",
+    config.RED_PLAYER:         "Red",
+    config.BLUE_PLAYER:        "Blue",
+    config.DARK_GREEN_PLAYER:  "Green",
     config.LIGHT_GREEN_PLAYER: "Green",
-    config.YELLOW_PLAYER: "Yellow",
-    config.PINK_PLAYER: "Pink",
-    config.ORANGE_PLAYER: "Orange",
-    config.PURPLE_PLAYER: "Purple",
-    config.BROWN_PLAYER: "Brown",
-    config.CYAN_PLAYER: "Cyan"
+    config.YELLOW_PLAYER:      "Yellow",
+    config.PINK_PLAYER:        "Pink",
+    config.ORANGE_PLAYER:      "Orange",
+    config.PURPLE_PLAYER:      "Purple",
+    config.BROWN_PLAYER:       "Brown",
+    config.CYAN_PLAYER:        "Cyan",
 }
+
 
 class SkinSelector(State):
     def __init__(self, game):
         super().__init__(game)
         pygame.display.set_caption("BomberMan: Skin Selection")
         self.state_manager = StateManager(self.game)
+        self.images = load_images()
+        self.bg = self.images['skinselector_bg']
 
-        # Pozadie
-        self.bg = pygame.image.load(os.path.join(game.photos_dir, "skinselector_bg.png")).convert()
-        self.title_img = pygame.image.load(os.path.join(game.photos_dir, "skin_selector_txt.png"))
-
-        # Sprite hráča (idle)
         self.idle_frames = []
-        for i in range(3):
-            frame = pygame.image.load(
-                os.path.join(game.photos_dir, "player_animations", f"p_1_idle_{i}.png")
-            ).convert_alpha()
-            w, h = frame.get_size()
-            frame = pygame.transform.scale(frame, (w * 8, h * 8))
-            self.idle_frames.append(frame)
-        self.idle_index = 0
-        self.last_idle_update = pygame.time.get_ticks()
-        self.idle_fps = 4
-
-        # Načítanie čiapok (thumbnails aj plná vrstva)
-        self.hat_images = {}
-        self.hat_thumbs = {}
-
-        for hat in config.HATS:
-            name = hat["name"]
-            file = hat["file"]
-
-            # None = žiadna čiapka, nič nenačítavame
-            if file is None:
-                self.hat_images[name] = None
-                self.hat_thumbs[name] = None
-                continue
-
-            path = os.path.join(game.photos_dir, "../assets/player_hats", file)
-
-            if not os.path.exists(path):
-                print("❌ Missing hat image:", path)
-                self.hat_images[name] = None
-                self.hat_thumbs[name] = None
-                continue
-
-            img = pygame.image.load(path).convert_alpha()
-            img = pygame.transform.smoothscale(img, (100, 100))
-
-            self.hat_images[name] = img
-
-            # thumbnail (~40px)
-            tw = 40
-            scale = tw / max(img.get_width(), img.get_height())
-            thumb = pygame.transform.smoothscale(
-                img,
-                (int(img.get_width() * scale), int(img.get_height() * scale))
+        self.idle_frames = [
+            pygame.transform.scale(
+                frame,
+                (frame.get_width() * 3, frame.get_height() * 3)
             )
-            self.hat_thumbs[name] = thumb
+            for frame in self.images['player_idle']
+        ]
+        self.idle_index = config.IDLE_INDEX
+        self.last_idle_update = pygame.time.get_ticks()
+        self.idle_fps = config.IDLE_FPS
+
+        # Čiapky
+        self.hat_images, self.hat_thumbs = load_hat_images()
+        
+        # Bomby a explózie
+        self.bomb_images,      self.bomb_thumbs      = load_bomb_images()
+        self.explosion_images, self.explosion_thumbs = load_explosion_images()
 
         # Stav výberu
         self.players = {
-            1: {"color": None, "hat": None},
-            2: {"color": None, "hat": None},
+            1: {"color": None, "hat": None, "bomb": None, "explosion": None},
+            2: {"color": None, "hat": None, "bomb": None, "explosion": None},
         }
+        # extend selected_index and scroll_top for new tabs:
         self.selected_index = {
-            1: {config.TAB_COLORS: 0, config.TAB_HATS: 0},
-            2: {config.TAB_COLORS: 0, config.TAB_HATS: 0},
+            1: {config.TAB_COLORS: 0, config.TAB_HATS: 0,
+                config.TAB_BOMBS: 0,  config.TAB_EXPLOSIONS: 0},
+            2: {config.TAB_COLORS: 0, config.TAB_HATS: 0,
+                config.TAB_BOMBS: 0,  config.TAB_EXPLOSIONS: 0},
+        }
+        self.scroll_top = {
+            1: {config.TAB_COLORS: 0, config.TAB_HATS: 0,
+                config.TAB_BOMBS: 0,  config.TAB_EXPLOSIONS: 0},
+            2: {config.TAB_COLORS: 0, config.TAB_HATS: 0,
+                config.TAB_BOMBS: 0,  config.TAB_EXPLOSIONS: 0},
         }
         self.active_tab = {1: config.TAB_COLORS, 2: config.TAB_COLORS}
 
-        # Scroll okná (prvý viditeľný index) – zvlášť pre hráča a tabu
-        self.scroll_top = {
-            1: {config.TAB_COLORS: 0, config.TAB_HATS: 0},
-            2: {config.TAB_COLORS: 0, config.TAB_HATS: 0},
-        }
+        # Fonty – zachovaný CaveatBrush
+        self.font_lg   = pygame.font.Font("CaveatBrush-Regular.ttf", 30)
+        self.font_md   = pygame.font.Font("CaveatBrush-Regular.ttf", 22)
+        self.font_sm   = pygame.font.Font("CaveatBrush-Regular.ttf", 18)
+        self.font_xs   = pygame.font.Font("CaveatBrush-Regular.ttf", 15)
 
-        # Fonty
-        self.font = pygame.font.Font("CaveatBrush-Regular.ttf", 28)
-        self.info_font = pygame.font.Font("CaveatBrush-Regular.ttf", 22)
-        self.small_font = pygame.font.Font("CaveatBrush-Regular.ttf", 20)
+        # Layout
+        panel_w = config.PANEL_W
+        panel_h = config.PANEL_H
+        top_y   = config.TOP_Y
 
-        # Panely
         self.panel_rects = {
-            1: pygame.Rect(40, 70, 360, 400),
-            2: pygame.Rect(config.SCREEN_WIDTH - 400, 70, 360, 400),
+            1: pygame.Rect(30,                          top_y, panel_w, panel_h),
+            2: pygame.Rect(config.SCREEN_WIDTH - 30 - panel_w, top_y, panel_w, panel_h),
         }
 
-        self.panel_pad = 20
-        self.row_spacing = 46     # výška jedného riadku
-        self.list_left_pad = 24   # kde sa kreslí chip/thumbnail
-        self.tab_height = 34      # výška tabs baru
-        self.header_gap = 16      # medzera pod tabs pred zoznamom
-        self.list_top_gap = 50    # (rezervované – pre konzistentný layout)
-        self.chip_radius = 14
+        # Výška zón vo vnútri panelu (zhora):
+        #   [preview_zone]  130 px
+        #   [tab_bar]        36 px  (s 8px medzere nad/pod)
+        #   [list_area]      zvyšok – 48px pre hint + button
+        self.preview_h   = config.PREVIEW_H
+        self.tab_h       = config.TAB_H
+        self.tab_pad     = config.TAB_PAD
+        self.list_pad    = config.LIST_PAD
+        self.hint_h      = config.HINT_H
+        self.panel_pad   = config.PANEL_PAD
+        self.row_h       = config.ROW_H
+        self.chip_r      = config.CHIP_R
 
-        # Ovládanie
+        # Ovládanie (nezmenené)
         self.controls = {
             1: {'up': pygame.K_w, 'down': pygame.K_s, 'left': pygame.K_a,
                 'right': pygame.K_d, 'select': pygame.K_LSHIFT},
@@ -123,108 +116,195 @@ class SkinSelector(State):
                 'right': pygame.K_RIGHT, 'select': pygame.K_RETURN},
         }
 
-    # ----------------- Pomocné -----------------
-    def _list_area(self, rect):
-        x = rect.x + self.panel_pad
-        y = rect.y + self.panel_pad + self.tab_height + self.header_gap
-        w = rect.width - 2*self.panel_pad
-        h = rect.height - (y - rect.y) - self.panel_pad - 30
-        return pygame.Rect(x, y, w, max(60, h))
+    # ------------------------------------------------------------------ helpers
+    def _preview_rect(self, panel: pygame.Rect) -> pygame.Rect:
+        return pygame.Rect(panel.x, panel.y, panel.width, self.preview_h)
 
-    def _visible_count(self, rect):
-        area = self._list_area(rect)
-        return max(1, area.height // self.row_spacing)
+    def _tabbar_rect(self, panel: pygame.Rect) -> pygame.Rect:
+        y = panel.y + self.preview_h + self.tab_pad
+        return pygame.Rect(
+            panel.x + self.panel_pad, y,
+            panel.width - 2 * self.panel_pad, self.tab_h
+        )
 
-    def _clamp_scroll(self, player_id, tab, total, rect):
-        vis = self._visible_count(rect)
-        top = self.scroll_top[player_id][tab]
-        sel = self.selected_index[player_id][tab]
+    def _list_rect(self, panel: pygame.Rect) -> pygame.Rect:
+        tab = self._tabbar_rect(panel)
+        y   = tab.bottom + self.list_pad
+        h   = panel.bottom - y - self.hint_h
+        return pygame.Rect(panel.x + self.panel_pad, y,
+                           panel.width - 2 * self.panel_pad, max(40, h))
+
+    def _visible_count(self, panel: pygame.Rect) -> int:
+        return max(1, self._list_rect(panel).height // self.row_h)
+
+    def _clamp_scroll(self, pid, tab, total, panel):
+        vis = self._visible_count(panel)
+        sel = self.selected_index[pid][tab]
+        top = self.scroll_top[pid][tab]
         if sel < top:
             top = sel
         elif sel >= top + vis:
             top = sel - vis + 1
-        top = max(0, min(max(0, total - vis), top))
-        self.scroll_top[player_id][tab] = top
+        self.scroll_top[pid][tab] = max(0, min(max(0, total - vis), top))
 
-    # ----------------- Kreslenie UI -----------------
-    def draw_panel(self, surface, rect):
-        x, y, w, h = rect
-        s = pygame.Surface((w, h), pygame.SRCALPHA)
-        pygame.draw.rect(
-            s,
-            (15, 20, 30, 200),
-            (0, 0, w, h),
-            border_radius=18
-        )
-        pygame.draw.rect(
-            s,
-            (*config.MENU_OUTLINE, 200),
-            s.get_rect(),
-            width=1,
-            border_radius=10
-        )
-        surface.blit(s, (x, y))
+    # ------------------------------------------------------------------ player color (živý výber)
+    def _player_color(self, player_id: int) -> tuple:
+        """Vráti aktuálne vybranú farbu hráča podľa kurzora v zozname (živо pri scrollovaní)."""
+        color_keys = list(AVAILABLE_COLORS.keys())
+        idx = self.selected_index[player_id][config.TAB_COLORS]
+        return color_keys[idx]
 
-    def blit_text_with_outline(self, surface, text, font, color, pos):
+    # ------------------------------------------------------------------ drawing primitives
+    def _draw_rrect(self, surf, color, rect, radius=14, alpha=255, border=0, border_color=None):
+        """Vykreslí rounded rect, voliteľne s alpha a border."""
+        if alpha < 255:
+            s = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
+            pygame.draw.rect(s, (*color[:3], alpha), s.get_rect(), border_radius=radius)
+            if border and border_color:
+                pygame.draw.rect(s, (*border_color[:3], alpha),
+                                 s.get_rect(), width=border, border_radius=radius)
+            surf.blit(s, rect.topleft)
+        else:
+            pygame.draw.rect(surf, color, rect, border_radius=radius)
+            if border and border_color:
+                pygame.draw.rect(surf, border_color, rect, width=border, border_radius=radius)
+
+    def _text(self, surf, text, font, color, pos, align="left"):
+        rendered = font.render(text, True, color)
         x, y = pos
-        outline = font.render(text, True, (0, 0, 0))
-        for ox, oy in [(1,0),(-1,0),(0,1),(0,-1)]:
-            surface.blit(outline, (x+ox, y+oy))
-        surface.blit(font.render(text, True, color), (x, y))
+        if align == "center":
+            x -= rendered.get_width() // 2
+        elif align == "right":
+            x -= rendered.get_width()
+        # jemný tieň
+        shadow = font.render(text, True, (0, 0, 0))
+        surf.blit(shadow, (x + 1, y + 1))
+        surf.blit(rendered, (x, y))
 
-    def draw_chip(self, surface, center, radius, color, disabled=False, selected=False, ring_color=None):
-        r,g,b = color
-        if disabled:
-            r,g,b = int(r*0.4), int(g*0.4), int(b*0.4)
-        pygame.draw.circle(surface, (r,g,b), center, radius)
-        if selected:
-            pygame.draw.circle(surface, ring_color or (255,255,255), center, radius + 6, 3)
+    # ------------------------------------------------------------------ panel shell
+    def draw_panel(self, screen, panel: pygame.Rect, player_id: int):
+        acc = self._player_color(player_id)
+        is_ready = self.players[player_id]["color"] is not None
 
-    def draw_tab_bar(self, surface, rect, active_tab):
-        tab_w = (rect.width - 2*self.panel_pad)
-        x0 = rect.x + self.panel_pad
-        y0 = rect.y + self.panel_pad
-        half = tab_w // 2
-        tabs = [
-            pygame.Rect(x0, y0, half-4, self.tab_height),
-            pygame.Rect(x0 + half + 4, y0, half-4, self.tab_height),
-        ]
-        for i, r in enumerate(tabs):
-            bg = (*config.MENU_PAPER_DARK, 220) if i == active_tab else (15, 20, 30, 160)
-            bar = pygame.Surface((r.width, r.height), pygame.SRCALPHA)
-            pygame.draw.rect(bar, bg, bar.get_rect(), border_radius=10)
-            pygame.draw.rect(bar, (*config.MENU_OUTLINE,200), bar.get_rect(), width=1, border_radius=10)
-            surface.blit(bar, (r.x, r.y))
-            label = config.TAB_NAMES[i]
-            color = (config.MENU_TEXT) if i == active_tab else (120,90,60)
-            self.blit_text_with_outline(surface, label, self.small_font, color, (r.x+10, r.y+6))
+        # Základný panel – oramovanie vždy v živej farbe hráča
+        self._draw_rrect(screen, config.BG_PANEL, panel, radius=18, alpha=220,
+                         border=1, border_color=acc)
 
-    def tint_image(self, image, color):
-        tinted = image.copy()
-        tint = pygame.Surface(image.get_size(), pygame.SRCALPHA)
-        tint.fill((*color, 255))
-        tinted.blit(tint, (0,0), special_flags=pygame.BLEND_MULT)
-        return tinted
+        # Jemný vrchný glow vždy (intenzívnejší ak ready)
+        glow_alpha = 100 if is_ready else 40
+        glow = pygame.Surface((panel.width, 6), pygame.SRCALPHA)
+        for gx in range(panel.width):
+            a = int(glow_alpha * (1 - abs(gx - panel.width / 2) / (panel.width / 2)))
+            pygame.draw.line(glow, (*acc, a), (gx, 0), (gx, 5))
+        screen.blit(glow, (panel.x, panel.y))
 
-    def update_idle_animation(self):
-        now = pygame.time.get_ticks()
-        if now - self.last_idle_update >= 2000/self.idle_fps:
-            self.idle_index = (self.idle_index + 1) % len(self.idle_frames)
-            self.last_idle_update = now
+    # ------------------------------------------------------------------ preview zone
+    def draw_player_preview(self, screen, player_id: int, panel: pygame.Rect):
+        color_keys = list(AVAILABLE_COLORS.keys())
+        chosen_color = color_keys[self.selected_index[player_id][config.TAB_COLORS]]
 
-    # ---- Zoznam Farieb (scroll) ----
-    def draw_colors_list(self, screen, player_id, rect):
-        area = self._list_area(rect)
-        pygame.draw.rect(screen, (30, 38, 55), area, border_radius=10)
+        # Animovaný frame
+        num_frames = len(self.idle_frames)
+        frame_index = (pygame.time.get_ticks() // (1000 // self.idle_fps)) % num_frames
+        frame = self.idle_frames[frame_index]
 
-        # posun pre pravý panel (hráč 2)
-        nudge = 0 if player_id == 1 else 12  # zmeň 12 -> koľko potrebuješ
+        img = self.tint_image(frame, chosen_color)
+        if player_id == 2:
+            img = pygame.transform.flip(img, True, False)
 
-        ring = self.players[player_id]["color"] or (255, 255, 255)
+        prev_rect = self._preview_rect(panel)
+
+        # Tintovaný kruh za hráčom – v živej farbe hráča
+        circle_surf = pygame.Surface((90, 90), pygame.SRCALPHA)
+        pygame.draw.circle(circle_surf, (*chosen_color, 35), (45, 45), 45)
+        cx = prev_rect.centerx - 45
+        cy = prev_rect.y + prev_rect.height - 90 - 10
+        screen.blit(circle_surf, (cx, cy))
+
+        # Hráč
+        pw = img.get_width()
+        ph = img.get_height()
+        px = prev_rect.centerx - pw // 2
+        py = prev_rect.y + prev_rect.height - ph - 10
+        screen.blit(img, (px, py))
+
+        # Čiapka
+        hat_def  = config.HATS[self.selected_index[player_id][config.TAB_HATS]]
+        hat_name = hat_def["name"]
+        if hat_name != "None":
+            hat_img = self.hat_images.get(hat_name)
+            if hat_img:
+                ox, oy = hat_def["offset"]
+                if hat_name == "Devil":
+                    if not hasattr(self, 'preview_corner_offset'):
+                        self.preview_corner_offset = {1: 10, 2: -10}
+                    ox += self.preview_corner_offset.get(player_id, 0)
+                HAT_IDLE_OFFSETS = [0, -4, 0]
+                hat_offset = HAT_IDLE_OFFSETS[frame_index]
+                if player_id == 2:
+                    hat_img = pygame.transform.flip(hat_img, True, False)
+                screen.blit(hat_img, (px + ox, py + oy + hat_offset))
+
+        # Meno / "PLAYER X" label
+        label = f"PLAYER {player_id}"
+        self._text(screen, label, self.font_xs, chosen_color,
+                   (prev_rect.centerx, prev_rect.y + 8), align="center")
+
+        # "Ready!" badge
+        if self.players[player_id]["color"]:
+            badge_text = "READY"
+            bw = self.font_xs.size(badge_text)[0] + 16
+            bh = 20
+            bx = prev_rect.centerx - bw // 2
+            by = prev_rect.y + 26
+            self._draw_rrect(screen, chosen_color, pygame.Rect(bx, by, bw, bh),
+                             radius=10, alpha=30)
+            border_s = pygame.Surface((bw, bh), pygame.SRCALPHA)
+            pygame.draw.rect(border_s, (*chosen_color, 120), border_s.get_rect(),
+                             width=1, border_radius=10)
+            screen.blit(border_s, (bx, by))
+            self._text(screen, badge_text, self.font_xs, chosen_color,
+                       (prev_rect.centerx, by + 3), align="center")
+
+    # ------------------------------------------------------------------ tab bar
+    def draw_tab_bar(self, screen, panel: pygame.Rect, player_id: int):
+        tab_rect = self._tabbar_rect(panel)
+        acc = self._player_color(player_id)
+
+        self._draw_rrect(screen, config.BG_TAB_BAR, tab_rect, radius=10, alpha=200,
+                        border=1, border_color=config.BORDER_SUBTLE)
+
+        num_tabs = len(config.TAB_NAMES)
+        tab_w = (tab_rect.width - 4) // num_tabs  # ← rovnomerne rozdelené
+        active = self.active_tab[player_id]
+
+        for i, label in enumerate(config.TAB_NAMES):
+            tr = pygame.Rect(
+                tab_rect.x + 2 + i * tab_w,
+                tab_rect.y + 2,
+                tab_w,
+                tab_rect.height - 4
+            )
+            if i == active:
+                self._draw_rrect(screen, config.BG_TAB_ACTIVE, tr, radius=8, alpha=255)
+                line_surf = pygame.Surface((tr.width - 8, 2), pygame.SRCALPHA)
+                line_surf.fill((*acc, 200))
+                screen.blit(line_surf, (tr.x + 4, tr.bottom - 4))
+
+            color = config.TEXT_PRIMARY if i == active else config.TEXT_MUTED
+            self._text(screen, label, self.font_xs, color,   # ← font_xs lebo 4 labely
+                    (tr.centerx, tr.y + 8), align="center")
+
+    # ------------------------------------------------------------------ color list
+    def draw_colors_list(self, screen, player_id: int, panel: pygame.Rect):
+        area = self._list_rect(panel)
+        acc  = self._player_color(player_id)
         color_keys = list(AVAILABLE_COLORS.keys())
         total = len(color_keys)
-        vis = self._visible_count(rect)
-        top = self.scroll_top[player_id][config.TAB_COLORS]
+        vis   = self._visible_count(panel)
+        top   = self.scroll_top[player_id][config.TAB_COLORS]
+
+        self._draw_rrect(screen, config.BG_LIST, area, radius=12, alpha=220)
 
         prev_clip = screen.get_clip()
         screen.set_clip(area)
@@ -233,54 +313,52 @@ class SkinSelector(State):
             idx = top + i
             if idx >= total:
                 break
-            y = area.y + i*self.row_spacing + self.row_spacing//2
+            row_y = area.y + i * self.row_h
+            row_rect = pygame.Rect(area.x, row_y, area.width, self.row_h)
 
-            if player_id == 1:
-                cx = area.x + self.list_left_pad + nudge
-                text_x = cx + 30
-                align = "left"
-            else:
-                cx = area.right - self.list_left_pad - nudge
-                text_x = cx - 30
-                align = "right"
+            selected = self.selected_index[player_id][config.TAB_COLORS] == idx
+            taken    = (self.players[2 if player_id == 1 else 1]["color"] == color_keys[idx])
 
-            chosen_by_other = (self.players[2]["color"] == color_keys[idx]) if player_id == 1 else (self.players[1]["color"] == color_keys[idx])
-            selected = (self.selected_index[player_id][config.TAB_COLORS] == idx)
-            self.draw_chip(screen, (cx, y), self.chip_radius, color_keys[idx], chosen_by_other, selected, ring)
+            if selected:
+                self._draw_rrect(screen, config.BG_ITEM_SEL, row_rect, radius=8, alpha=255)
+                # accent rail vľavo
+                rail = pygame.Surface((3, self.row_h - 10), pygame.SRCALPHA)
+                rail.fill((*acc, 220))
+                screen.blit(rail, (area.x + 2, row_y + 5))
 
+            # Color chip
+            chip_x = area.x + 18
+            chip_y = row_y + self.row_h // 2
+            r, g, b = color_keys[idx]
+            if taken:
+                r, g, b = int(r * 0.3), int(g * 0.3), int(b * 0.3)
+            pygame.draw.circle(screen, (r, g, b), (chip_x, chip_y), self.chip_r)
+            if selected:
+                pygame.draw.circle(screen, acc, (chip_x, chip_y), self.chip_r + 4, 2)
+            elif not taken:
+                pygame.draw.circle(screen, config.BORDER_FOCUS, (chip_x, chip_y), self.chip_r + 1, 1)
+
+            # Meno farby
             name = AVAILABLE_COLORS[color_keys[idx]]
-            if align == "left":
-                self.blit_text_with_outline(screen, name, self.info_font, (255,255,255), (text_x, y-12))
-            else:
-                w = self.info_font.size(name)[0]
-                self.blit_text_with_outline(screen, name, self.info_font, (255,255,255), (text_x - w, y-12))
+            col  = config.TEXT_MUTED if taken else (config.TEXT_PRIMARY if selected else (160, 165, 200))
+            self._text(screen, name, self.font_md, col, (chip_x + 26, row_y + 9))
+
+            # Checkmark ak selected
+            if selected:
+                self._text(screen, "\u2022", self.font_sm, acc, (area.right - 22, row_y + 10))
 
         screen.set_clip(prev_clip)
-        self._draw_scrollbar(screen, area, top, vis, total)
+        self._draw_scrollbar(screen, area, top, vis, total, acc)
 
-
-    # ---- Zoznam Čiapok (scroll) ----
-    def get_idle_frame_for_preview(self):
-        """
-        Vráti správny idle frame pre preview, prípadne posledný frame.
-        """
-        frames = self.images["idle"]
-        # Použi frame_index cyklicky podľa času, aby animácia išla aj v preview
-        now = pygame.time.get_ticks()
-        frame_duration = 1000 // max(1, len(frames))  # dynamicky podľa počtu idle frames
-        frame_index = (now // frame_duration) % len(frames)
-        return frames[frame_index]
-
-    def draw_hats_list(self, screen, player_id, rect):
-        area = self._list_area(rect)
-
-        # nepriehľadné prekrytie list oblasti
-        pygame.draw.rect(screen, (30, 38, 55), area, border_radius=10)
-
-        ring = self.players[player_id]["color"] or (255, 255, 255)
+    # ------------------------------------------------------------------ hats list
+    def draw_hats_list(self, screen, player_id: int, panel: pygame.Rect):
+        area = self._list_rect(panel)
+        acc  = self._player_color(player_id)
         total = len(config.HATS)
-        vis = self._visible_count(rect)
-        top = self.scroll_top[player_id][config.TAB_HATS]
+        vis   = self._visible_count(panel)
+        top   = self.scroll_top[player_id][config.TAB_HATS]
+
+        self._draw_rrect(screen, config.BG_LIST, area, radius=12, alpha=220)
 
         prev_clip = screen.get_clip()
         screen.set_clip(area)
@@ -290,242 +368,314 @@ class SkinSelector(State):
             if idx >= total:
                 break
             hat = config.HATS[idx]
-            y = area.y + i*self.row_spacing + self.row_spacing//2
+            row_y    = area.y + i * self.row_h
+            row_rect = pygame.Rect(area.x, row_y, area.width, self.row_h)
+            selected = self.selected_index[player_id][config.TAB_HATS] == idx
 
-            if player_id == 1:
-                tx = area.x + self.list_left_pad - 10
-                name_x = tx + 50
-                thumb = self.hat_thumbs[hat["name"]]
-                if thumb is not None:
-                    screen.blit(thumb, (tx, y-18))
-                self.blit_text_with_outline(screen, hat["name"], self.info_font, (230,230,240), (name_x, y-12))
+            if selected:
+                self._draw_rrect(screen, config.BG_ITEM_SEL, row_rect, radius=8, alpha=255)
+                rail = pygame.Surface((3, self.row_h - 10), pygame.SRCALPHA)
+                rail.fill((*acc, 220))
+                screen.blit(rail, (area.x + 2, row_y + 5))
+
+            # Thumbnail
+            thumb = self.hat_thumbs.get(hat["name"])
+            tx = area.x + 10
+            ty = row_y + (self.row_h - 36) // 2
+            if thumb is not None:
+                screen.blit(thumb, (tx, ty))
             else:
-                tx = area.right - self.list_left_pad - 8
-                tx = area.right - self.list_left_pad - 8
-                thumb = self.hat_thumbs[hat["name"]]
+                # "None" placeholder
+                placeholder = pygame.Surface((36, 36), pygame.SRCALPHA)
+                pygame.draw.rect(placeholder, (*config.BORDER_SUBTLE, 120), placeholder.get_rect(), border_radius=6)
+                pygame.draw.line(placeholder, (*config.TEXT_MUTED, 150), (8, 28), (28, 8), 2)
+                screen.blit(placeholder, (tx, ty))
 
-                thumb_w = thumb.get_width() if thumb is not None else 40  # rezervované miesto
-                if thumb is not None:
-                    screen.blit(thumb, (tx - thumb_w, y-18))
+            # Meno
+            col = config.TEXT_PRIMARY if selected else (160, 165, 200)
+            self._text(screen, hat["name"], self.font_md, col, (tx + 44, row_y + 10))
 
-                # posun textu podľa šírky thumbnail
-                w = self.info_font.size(hat["name"])[0]
-                self.blit_text_with_outline(
-                    screen, hat["name"], self.info_font, (230,230,240),
-                    (tx - thumb_w - 10 - w, y-12)
-                )
-
-
-            if self.selected_index[player_id][config.TAB_HATS] == idx:
-                # border len vo vnútri list area
-                if player_id == 1:
-                    inner = pygame.Rect(area.x+14, y - self.row_spacing//2 + 4, area.width-280, self.row_spacing-8)
-                    pygame.draw.rect(screen, ring, inner, width=2, border_radius=10)
-                else:
-                    inner = pygame.Rect(area.x+248, y - self.row_spacing//2 + 4, area.width-280, self.row_spacing-8)
-                    pygame.draw.rect(screen, ring, inner, width=2, border_radius=10)
+            if selected:
+                self._text(screen, "\u2022", self.font_sm, acc, (area.right - 22, row_y + 10))
 
         screen.set_clip(prev_clip)
-        self._draw_scrollbar(screen, area, top, vis, total)
+        self._draw_scrollbar(screen, area, top, vis, total, acc)
+    
+    def draw_bombs_list(self, screen, player_id: int, panel: pygame.Rect):
+        area  = self._list_rect(panel)
+        acc   = self._player_color(player_id)
+        total = len(config.BOMBS)
+        vis   = self._visible_count(panel)
+        top   = self.scroll_top[player_id][config.TAB_BOMBS]
 
-    def _draw_scrollbar(self, screen, area, top, vis, total):
+        self._draw_rrect(screen, config.BG_LIST, area, radius=12, alpha=220)
+        prev_clip = screen.get_clip()
+        screen.set_clip(area)
+
+        for i in range(vis):
+            idx = top + i
+            if idx >= total:
+                break
+            bomb     = config.BOMBS[idx]
+            row_y    = area.y + i * self.row_h
+            row_rect = pygame.Rect(area.x, row_y, area.width, self.row_h)
+            selected = self.selected_index[player_id][config.TAB_BOMBS] == idx
+
+            if selected:
+                self._draw_rrect(screen, config.BG_ITEM_SEL, row_rect, radius=8, alpha=255)
+                rail = pygame.Surface((3, self.row_h - 10), pygame.SRCALPHA)
+                rail.fill((*acc, 220))
+                screen.blit(rail, (area.x + 2, row_y + 5))
+
+            # Thumbnail
+            thumb = self.bomb_thumbs.get(bomb["name"])
+            tx = area.x + 10
+            ty = row_y + (self.row_h - 36) // 2
+            if thumb is not None:
+                screen.blit(thumb, (tx, ty))
+            else:
+                # "None" placeholder
+                placeholder = pygame.Surface((36, 36), pygame.SRCALPHA)
+                pygame.draw.rect(placeholder, (*config.BORDER_SUBTLE, 120), placeholder.get_rect(), border_radius=6)
+                pygame.draw.line(placeholder, (*config.TEXT_MUTED, 150), (8, 28), (28, 8), 2)
+                screen.blit(placeholder, (tx, ty))
+
+            col = config.TEXT_PRIMARY if selected else (160, 165, 200)
+            self._text(screen, bomb["name"], self.font_md, col, (tx + 44, row_y + 10))
+            if selected:
+                self._text(screen, "•", self.font_sm, acc, (area.right - 22, row_y + 10))
+
+        screen.set_clip(prev_clip)
+        self._draw_scrollbar(screen, area, top, vis, total, acc)
+
+
+    def draw_explosions_list(self, screen, player_id: int, panel: pygame.Rect):
+        area  = self._list_rect(panel)
+        acc   = self._player_color(player_id)
+        total = len(config.EXPLOSIONS)
+        vis   = self._visible_count(panel)
+        top   = self.scroll_top[player_id][config.TAB_EXPLOSIONS]
+
+        self._draw_rrect(screen, config.BG_LIST, area, radius=12, alpha=220)
+        prev_clip = screen.get_clip()
+        screen.set_clip(area)
+
+        for i in range(vis):
+            idx = top + i
+            if idx >= total:
+                break
+            expl     = config.EXPLOSIONS[idx]
+            row_y    = area.y + i * self.row_h
+            row_rect = pygame.Rect(area.x, row_y, area.width, self.row_h)
+            selected = self.selected_index[player_id][config.TAB_EXPLOSIONS] == idx
+
+            if selected:
+                self._draw_rrect(screen, config.BG_ITEM_SEL, row_rect, radius=8, alpha=255)
+                rail = pygame.Surface((3, self.row_h - 10), pygame.SRCALPHA)
+                rail.fill((*acc, 220))
+                screen.blit(rail, (area.x + 2, row_y + 5))
+
+            # Thumbnail
+            thumb = self.explosion_thumbs.get(expl["name"])
+            tx = area.x + 10
+            ty = row_y + (self.row_h - 36) // 2
+            if thumb is not None:
+                screen.blit(thumb, (tx, ty))
+            else:
+                # "None" placeholder
+                placeholder = pygame.Surface((36, 36), pygame.SRCALPHA)
+                pygame.draw.rect(placeholder, (*config.BORDER_SUBTLE, 120), placeholder.get_rect(), border_radius=6)
+                pygame.draw.line(placeholder, (*config.TEXT_MUTED, 150), (8, 28), (28, 8), 2)
+                screen.blit(placeholder, (tx, ty))
+
+            col = config.TEXT_PRIMARY if selected else (160, 165, 200)
+            self._text(screen, expl["name"], self.font_md, col, (tx + 44, row_y + 10))
+            if selected:
+                self._text(screen, "•", self.font_sm, acc, (area.right - 22, row_y + 10))
+
+        screen.set_clip(prev_clip)
+        self._draw_scrollbar(screen, area, top, vis, total, acc)
+    # ------------------------------------------------------------------ scrollbar
+    def _draw_scrollbar(self, screen, area, top, vis, total, accent):
         if total <= vis:
             return
-        bar_w = 6
-        x = area.right - bar_w - 4
-        track = pygame.Rect(x, area.y+4, bar_w, area.height-8)
-        pygame.draw.rect(screen, (80,90,110,160), track, border_radius=3)
-        knob_h = max(20, int(track.height * (vis/total)))
+        bar_w = 4
+        x     = area.right - bar_w - 3
+        track = pygame.Rect(x, area.y + 6, bar_w, area.height - 12)
+        pygame.draw.rect(screen, config.SCROLLBAR_TRK, track, border_radius=2)
+        knob_h  = max(16, int(track.height * (vis / total)))
         max_top = total - vis
-        knob_y = track.y + int((top/max_top) * (track.height - knob_h))
-        pygame.draw.rect(screen, (200,210,230,220), (x, knob_y, bar_w, knob_h), border_radius=3)
+        knob_y  = track.y + int((top / max_top) * (track.height - knob_h)) if max_top else track.y
+        knob    = pygame.Rect(x, knob_y, bar_w, knob_h)
+        pygame.draw.rect(screen, accent, knob, border_radius=2)
 
-    # ---- Náhľad hráča (farba + čiapka) ----
-    def draw_player_preview(self, screen, player_id, rect):
-        # Získaj farbu hráča podľa výberu
-        color_keys = list(AVAILABLE_COLORS.keys())
-        chosen_color = color_keys[self.selected_index[player_id][config.TAB_COLORS]]
+    # ------------------------------------------------------------------ hint bar
+    def draw_hint_bar(self, screen, panel: pygame.Rect, player_id: int):
+        y = panel.bottom - self.hint_h + 6
+        acc = self._player_color(player_id)
 
-        # Idle frame podľa času
-        num_frames = len(self.idle_frames)
-        frame_index = (pygame.time.get_ticks() // (1000 // self.idle_fps)) % num_frames
-        frame = self.idle_frames[frame_index]
+        if player_id == 1:
+            nav_hint    = "A/D  tab    W/S  scroll"
+            select_hint = "Shift  =  lock in"
+        else:
+            nav_hint    = "LEFT/RIGHT  tab    UP/DOWN  scroll"
+            select_hint = "Enter  =  lock in"
 
-        # Použi tintovanie
-        img = self.tint_image(frame, chosen_color)
-        if player_id == 2:
-            img = pygame.transform.flip(img, True, False)
+        self._text(screen, nav_hint, self.font_xs, config.TEXT_HINT,
+                   (panel.centerx, y), align="center")
+        self._text(screen, select_hint, self.font_xs, (*acc,),
+                   (panel.centerx, y + 18), align="center")
 
-        # Pozícia hráča
-        px = rect.x + rect.width // 2 - img.get_width() // 2 + (45 if player_id == 1 else -45)
-        py = rect.y + 72
-        screen.blit(img, (px, py))
+    # ------------------------------------------------------------------ tint
+    def tint_image(self, image, color):
+        tinted = image.copy()
+        tint   = pygame.Surface(image.get_size(), pygame.SRCALPHA)
+        tint.fill((*color, 255))
+        tinted.blit(tint, (0, 0), special_flags=pygame.BLEND_MULT)
+        return tinted
 
-        # --- Čiapka ---
-        hat_def = config.HATS[self.selected_index[player_id][config.TAB_HATS]]
-        hat_name = hat_def["name"]
-        if hat_name != "None":
-            hat_img = self.hat_images.get(hat_name)
-            if hat_img:
-                ox, oy = hat_def["offset"]
+    # ------------------------------------------------------------------ animation tick
+    def update_idle_animation(self):
+        now = pygame.time.get_ticks()
+        if now - self.last_idle_update >= 1000 // self.idle_fps:
+            self.idle_index = (self.idle_index + 1) % len(self.idle_frames)
+            self.last_idle_update = now
 
-                # Špeciálny offset pre čiapku "Devil"
-                if hat_name == "Devil":
-                    if not hasattr(self, 'preview_corner_offset'):
-                        self.preview_corner_offset = {1: 10, 2: -10}
-                    ox += self.preview_corner_offset.get(player_id, 0)
-
-                # Posun podľa idle animácie
-                HAT_IDLE_OFFSETS = [0, -4, 0]  # normál → hore → stojí hore
-                hat_offset = HAT_IDLE_OFFSETS[frame_index]
-                hy = py + oy + hat_offset
-                hx = px + ox
-
-                if player_id == 2:
-                    hat_img = pygame.transform.flip(hat_img, True, False)
-
-                screen.blit(hat_img, (hx, hy))
-
-
-    # ----------------- Draw -----------------
+    # ------------------------------------------------------------------ main draw
     def draw(self, screen):
         self.update_idle_animation()
-        screen.fill((0, 0, 0))
-        screen.blit(self.bg, (0, 0))
 
-        # Panely
-        self.draw_panel(screen, self.panel_rects[1])
-        self.draw_panel(screen, self.panel_rects[2])
+        # Pozadie
+        screen.fill(config.BG_BASE)
+        if self.bg:
+            bg_scaled = pygame.transform.scale(self.bg, (config.SCREEN_WIDTH, config.SCREEN_HEIGHT))
+            dark = pygame.Surface((config.SCREEN_WIDTH, config.SCREEN_HEIGHT), pygame.SRCALPHA)
+            dark.fill((10, 12, 18, 180))
+            screen.blit(bg_scaled, (0, 0))
+            screen.blit(dark, (0, 0))
 
-        # Nadpis
-        title_img = pygame.transform.scale_by(self.title_img, 0.7)
-        screen.blit(title_img, (40, -5))
+        # Title
+        self._text(screen, "BOMBERMAN", self.font_lg, config.TEXT_PRIMARY,
+           (config.SCREEN_WIDTH // 2, 10), align="center")
 
-        # Tabs
-        self.draw_tab_bar(screen, self.panel_rects[1], self.active_tab[1])
-        self.draw_tab_bar(screen, self.panel_rects[2], self.active_tab[2])
+        # "Choose your skin" podnadpis
+        self._text(screen, "CHOOSE YOUR SKIN", self.font_md, config.TEXT_MUTED,
+                   (config.SCREEN_WIDTH // 2, 38), align="center")
 
-        # Zoznamy
-        if self.active_tab[1] == config.TAB_COLORS:
-            self.draw_colors_list(screen, 1, self.panel_rects[1])
-        else:
-            self.draw_hats_list(screen, 1, self.panel_rects[1])
+        for pid in (1, 2):
+            panel = self.panel_rects[pid]
 
-        if self.active_tab[2] == config.TAB_COLORS:
-            self.draw_colors_list(screen, 2, self.panel_rects[2])
-        else:
-            self.draw_hats_list(screen, 2, self.panel_rects[2])
+            # Panel shell
+            self.draw_panel(screen, panel, pid)
 
-        # Náhľady
-        self.draw_player_preview(screen, 1, self.panel_rects[1])
-        self.draw_player_preview(screen, 2, self.panel_rects[2])
+            # Preview s animáciou
+            self.draw_player_preview(screen, pid, panel)
 
-        # Hinty
-        p1_text = f"LEFT/RIGHT tab  •  UP/DOWN scroll  •  Enter"
-        p2_text = f"A/D tab  •  W/S scroll  •  Shift"
-        self.blit_text_with_outline(
-            screen, p1_text, self.small_font, config.COLOR_WHITE,
-            (self.panel_rects[1].x + self.panel_pad, self.panel_rects[1].bottom - 40)
-        )
-        self.blit_text_with_outline(
-            screen, p2_text, self.small_font, config.COLOR_WHITE,
-            (self.panel_rects[2].x + self.panel_pad, self.panel_rects[2].bottom - 40)
-        )
+            # Oddeľovač preview / list
+            sep_y = panel.y + self.preview_h
+            sep_s = pygame.Surface((panel.width - 2 * self.panel_pad, 1), pygame.SRCALPHA)
+            sep_s.fill((*config.BORDER_SUBTLE, 180))
+            screen.blit(sep_s, (panel.x + self.panel_pad, sep_y))
 
-        # Pokračovanie
-        if self.players[1]["color"]:
-            p1_ready = "Ready!"
-            self.blit_text_with_outline(
-                screen, p1_ready, self.font, self.players[1]["color"],
-                (self.panel_rects[1].x + self.panel_pad + 120, 480)
-            )
+            # Tab bar
+            self.draw_tab_bar(screen, panel, pid)
 
-        if self.players[2]["color"]:
-            p2_ready = "Ready!"
-            self.blit_text_with_outline(
-                screen, p2_ready, self.font, self.players[2]["color"],
-                (self.panel_rects[2].x + self.panel_pad + 120, 480)
-            )
+            # Zoznam
+            if self.active_tab[pid] == config.TAB_COLORS:
+                self.draw_colors_list(screen, pid, panel)
+            elif self.active_tab[pid] == config.TAB_HATS:
+                self.draw_hats_list(screen, pid, panel)
+            elif self.active_tab[pid] == config.TAB_BOMBS:
+                self.draw_bombs_list(screen, pid, panel)
+            else:
+                self.draw_explosions_list(screen, pid, panel)
+
+            # Hint
+            self.draw_hint_bar(screen, panel, pid)
+
+        # "SPACE to continue" – uprostred dole, len ak obaja ready
         if self.players[1]["color"] and self.players[2]["color"]:
-            cont = "Obaja vybrali – SPACE"
-            cx = (config.SCREEN_WIDTH - self.font.size(cont)[0]) // 2
-            self.blit_text_with_outline(screen, cont, self.font, (255,255,255), (cx, 24))
+            msg = "SPACE  –  LET'S PLAY"
+            bw  = self.font_md.size(msg)[0] + 40
+            bh  = 38
+            bx  = config.SCREEN_WIDTH // 2 - bw // 2
+            by  = self.panel_rects[1].bottom + 14
 
+            # žltý button
+            BTN_COLOR = (247, 201, 72)
+            self._draw_rrect(screen, BTN_COLOR, pygame.Rect(bx, by, bw, bh), radius=12)
+            self._text(screen, msg, self.font_md, config.BG_BASE, (config.SCREEN_WIDTH // 2, by + 8),
+                       align="center")
 
-    # ----------------- Events -----------------
+    # ------------------------------------------------------------------ events (nezmenené)
     def handle_events(self, event):
         color_keys = list(AVAILABLE_COLORS.keys())
-
         if event.type != pygame.KEYDOWN:
             return
 
         def total_count(tab):
-            return len(color_keys) if tab == config.TAB_COLORS else len(config.HATS)
+            if tab == config.TAB_COLORS:     return len(color_keys)
+            if tab == config.TAB_HATS:       return len(config.HATS)
+            if tab == config.TAB_BOMBS:      return len(config.BOMBS)
+            if tab == config.TAB_EXPLOSIONS: return len(config.EXPLOSIONS)
 
-        # ================= PLAYER 1 =================
+        # Player 1
         if event.key == self.controls[1]['left']:
             self.active_tab[1] = max(0, self.active_tab[1] - 1)
-
         elif event.key == self.controls[1]['right']:
             self.active_tab[1] = min(len(config.TAB_NAMES) - 1, self.active_tab[1] + 1)
-
         elif event.key == self.controls[1]['up']:
             tab = self.active_tab[1]
             t = total_count(tab)
             self.selected_index[1][tab] = (self.selected_index[1][tab] - 1) % t
             self._clamp_scroll(1, tab, t, self.panel_rects[1])
-
         elif event.key == self.controls[1]['down']:
             tab = self.active_tab[1]
             t = total_count(tab)
             self.selected_index[1][tab] = (self.selected_index[1][tab] + 1) % t
             self._clamp_scroll(1, tab, t, self.panel_rects[1])
-
         elif event.key == self.controls[1]['select']:
             color_idx = self.selected_index[1][config.TAB_COLORS]
             chosen_color = color_keys[color_idx]
             if chosen_color != self.players[2]["color"]:
                 self.players[1]["color"] = chosen_color
+            self.players[1]["hat"]       = config.HATS      [self.selected_index[1][config.TAB_HATS]]      ["name"]
+            self.players[1]["bomb"]      = config.BOMBS     [self.selected_index[1][config.TAB_BOMBS]]     ["name"]
+            self.players[1]["explosion"] = config.EXPLOSIONS[self.selected_index[1][config.TAB_EXPLOSIONS]]["name"]
 
-            hat_idx = self.selected_index[1][config.TAB_HATS]
-            self.players[1]["hat"] = config.HATS[hat_idx]["name"]
-
-
-        # ================= PLAYER 2 =================
+        # Player 2
         if event.key == self.controls[2]['left']:
             self.active_tab[2] = max(0, self.active_tab[2] - 1)
-
         elif event.key == self.controls[2]['right']:
             self.active_tab[2] = min(len(config.TAB_NAMES) - 1, self.active_tab[2] + 1)
-
         elif event.key == self.controls[2]['up']:
             tab = self.active_tab[2]
             t = total_count(tab)
             self.selected_index[2][tab] = (self.selected_index[2][tab] - 1) % t
             self._clamp_scroll(2, tab, t, self.panel_rects[2])
-
         elif event.key == self.controls[2]['down']:
             tab = self.active_tab[2]
             t = total_count(tab)
             self.selected_index[2][tab] = (self.selected_index[2][tab] + 1) % t
             self._clamp_scroll(2, tab, t, self.panel_rects[2])
-
         elif event.key == self.controls[2]['select']:
             color_idx = self.selected_index[2][config.TAB_COLORS]
             chosen_color = color_keys[color_idx]
             if chosen_color != self.players[1]["color"]:
                 self.players[2]["color"] = chosen_color
+            self.players[2]["hat"]       = config.HATS      [self.selected_index[2][config.TAB_HATS]]      ["name"]
+            self.players[2]["bomb"]      = config.BOMBS     [self.selected_index[2][config.TAB_BOMBS]]     ["name"]
+            self.players[2]["explosion"] = config.EXPLOSIONS[self.selected_index[2][config.TAB_EXPLOSIONS]]["name"]
 
-            hat_idx = self.selected_index[2][config.TAB_HATS]
-            self.players[2]["hat"] = config.HATS[hat_idx]["name"]
-
-        # ================= POKRAČOVANIE =================
+        # Continue
         if event.key == pygame.K_SPACE and self.players[1]["color"] and self.players[2]["color"]:
             payload = {
-                1: (self.players[1]["color"], self.players[1]["hat"]),
-                2: (self.players[2]["color"], self.players[2]["hat"]),
+                1: (self.players[1]["color"], self.players[1]["hat"],
+                    self.players[1]["bomb"],  self.players[1]["explosion"]),
+                2: (self.players[2]["color"], self.players[2]["hat"],
+                    self.players[2]["bomb"],  self.players[2]["explosion"]),
             }
             self.state_manager.change_state("MapSelector", payload)
-
+    
     def render(self, screen):
         self.draw(screen)

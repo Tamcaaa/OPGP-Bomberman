@@ -11,7 +11,7 @@ from game_objects.multiplayer.multiplayer_player import Player
 from managers.music_manager import MusicManager
 from managers.network_manager import NetworkManager
 from managers.state_manager import StateManager
-from maps.test_field_map import all_maps
+from maps.map_generator import generate_map
 from image_loader import load_images, load_hat_images
 from game_objects.general.bomb import Bomb
 from states.multiplayer.multiplayer_lobby import PlayerData
@@ -20,7 +20,7 @@ class MultiplayerTestField(State):
     def __init__(self, game, selected_map, network_manager: NetworkManager, players_list: Dict[str, PlayerData], player_name: str):
         super().__init__(game)
         
-        self.network_manager: NetworkManager  = network_manager
+        self.network_manager: NetworkManager = network_manager
         self.players_list = players_list
         self.player_name: str = player_name
         
@@ -31,14 +31,13 @@ class MultiplayerTestField(State):
         self.my_player: PlayerData = player
         self.state_manager = StateManager(self.game)
         
-        # Get map name from selected_map if it's a tuple, otherwise use as is
         if isinstance(selected_map, tuple):
             self.map_name = selected_map[0]
-            self.tile_map = copy.deepcopy(selected_map[1])
+            base_map = selected_map[1]
         else:
             self.map_name = selected_map
-            self.tile_map = copy.deepcopy(all_maps[selected_map])
-        
+            base_map = None
+
         pygame.display.set_caption(f"BomberMan: {self.map_name} User: {self.player_name}")
         
         # Music manager
@@ -49,27 +48,39 @@ class MultiplayerTestField(State):
         self.explosion_group = pygame.sprite.Group()
         self.powerup_group = pygame.sprite.Group()
 
-        # Hidden power-ups map - stores which bricks have power-ups underneath
-        self.hidden_powerups : Dict[Tuple[int,int], str] = {}
+        # Hidden power-ups map
+        self.hidden_powerups: Dict[Tuple[int, int], str] = {}
+        
         # Load images
         self.images = load_images()
-        hats = [player.final_hat for player in self.players_list.values()]
-        self.hat_images = load_hat_images(hats)
-        # Feedback message for power-ups
+        self.hat_images, self.hat_thumbs = load_hat_images()
+        
+        # Feedback message
         self.powerup_message = ""
         self.message_timer = 0
 
-        self.players: Dict[str,Player] = {}
+        # Players dict - musí byť definované PRED is_host blokom
+        self.players: Dict[str, Player] = {}
         self.remote_last_input: Dict[str, int] = {}
         self.remote_idle_timeout_ms = 250
-        
+
+        # tile_map - musí byť definované PRED is_host blokom
+        self.tile_map = None
+
+        # ONLY HOST GENERATES MAP
         if self.my_player.is_host:
-            # Players: dict player_name -> Player object
+            if base_map is not None:
+                self.tile_map = copy.deepcopy(base_map)
+            else:
+                self.tile_map = copy.deepcopy(generate_map(self.map_name))
+            
             for player in self.players_list.values():
                 spawn = "spawn1" if player.name == self.player_name else "spawn4"
                 self.players[player.name] = Player(spawn, self, player.name, player.final_color, player.final_hat)
-            self.send_player_list()
+            
             self.place_hidden_powerups()
+            self.send_player_list()
+            self.send_map_state()
 
     def _pop_to_state_name(self, target_state_name: str) -> None:
         while self.game.state_stack and self.game.state_stack[-1].__class__.__name__ != target_state_name:
@@ -103,6 +114,12 @@ class MultiplayerTestField(State):
             self._handle_bomb_update_packet(packet_data, addr)
         elif packet_type == 'POWERUP_UPDATE':
             self._handle_powerup_update_packet(packet_data, addr)
+        elif packet_type == "MAP_STATE":
+            self.tile_map = packet_data["tile_map"]
+            self.hidden_powerups = {
+                tuple(map(int, k.split(","))): v
+                for k, v in packet_data["hidden_powerups"].items()
+            }
 
     def _handle_player_list_packet(self, packet_data, addr):
         for player_name, spawn in packet_data.get('list').items():
@@ -144,7 +161,12 @@ class MultiplayerTestField(State):
         indexes = {key: ('spawn1' if key == self.player_name else 'spawn4') for key in self.players.keys()}
         packet_data = {'list': indexes}
         self.send_packet('PLAYER_LIST', packet_data)
-
+    def send_map_state(self):
+        packet_data = {
+            "tile_map": self.tile_map,
+            "hidden_powerups": {f"{x},{y}": v for (x, y), v in self.hidden_powerups.items()}
+        }
+        self.send_packet("MAP_STATE", packet_data)
     def send_packet(self, packet_type, packet_data):
         scope = 'MultiplayerTestField'
         for player in self.players_list.values():
@@ -308,19 +330,14 @@ class MultiplayerTestField(State):
     def draw_grid(self, screen):
         if self.map_name == "Crystal Caves":
             screen.blit(self.images['cave_bg'], (0, 0))
-            pass
-        if self.map_name == "Classic":
+        elif self.map_name == "Classic":
             screen.blit(self.images['grass_bg'], (0, 0))
-            pass
-        if self.map_name == "Desert Maze":
+        elif self.map_name == "Desert Maze":
             screen.blit(self.images['sand_bg'], (0, 0))
-            pass
-        if self.map_name == "Ancient Ruins":
+        elif self.map_name == "Ancient Ruins":
             screen.blit(self.images['ruins_bg'], (0, 0))
-            pass
-        if self.map_name == "Urban Assault":
+        elif self.map_name == "Urban Assault":
             screen.blit(self.images['urban_bg'], (0, 0))
-            pass
         else:
             for line in range((config.SCREEN_WIDTH // config.GRID_SIZE) + 1):
                 pygame.draw.line(screen, config.COLOR_BLACK, (line * config.GRID_SIZE, 30),
@@ -397,7 +414,11 @@ class MultiplayerTestField(State):
     
     def render(self, screen):
         screen.fill(config.COLOR_WHITE)
-
+        if self.tile_map is None:
+            screen.fill(config.COLOR_BLACK)
+            waiting = self.game.font.render("Waiting for host...", True, config.COLOR_WHITE)
+            screen.blit(waiting, (config.SCREEN_WIDTH // 2 - waiting.get_width() // 2, config.SCREEN_HEIGHT // 2))
+            return
         self.draw_grid(screen)
         self.draw_walls(screen)
         self.draw_menu(screen)

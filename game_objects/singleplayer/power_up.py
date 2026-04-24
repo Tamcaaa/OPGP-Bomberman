@@ -2,7 +2,9 @@ import pygame
 import random
 import config
 import time
-import os  # Import os directly
+import os
+
+from game_objects.singleplayer import player 
 
 
 class PowerUp(pygame.sprite.Sprite):
@@ -16,7 +18,8 @@ class PowerUp(pygame.sprite.Sprite):
                 "range_powerup",  # Increases explosion range
                 "freeze_powerup",  # Freezes the other player
                 "live+_powerup",  # Adds an extra life
-                "shield_powerup"  # Temporary invincibility
+                "shield_powerup",  # Temporary invincibility
+                "darkness_powerup"  # Reduces visibility for the other player
             ])
         else:
             self.type = powerup_type
@@ -27,7 +30,7 @@ class PowerUp(pygame.sprite.Sprite):
             # Try to load the image, but if the file doesn't exist, create a fallback
             if os.path.exists(image_path):
                 self.image = pygame.image.load(image_path).convert_alpha()
-                self.image = pygame.transform.scale(self.image, (config.GRID_SIZE, config.GRID_SIZE))
+                self.image = pygame.transform.scale(self.image, (25, 25))
             else:
                 self.image = self.create_fallback_image()
         except (pygame.error, FileNotFoundError):
@@ -41,11 +44,11 @@ class PowerUp(pygame.sprite.Sprite):
 
         # Set power-up properties
         self.reveal_time = time.time()
-        self.field_duration = 30  # Power-up remains on the field for 30 seconds
+        self.field_duration = config.FIELD_DURATION  # Power-up remains on the field for 30 seconds
         self.collected = False
-        self.effect_duration = 30  # Duration of effect in seconds after collection
-        self.hidden = True  # Start as hidden under a brick
-        self.frozen_until = 0
+        self.effect_duration = config.EFFECT_DURATION  # Duration of effect in seconds after collection
+        self.hidden = True  
+        self.frozen_until = config.FROZEN_UNTIL  # Timestamp until which the player is frozen
 
     def create_fallback_image(self):
         """Create a colored rectangle as fallback for missing images"""
@@ -62,6 +65,8 @@ class PowerUp(pygame.sprite.Sprite):
             image.fill((0, 255, 0))  # Green for extra life
         elif self.type == "shield_powerup":
             image.fill((255, 255, 0))  # Yellow for invincibility
+        elif self.type == "darkness_powerup":
+            image.fill((255, 0, 255))  # Magenta for darkness
         else:
             image.fill((150, 150, 150))  # Gray for unknown types
 
@@ -77,10 +82,10 @@ class PowerUp(pygame.sprite.Sprite):
         return image
 
     def update(self):
-        """Check if the power-up should disappear due to time limit"""
-        # Only visible power-ups should expire
-        if not self.hidden and not self.collected and time.time() - self.reveal_time > self.field_duration:
-            self.kill()  # Remove power-up if it's been on the field too long
+        if not self.hidden:
+            # odstráni sa po čase
+            if time.time() - self.reveal_time > self.field_duration:
+                self.kill()
 
     def reveal(self):
         """Reveal the power-up when the brick hiding it is destroyed"""
@@ -115,4 +120,7 @@ class PowerUp(pygame.sprite.Sprite):
             player.activate_powerup("shield_powerup", shield_duration)
             return f"Player {player.player_id} is invincible for {shield_duration}s!"
 
+        elif self.type == "darkness_powerup":
+            player.test_field.activate_darkness(15)
+            return "Darkness falls!"
         return f"Player {player.player_id} collected a power-up!"

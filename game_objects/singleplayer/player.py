@@ -78,31 +78,31 @@ class Player(pygame.sprite.Sprite):
 
         # --- Skin & Hat podpora ---
         self.hat: Optional[str] = None
-        self.skin: Optional[Tuple[int, int, int] | Tuple[int, int, int, int]] = self._normalize_skin(skin)
+        self.bomb: Optional[str] = "Classic"
+        self.explosion: Optional[str] = "Classic"
 
-        # Aplikuj skin (ak je)
+        self.skin = self._normalize_skin(skin)
+
         self.apply_skin()
 
-    # =======================
     # Pomocné / Skin & Hat
-    # =======================
     def _normalize_skin(self, skin: SkinPayload):
-        """
-        Vráti čisté RGB(A) pre farbenie. Ak príde ((r,g,b[,(a)]), "HatName"),
-        uloží hat do self.hat a vráti len farbu. Ak formát nesedí -> None.
-        """
         if skin is None:
             return None
 
-        # (color_like, "HatName")
-        if isinstance(skin, (tuple, list)) and len(skin) == 2:
+        # (color, hat, bomb, explosion) — nový 4-prvkový formát
+        if isinstance(skin, (tuple, list)) and len(skin) == 4:
+            color_part, maybe_hat, maybe_bomb, maybe_explosion = skin
+            self.hat       = str(maybe_hat)       if maybe_hat       is not None else None
+            self.bomb      = str(maybe_bomb)      if maybe_bomb      is not None else None
+            self.explosion = str(maybe_explosion) if maybe_explosion is not None else None
+            skin = color_part
+
+        # (color, hat) — starý 2-prvkový formát (zachovaná kompatibilita)
+        elif isinstance(skin, (tuple, list)) and len(skin) == 2:
             color_part, maybe_hat = skin
-            # ulož hat (aj keby neskôr nebol použitý)
-            try:
-                self.hat = str(maybe_hat) if maybe_hat is not None else None
-            except Exception:
-                self.hat = None
-            skin = color_part  # ďalej budeme riešiť už len farbu
+            self.hat = str(maybe_hat) if maybe_hat is not None else None
+            skin = color_part
 
         # pygame.Color -> RGBA tuple
         if isinstance(skin, pygame.Color):
@@ -110,7 +110,6 @@ class Player(pygame.sprite.Sprite):
 
         # (r,g,b) alebo (r,g,b,a)
         if isinstance(skin, (tuple, list)) and len(skin) in (3, 4):
-            # validácia zložiek
             try:
                 comps = tuple(int(c) for c in skin)
                 if len(comps) == 3:
@@ -127,8 +126,8 @@ class Player(pygame.sprite.Sprite):
             except Exception:
                 return None
 
-        # nič z vyššie uvedeného – ignoruj
         return None
+        
 
     def apply_skin(self):
         """Aplikuje farebný skin na všetky snímky hráča (bezpečne)."""
@@ -152,9 +151,7 @@ class Player(pygame.sprite.Sprite):
         # aktívny frame nech ostane konzistentný s aktuálnym smerom
         self.image = self.images[self.current_direction][self.frame_index]
 
-    # =======================
     # Gameplay logika
-    # =======================
     def check_hit(self):
         """Check if player is hit by an explosion (s i-frame ochrannou)."""
         now = time.time()
@@ -208,26 +205,26 @@ class Player(pygame.sprite.Sprite):
         return self.maxBombs
 
     def handle_queued_keys(self, now):
-        """Spracuje „držané“ klávesy s cooldownom (zahŕňa freeze spomalenie)."""
-        now = pygame.time.get_ticks()
-        move_keys = self.move_keys
+        now_ticks = pygame.time.get_ticks()
+        move_keys = self.move_keys  # ← toto chýbalo!
 
-        move_delay = config.MOVE_COOLDOWN * 2 if now < self.freeze_timer else config.MOVE_COOLDOWN
+        is_frozen = time.time() < self.freeze_timer
+        move_delay = config.MOVE_COOLDOWN * 2 if is_frozen else config.MOVE_COOLDOWN
 
-        if now - self.last_move_time >= move_delay and self.held_down_keys:
+        if now_ticks - self.last_move_time >= move_delay and self.held_down_keys:
             key = self.held_down_keys[-1]
-            if key == move_keys[0]:      # Up
+            if key == move_keys[0]:
                 self.move(0, -1, "up")
-            elif key == move_keys[2]:    # Down
+            elif key == move_keys[2]:
                 self.move(0, 1, "down")
-            elif key == move_keys[1]:    # Left
+            elif key == move_keys[1]:
                 self.move(-1, 0, "left")
-            elif key == move_keys[3]:    # Right
+            elif key == move_keys[3]:
                 self.move(1, 0, "right")
-            elif key == move_keys[4]:    # Bomb
+            elif key == move_keys[4]:
                 self.deploy_bomb(self.bomb_group, self.explosion_group)
 
-            self.last_move_time = now
+            self.last_move_time = now_ticks
 
     def move(self, dx, dy, direction):
         """Move the player in the specified direction."""
@@ -267,10 +264,14 @@ class Player(pygame.sprite.Sprite):
         self.music_manager.play_sound("walk", "walk_volume")
 
     def deploy_bomb(self, bomb_group, explosion_group):
-        """Deploy a bomb at the player's current position."""
         if self.currentBomb > 0:
-            Bomb(self, bomb_group, explosion_group, self.test_field)
-            self.currentBomb -= 1  # Decrement available bombs
+            # Skontroluj či na tejto pozícii už bomba leží
+            for bomb in bomb_group:
+                if bomb.rect.topleft == self.rect.topleft:
+                    return  # Už tam je bomba, nič nepokladaj
+            
+            Bomb(self, bomb_group, explosion_group, self.test_field, self.bomb, self.explosion)
+            self.currentBomb -= 1
 
     def find_paired_teleport(self, teleport_type, current_x, current_y):
         tiles = []
@@ -311,9 +312,7 @@ class Player(pygame.sprite.Sprite):
         # Idle frame
         self.idle_frames = []
         for i in range(3):
-            frame = pygame.image.load(
-                os.path.join("assets/player_animations", f"p_{self.player_id}_idle_{i}.png")
-            ).convert_alpha()
+            frame = pygame.image.load(os.path.join("assets/player_animations", f"p_{self.player_id}_idle_{i}.png")).convert_alpha()
             self.idle_frames.append(pygame.transform.scale(frame, (frame.get_width()*8, frame.get_height()*8)))
 
         # Farba z SkinSelector
@@ -331,6 +330,7 @@ class Player(pygame.sprite.Sprite):
         return tinted
     def update_movement_status(self):
         self.moving = False
+        
         if self.held_down_keys:
             if pygame.K_w in self.held_down_keys or pygame.K_UP in self.held_down_keys:
                 self.current_direction = "up"

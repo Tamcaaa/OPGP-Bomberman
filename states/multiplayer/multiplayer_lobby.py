@@ -60,7 +60,8 @@ class MultiplayerLobby(State):
     def __init__(self, game, player_name, network_manager: NetworkManager, players_list=None, *, is_host=False, lobby_name=''):
         super().__init__(game)
         pygame.display.set_caption("BomberMan: Multiplayer Lobby")
-        self.bg_image = pygame.image.load(os.path.join(game.photos_dir, "bg.png"))
+        self.images = load_images()
+        self.bg = self.images['skinselector_bg']
 
         self.music_manager = MusicManager()
         self.state_manager = StateManager(game)
@@ -586,7 +587,7 @@ class MultiplayerLobby(State):
         self.network_manager.update()
     # ---------------- Render ---------------
     def render(self, screen):
-        screen.blit(self.bg_image, (0, 0))
+        screen.blit(self.bg, (0, 0))
 
         # Title
         self.game.draw_text(screen, self.lobby_name, config.COLOR_BLACK, config.SCREEN_WIDTH // 2, 30)

@@ -57,8 +57,9 @@ class BomberManApp:
         text_rect = text_surface.get_rect()
         text_rect.center = (x, y)
         screen.blit(text_surface, text_rect)
-
+        
 if __name__ == '__main__':
     app = BomberManApp()
     app.run()
     pygame.quit()
+

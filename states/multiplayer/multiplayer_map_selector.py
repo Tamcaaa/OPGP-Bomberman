@@ -6,11 +6,10 @@ import config
 import os
 from typing import Any, Dict
 from states.general.state import State
-from maps.test_field_map import all_maps
 from collections import Counter
 from managers.state_manager import StateManager
 from managers.network_manager import NetworkManager
-
+from maps.test_field_map import MAP_NAMES
 Addr = tuple[str, int]
 Packet = Dict[str, Any]
 
@@ -18,8 +17,8 @@ class MultiplayerMapSelector(State):
     def __init__(self, game, player_list, network_manger: NetworkManager, my_player_name: str):
         super().__init__(game)
         pygame.display.set_caption("BomberMan: Map Selector")
-        self.bg_image = pygame.image.load(os.path.join("assets", "battlefield-bg.png"))
-        self.battlefield_text = pygame.image.load(os.path.join("assets", "battlefield.png"))
+        self.bg_image = pygame.image.load(os.path.join("assets","backgrounds", "menu", "battlefield-bg.png"))
+        self.battlefield_text = pygame.image.load(os.path.join("assets", "backgrounds", "titles", "battlefield.png"))
         
         self.network_manager = network_manger
         self.players_list = player_list
@@ -35,7 +34,6 @@ class MultiplayerMapSelector(State):
         self.map_selection_seq_by_addr: Dict[Addr, int] = {}
         self.pending_state_change: str | None = None
         self.state_change_seq_by_addr: Dict[Addr, int] = {}
-
         # Fonts
         self.title_font = pygame.font.Font("CaveatBrush-Regular.ttf", 46)
         self.map_font = pygame.font.SysFont('Arial', 26)
@@ -57,7 +55,7 @@ class MultiplayerMapSelector(State):
 
     # ==================== NETWORK ====================
     def select_random_maps(self):
-        available_maps = list(self.all_maps.keys())
+        available_maps = self.selected_maps
         count = min(3, len(available_maps))
         self.selected_maps = random.sample(available_maps, count)
 

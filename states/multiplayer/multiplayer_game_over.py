@@ -2,6 +2,7 @@ import os
 import pygame.image
 import config
 
+from image_loader import load_images, load_hat_images   
 from states.general.state import State
 from managers.music_manager import MusicManager
 from custom_classes.button import Button
@@ -13,7 +14,9 @@ class MultiplayerGameOver(State):
         pygame.display.set_caption("BomberMan: GameOver")
         self.map_name = map_name
         self.network_manager:NetworkManager = network_manager
-        self.bg_image = pygame.image.load(os.path.join(game.photos_dir, "bg.png"))
+
+        self.images = load_images()
+        self.bg = self.images['skinselector_bg']
         self.winner: str = winner
 
         # Create buttons
@@ -38,7 +41,7 @@ class MultiplayerGameOver(State):
             self.exit_state()
             self.network_manager.close_socket()
     def render(self, screen):
-        screen.blit(self.bg_image, (0, 0))
+        screen.blit(self.bg, (0, 0))
         self.game.draw_text(screen, "GAME OVER", config.COLOR_BLACK, config.SCREEN_WIDTH // 2, config.SCREEN_HEIGHT // 4)
         self.game.draw_text(screen, f"{self.winner} won!", config.COLOR_BLACK, config.SCREEN_WIDTH // 2, config.SCREEN_HEIGHT // 3)
         self.exit_button.draw(screen)
