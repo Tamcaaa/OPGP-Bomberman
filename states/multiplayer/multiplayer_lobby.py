@@ -74,6 +74,7 @@ class MultiplayerLobby(State):
             self.lobby_name = f"{self.player_name}'s Lobby"
 
         self.leave_seq = None
+        self.leave_target_addr: Addr | None = None
         self.pending_state_change: str | None = None
         self.state_change_seq_by_addr: Dict[Addr, int] = {}
         self.host_setup_failed = False
@@ -321,7 +322,22 @@ class MultiplayerLobby(State):
         if event.type == pygame.MOUSEBUTTONDOWN:
             if self.back_button.rect.collidepoint(event.pos):
                 packet_data = {'player_name': self.my_player.name}
-                self.leave_seq = self.network_manager.send_packet(self.my_player.addr, LEAVE_PACKET_TYPE, packet_data, LOBBY_SCOPE)
+                if self.my_player.is_host:
+                    peer = self._get_peer_player()
+                    if not peer:
+                        self.network_manager.close_socket()
+                        self.exit_state()
+                        self.state_manager.change_state('MainMenu')
+                        return
+                    self.leave_target_addr = peer.addr
+                    self.leave_seq = self.network_manager.send_packet(peer.addr, LEAVE_PACKET_TYPE, packet_data, LOBBY_SCOPE)
+                else:
+                    host_player = next((player for player in self.players_list.values() if player.is_host), None)
+                    if not host_player:
+                        self._pop_to_input_popup()
+                        return
+                    self.leave_target_addr = host_player.addr
+                    self.leave_seq = self.network_manager.send_packet(host_player.addr, LEAVE_PACKET_TYPE, packet_data, LOBBY_SCOPE)
                 return
 
             if self.is_host and self.start_button.rect.collidepoint(event.pos):
@@ -395,7 +411,7 @@ class MultiplayerLobby(State):
             'max_players': self.max_players,
         }
         self.network_manager.send_packet(addr, HOST_OFFER_PACKET_TYPE, data, LOBBY_DISCOVERY_SCOPE)
-    
+
     def _handle_skin_update_packet(self, packet_data, addr):
         player_name = packet_data.get('player_name')
         if player_name not in self.players_list:
@@ -419,18 +435,24 @@ class MultiplayerLobby(State):
     def _handle_player_list_packet(self, packet_data, addr) -> None:
         player_list = packet_data.get('player_list')
         self.players_list = self.convert_player_list_to_Player(player_list)
-        print(f'[PLAYER_LIST UPDATE] player_list: {self.players_list}') 
+        print(f'[PLAYER_LIST UPDATE] player_list: {self.players_list}')
 
     def _handle_leave_packet(self, packet_data, addr) -> None:
         player_name = packet_data.get('player_name')
         print(f'{player_name} left from {addr}')
-        del self.players_list[player_name]
-        self._broadcast_player_list()
+        if player_name in self.players_list:
+            del self.players_list[player_name]
+
+        self._pop_to_input_popup()
+
+    def _pop_to_lobby_selector(self) -> None:
+        while self.game.state_stack and self.game.state_stack[-1].__class__.__name__ != 'MultiplayerSelector':
+            self.game.state_stack[-1].exit_state()
+
         
     def _broadcast_player_list(self) -> None:
         if self.my_player is None:
             return
-        
         data = {'player_list': self.convert_player_list_to_dict(self.players_list)}
         for player in self.players_list.values():
             if player.addr == self.my_player.addr:
@@ -537,7 +559,7 @@ class MultiplayerLobby(State):
             self._complete_pending_state_change()
 
     def check_leave_seq(self) -> None:
-        if self.leave_seq and self.my_player and self.network_manager.get_completed_seq(self.my_player.addr,seq=self.leave_seq):
+        if self.leave_seq and self.leave_target_addr and self.network_manager.get_completed_seq(self.leave_target_addr, seq=self.leave_seq):
             print(f'[LEFT LOBBY] {self.my_player.name} has left the lobby.')
             self.network_manager.close_socket()
             self.exit_state()

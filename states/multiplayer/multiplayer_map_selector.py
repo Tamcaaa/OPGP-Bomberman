@@ -51,6 +51,10 @@ class MultiplayerMapSelector(State):
             self.select_random_maps()
             self.send_map_selection()
 
+    def _pop_to_state_name(self, target_state_name: str) -> None:
+        while self.game.state_stack and self.game.state_stack[-1].__class__.__name__ != target_state_name:
+            self.game.state_stack[-1].exit_state()
+
     # ==================== NETWORK ====================
     def select_random_maps(self):
         available_maps = list(self.all_maps.keys())

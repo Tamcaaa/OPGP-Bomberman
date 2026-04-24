@@ -9,9 +9,9 @@ Packet = Dict[str, Any]
 
 
 class NetworkManager:
-    # True => reliable (ACK + resend), False => unreliable (send once).
+    # True: reliable (ACK + resend), False: unreliable (send once).
     PACKET_RELIABILITY: Dict[str, bool] = {
-        # Discovery / lobby browse (best-effort only)
+        # Discovery / lobby browse
         'DISCOVER_HOSTS': False,
         'HOST_OFFER': False,
 
@@ -29,7 +29,7 @@ class NetworkManager:
 
         # Map selector flow
         'MAP_SELECTION': True,
-        'MOVE_SELECTION': False,      # Frequent cursor updates can be dropped.
+        'MOVE_SELECTION': False,     
         'CONFIRM_SELECTION': True,
         'CANCEL_SELECTION': True,
         'FINAL_MAP_SELECTION': True,
@@ -59,6 +59,7 @@ class NetworkManager:
         self.resend_timeout = resend_timeout
         self.last_cleanup = time.time()
         self.cleanup_interval = 30
+
 
     def close_socket(self) -> None:
         self.close_connection()
@@ -149,7 +150,6 @@ class NetworkManager:
         except Exception:
             print(f'[WARN] Invalid packet: {raw} from {addr}')
             return
-
         packet_type = packet.get('type')
         seq = packet.get('seq')
 
@@ -178,8 +178,9 @@ class NetworkManager:
         self._send_raw_packet(addr, {'type': 'ACK', 'seq': seq})
 
     def update(self) -> None:
-        """Resend un-ACKed packets and periodically trim sequence caches."""
+        """Resend un-ACKed packets"""
         now = time.time()
+
         for seq, (addr, packet, last_time_sent, resend_try) in list(self._pending.items()):
             if now - last_time_sent >= self.resend_timeout and resend_try <= self.resend_tries:
                 self._send_raw_packet(addr, packet)

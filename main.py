@@ -1,15 +1,11 @@
 import config
 import os
 import pygame
-import time
 from managers.state_manager import StateManager
-from states.general.state import State
-from managers.music_manager import MusicManager
-
 
 class BomberManApp:
     def __init__(self):
-        pygame.init()  # Initialize Pygame
+        pygame.init()
         pygame.mixer.init()
 
         self.game_canvas = pygame.Surface((config.SCREEN_WIDTH, config.SCREEN_HEIGHT))
@@ -40,13 +36,11 @@ class BomberManApp:
         current_stack.update()
 
     def render(self):
-        """Render the game state."""
         self.state_stack[-1].render(self.game_canvas)
         self.screen.blit(self.game_canvas, (0, 0))
         pygame.display.flip()
 
     def load_states(self):
-        """Load the MainMenu state."""
         self.state_manager.change_state("MainMenu")
 
     def get_events(self):
@@ -59,17 +53,12 @@ class BomberManApp:
                 self.state_stack[-1].handle_events(event)
 
     def draw_text(self, screen: pygame.Surface, text: str, color: pygame.Color | tuple, x: int, y: int):
-        """Render text on the screen."""
         text_surface = self.h1_font.render(text, True, color)
         text_rect = text_surface.get_rect()
         text_rect.center = (x, y)
         screen.blit(text_surface, text_rect)
 
-
-# Start the game
-
 if __name__ == '__main__':
     app = BomberManApp()
     app.run()
     pygame.quit()
-

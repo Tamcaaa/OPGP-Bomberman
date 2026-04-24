@@ -71,10 +71,16 @@ class MultiplayerTestField(State):
             self.send_player_list()
             self.place_hidden_powerups()
 
+    def _pop_to_state_name(self, target_state_name: str) -> None:
+        while self.game.state_stack and self.game.state_stack[-1].__class__.__name__ != target_state_name:
+            self.game.state_stack[-1].exit_state()
+
     # ---------------- NETWORK ----------------
     def handle_network_packets(self):
-        poll_data = self.network_manager.poll()
-        if poll_data:
+        while True:
+            poll_data = self.network_manager.poll()
+            if not poll_data:
+                break
             self.handle_packet(poll_data)
 
     def handle_packet(self, poll_data):
@@ -162,6 +168,7 @@ class MultiplayerTestField(State):
         now = pygame.time.get_ticks()
 
         self.handle_network_packets()
+
         # Move local player based on held keys
         if self.players:
             local_player = self.players.get(self.player_name)
