@@ -223,6 +223,7 @@ class InputPopup(State):
                 return
             selected_lobby = self.discovered_hosts.get(self.selected_host_addr, {})
             lobby_name = selected_lobby.get('lobby_name', '')
+            self.network_manager.register_peer(addr)
             self.exit_state()
             self.state_manager.change_state('MultiplayerLobby', self.username_text.strip(),
                                            self.network_manager, player_list, lobby_name=lobby_name)

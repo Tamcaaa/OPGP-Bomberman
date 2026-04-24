@@ -443,13 +443,6 @@ class MultiplayerLobby(State):
         if player_name in self.players_list:
             del self.players_list[player_name]
 
-        self._pop_to_input_popup()
-
-    def _pop_to_lobby_selector(self) -> None:
-        while self.game.state_stack and self.game.state_stack[-1].__class__.__name__ != 'MultiplayerSelector':
-            self.game.state_stack[-1].exit_state()
-
-        
     def _broadcast_player_list(self) -> None:
         if self.my_player is None:
             return
@@ -490,6 +483,8 @@ class MultiplayerLobby(State):
         
         self.players_list[player_name] = new_player
         print(f"{player_name} joined from {addr}")
+
+        self.network_manager.register_peer(addr)
 
         self._broadcast_player_list()
 
@@ -564,10 +559,26 @@ class MultiplayerLobby(State):
             self.network_manager.close_socket()
             self.exit_state()
             self.state_manager.change_state('MainMenu')
+    def check_timed_out_peer(self) -> None:
+        if self.network_manager.peer_timedout:
+            if self.my_player.is_host:
+                for name in self.players_list:
+                    if name != self.my_player.name:
+                        del self.players_list[name]
+                        print(f'[LOBBY EXIT] Player {name} timed out. Removing from lobby.')
+                        break
+            else:
+                print(f'[LOBBY EXIT] Host timed out. Returning to MainMenu.')
+                self.network_manager.close_socket()
+                self.exit_state()
+                self.exit_state()
+                return
+
     # ---------------- Update ----------------
     def update(self) -> None:
         if self._handle_failed_host_setup():
             return
+        self.check_timed_out_peer()
         self.check_leave_seq()
         self.check_state_change_acks()
         self.update_idle_animation()

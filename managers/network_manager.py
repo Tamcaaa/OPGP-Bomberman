@@ -60,6 +60,13 @@ class NetworkManager:
         self.last_cleanup = time.time()
         self.cleanup_interval = 30
 
+        # Heartbeat tracking
+        self.peer: Optional[Addr] = None
+        self.last_recieved_heartbeat: Optional[float] = None
+        self.last_sent_heartbeat: float = 0.0
+        self.heartbeat_interval = 2
+        self.peer_timedout: bool = False
+
 
     def close_socket(self) -> None:
         self.close_connection()
@@ -152,7 +159,13 @@ class NetworkManager:
             return
         packet_type = packet.get('type')
         seq = packet.get('seq')
+        data = packet.get('data')
 
+        if packet_type == 'HEARTBEAT' and self.peer == addr:
+            print(f'[DEBUG] Received HEARTBEAT from {addr}')
+            self.last_recieved_heartbeat = data['timestamp']
+            return
+        
         # Incoming ACK
         if packet_type == 'ACK' and isinstance(seq, int):
             self._pending.pop(seq, None)
@@ -193,6 +206,16 @@ class NetworkManager:
         if now - self.last_cleanup >= self.cleanup_interval:
             self._cleanup_sequences()
             self.last_cleanup = now
+        
+        # Heartbeat System
+        if self.peer:
+            if now - self.last_sent_heartbeat >= self.heartbeat_interval:
+                self.send_heartbeat()
+                self.last_sent_heartbeat = now
+            if self.last_recieved_heartbeat and now - self.last_recieved_heartbeat > self.heartbeat_interval * 4:
+                print(f'[WARN] No heartbeat from {self.peer} for {now - self.last_recieved_heartbeat:.1f}s, disconnecting.')
+                self.unregister_peer()
+                self.peer_timedout = True
 
     def _cleanup_sequences(self) -> None:
         # Keep only last 20 (highest) sequences per address.
@@ -211,6 +234,18 @@ class NetworkManager:
     def close_connection(self) -> None:
         self.socket.close()
 
+    # ----------------- HeartBeat System ----------------
+
+    def register_peer(self, addr: Addr) -> None:
+        self.peer = addr
+
+    def unregister_peer(self) -> None:
+        self.peer = None
+    
+    def send_heartbeat(self) -> None:
+        if self.peer:
+            print(f'[DEBUG] Sending HEARTBEAT to {self.peer}')
+            self.send_unreliable(self.peer, 'HEARTBEAT', {'timestamp': time.time()})
     # ---------------- Getters and Setters ----------------
     def get_completed_seq(
         self,
