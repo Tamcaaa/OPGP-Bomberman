@@ -28,12 +28,15 @@ class MultiplayerMapSelector(State):
 
         self.selected_maps = []
         self.final_map = None
-        self.all_maps = all_maps
+        self.all_maps = MAP_NAMES
         self.last_map_sync_time = 0
         self.map_sync_interval = 0.7
         self.map_selection_seq_by_addr: Dict[Addr, int] = {}
         self.pending_state_change: str | None = None
         self.state_change_seq_by_addr: Dict[Addr, int] = {}
+        
+        # Transition readiness tracking (single client)
+        self.waiting_for_ready = False
         # Fonts
         self.title_font = pygame.font.Font("CaveatBrush-Regular.ttf", 46)
         self.map_font = pygame.font.SysFont('Arial', 26)
@@ -55,13 +58,13 @@ class MultiplayerMapSelector(State):
 
     # ==================== NETWORK ====================
     def select_random_maps(self):
-        available_maps = self.selected_maps
+        available_maps = self.all_maps
         count = min(3, len(available_maps))
         self.selected_maps = random.sample(available_maps, count)
 
     def send_map_selection(self):
-        packet_type = 'MAP_SELECTION'
-        packet_data = {'map_list': self.selected_maps}
+        pkt_type = 'MAP_SELECTION'
+        pkt_data = {'map_list': self.selected_maps}
         scope = 'MultiplayerMapSelector'
         for player in self.players_list.values():
             if player.addr == self.my_player.addr:
@@ -71,15 +74,15 @@ class MultiplayerMapSelector(State):
             if last_seq and self.network_manager.get_completed_seq(player.addr, seq=last_seq):
                 continue
 
-            seq = self.network_manager.send_packet(player.addr, packet_type, packet_data, scope)
+            seq = self.network_manager.send_packet(player.addr, pkt_type, pkt_data, scope)
             self.map_selection_seq_by_addr[player.addr] = seq
 
-    def send_packet(self, packet_type, packet_data):
+    def send_packet(self, pkt_type, pkt_data):
         scope = 'MultiplayerMapSelector'
         for player in self.players_list.values():
             if player.addr == self.my_player.addr:
                 continue
-            self.network_manager.send_packet(player.addr, packet_type, packet_data, scope)
+            self.network_manager.send_packet(player.addr, pkt_type, pkt_data, scope)
 
     def handle_network_packets(self):
         while True:
@@ -90,32 +93,31 @@ class MultiplayerMapSelector(State):
 
     def handle_packet(self, poll_data):
         packet, addr = poll_data
-
+        pkt_type = packet.get('type')
+        pkt_data = packet.get('data')
+        
         if not packet.get('scope') == 'MultiplayerMapSelector':
-            print(f'[SCOPE_ERROR] from MultiplayerMapSelector; packet:{packet} from {addr}')
             return
-        packet_type = packet.get('type')
-        packet_data = packet.get('data')
 
-        if not packet_type or not packet_data:
+        if not pkt_type or not pkt_data:
             raise Exception(f'Invalid packet (data or type missing): packet:{packet} from {addr}')
         
-        if packet_type == 'MOVE_SELECTION':
-            self._handle_move_selection_packet(packet_data, addr)
-        elif packet_type == 'MAP_SELECTION':
-            self._handle_map_selection_packet(packet_data, addr)
-        elif packet_type == 'CONFIRM_SELECTION':
-            self._handle_confirm_selection_packet(packet_data, addr)
-        elif packet_type == 'CANCEL_SELECTION':
-            self._handle_cancel_selection_packet(packet_data, addr)
-        elif packet_type == 'FINAL_MAP_SELECTION':
-            self._handle_final_map_selection_packet(packet_data, addr)
-        elif packet_type == 'STATE_CHANGE':
-            self._handle_state_change_packet(packet_data, addr)
+        handlers = {
+            'READY_TO_TRANSITION': self._handle_ready_to_transition_packet,
+            'MOVE_SELECTION': self._handle_move_selection_packet,
+            'MAP_SELECTION': self._handle_map_selection_packet,
+            'CONFIRM_SELECTION': self._handle_confirm_selection_packet,
+            'CANCEL_SELECTION': self._handle_cancel_selection_packet,
+            'FINAL_MAP_SELECTION': self._handle_final_map_selection_packet,
+            'STATE_CHANGE': self._handle_state_change_packet
+        }
 
-    def _handle_move_selection_packet(self, packet_data, addr):
-        player_name = packet_data.get('player_name')
-        new_index = packet_data.get('new_index')
+        if fn := handlers.get(pkt_type):
+            fn(pkt_data, addr)
+
+    def _handle_move_selection_packet(self, pkt_data, addr):
+        player_name = pkt_data.get('player_name')
+        new_index = pkt_data.get('new_index')
         
         if not (player_name in self.players_list):
             print(f'[MOVE_SELECTION ERROR] Unknown player {player_name} from {addr}')
@@ -124,14 +126,14 @@ class MultiplayerMapSelector(State):
         self.players_list[player_name].selection_index = new_index
         print(f'[MOVE_SELECTION] {player_name} moved to index {new_index} from {addr}')
 
-    def _handle_map_selection_packet(self, packet_data, addr):
-        map_list = packet_data.get('map_list')
+    def _handle_map_selection_packet(self, pkt_data, addr):
+        map_list = pkt_data.get('map_list')
         self.selected_maps = map_list
         print(f'[MAP_SELECTION] Received map list from {addr}')
 
-    def _handle_confirm_selection_packet(self, packet_data, addr):
-        player_name = packet_data.get('player_name')
-        vote_index = packet_data.get('vote_index')
+    def _handle_confirm_selection_packet(self, pkt_data, addr):
+        player_name = pkt_data.get('player_name')
+        vote_index = pkt_data.get('vote_index')
         
         if not (player_name in self.players_list):
             print(f'[CONFIRM_SELECTION ERROR] Unknown player {player_name} from {addr}')
@@ -143,8 +145,8 @@ class MultiplayerMapSelector(State):
         if all(player.vote_index is not None for player in self.players_list.values()) and self.my_player.is_host:
             self.determine_final_map()
 
-    def _handle_cancel_selection_packet(self, packet_data, addr):
-        player_name = packet_data.get('player_name')
+    def _handle_cancel_selection_packet(self, pkt_data, addr):
+        player_name = pkt_data.get('player_name')
         
         if not (player_name in self.players_list):
             print(f'[CANCEL_SELECTION ERROR] Unknown player {player_name} from {addr}')
@@ -153,28 +155,45 @@ class MultiplayerMapSelector(State):
         self.players_list[player_name].vote_index = None
         print(f'[CANCEL_SELECTION] {player_name} canceled their vote from {addr}')
 
-    def _handle_final_map_selection_packet(self, packet_data, addr):
-        final_map = packet_data.get('final_map')
+    def _handle_final_map_selection_packet(self, pkt_data, addr):
+        final_map = pkt_data.get('final_map')
         self.final_map = final_map
         print(f'[FINAL_MAP_SELECTION] Final map selected: {final_map} from {addr}')
 
-    def _handle_state_change_packet(self, packet_data, addr):
-        new_state = packet_data.get('state')
+    def _handle_state_change_packet(self, pkt_data, addr):
+        new_state = pkt_data.get('state')
         print(f'[STATE_CHANGE] Changing to state: {new_state} from {addr}')
+        if self.my_player and self.my_player.is_host:
+            return
+        self.network_manager.send_packet(addr, 'READY_TO_TRANSITION', {'state': new_state}, 'MultiplayerMapSelector')
         self.exit_state()
         self.state_manager.change_state(new_state, self.final_map, self.network_manager, self.players_list, self.my_player.name)
+
+    def _handle_ready_to_transition_packet(self, pkt_data, addr):
+        """Handle client's ready signal."""
+        print(f'[READY_TO_TRANSITION] Received from {addr}')
+        if self.my_player and self.my_player.is_host and self.waiting_for_ready:
+            self.waiting_for_ready = False
+            self.exit_state()
+            self.state_manager.change_state(
+                "MultiplayerTestField",
+                self.final_map,
+                self.network_manager,
+                self.players_list,
+                self.my_player.name,
+            )
 
     def broadcast_state_change(self, new_state) -> Dict[Addr, int]:
         if not self.my_player:
             return {}
-        packet_type = 'STATE_CHANGE'
-        packet_data = {'state': new_state}
+        pkt_type = 'STATE_CHANGE'
+        pkt_data = {'state': new_state}
         scope = 'MultiplayerMapSelector'
         seq_by_addr: Dict[Addr, int] = {}
         for player in self.players_list.values():
             if player.addr == self.my_player.addr:
                 continue 
-            seq = self.network_manager.send_packet(player.addr, packet_type, packet_data, scope)
+            seq = self.network_manager.send_packet(player.addr, pkt_type, pkt_data, scope)
             seq_by_addr[player.addr] = seq
         return seq_by_addr
 
@@ -182,6 +201,12 @@ class MultiplayerMapSelector(State):
         if not self.my_player or not self.my_player.is_host:
             return
         if self.pending_state_change:
+            return
+        
+        if new_state == 'MultiplayerTestField':
+            self.waiting_for_ready = True
+            self.broadcast_state_change(new_state)
+            print('[STATE_CHANGE] Sent to clients, waiting for READY_TO_TRANSITION...')
             return
 
         self.pending_state_change = new_state
@@ -219,28 +244,28 @@ class MultiplayerMapSelector(State):
 
         print(f"[MOVE] {player_name} moved from {current} to {self.players_list.get(player_name).selection_index}")
 
-        packet_data = {
+        pkt_data = {
             'player_name': player_name,
             'new_index': self.players_list.get(player_name).selection_index
         }
-        self.send_packet('MOVE_SELECTION', packet_data)
+        self.send_packet('MOVE_SELECTION', pkt_data)
 
     def confirm_vote(self):
         player = self.players_list.get(self.my_player.name)
         player.vote_index = player.selection_index
-        packet_data = {
+        pkt_data = {
             'player_name': self.my_player.name,
             'vote_index': player.vote_index
         }
-        self.send_packet('CONFIRM_SELECTION', packet_data)
+        self.send_packet('CONFIRM_SELECTION', pkt_data)
         if all(player.vote_index is not None for player in self.players_list.values()) and self.my_player.is_host:
             self.determine_final_map()
 
     def cancel_vote(self):
         player = self.players_list.get(self.my_player.name)
         player.vote_index = None
-        packet_data = {'player_name': self.my_player.name}
-        self.send_packet('CANCEL_SELECTION', packet_data)
+        pkt_data = {'player_name': self.my_player.name}
+        self.send_packet('CANCEL_SELECTION', pkt_data)
 
     def determine_final_map(self):
         votes = [player.vote_index for player in self.players_list.values() if player.vote_index is not None]
@@ -249,8 +274,8 @@ class MultiplayerMapSelector(State):
         top_maps = [index for index, count in vote_counter.items() if count == max_votes]
         winning_index = random.choice(top_maps) if len(top_maps) > 1 else top_maps[0]
         self.final_map = self.selected_maps[winning_index]
-        packet_data = {'final_map': self.final_map}
-        self.send_packet('FINAL_MAP_SELECTION', packet_data)
+        pkt_data = {'final_map': self.final_map}
+        self.send_packet('FINAL_MAP_SELECTION', pkt_data)
 
     # ==================== INPUT ====================
     def handle_events(self, event):

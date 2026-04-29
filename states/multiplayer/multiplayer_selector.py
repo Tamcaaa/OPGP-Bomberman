@@ -50,11 +50,11 @@ class MultiplayerSelector(State):
             button_color=config.COLOR_BEIGE,)
 
     def handle_events(self, event):
-        if self.host_button.is_clicked():
+        if self.host_button.is_clicked(event):
             self.state_manager.change_state('InputPopup', self.network_manager, mode='host')
-        elif self.join_button.is_clicked():
+        elif self.join_button.is_clicked(event):
             self.state_manager.change_state('InputPopup', self.network_manager, mode='join')
-        elif self.goBack_button.is_clicked():
+        elif self.goBack_button.is_clicked(event):
             self.exit_state()
             self.state_manager.change_state("MainMenu")
 

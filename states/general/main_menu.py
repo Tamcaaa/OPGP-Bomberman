@@ -1,14 +1,11 @@
-import os
 import pygame
-from pygame import event
-import pygame.image
 import config
 
 from states.general.state import State
 from managers.music_manager import MusicManager
 from managers.state_manager import StateManager
 from custom_classes.button import Button
-from image_loader import load_images, load_hat_images
+from image_loader import load_images
 class MainMenu(State):
     def __init__(self, game):
         State.__init__(self, game)
@@ -61,6 +58,7 @@ class MainMenu(State):
     # ------------------------------------------------------------------ helpers
     def is_clicked(self):
         return self.rect.collidepoint(pygame.mouse.get_pos()) and pygame.mouse.get_pressed()[0]
+    
     def _draw_rrect(self, surf, color, rect, radius=14, alpha=255, border=0, border_color=None):
         if alpha < 255:
             s = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
@@ -100,13 +98,13 @@ class MainMenu(State):
     def handle_events(self, event):
         if self._click_cooldown > 0:
             return
-        if self.singleplayer_button.is_clicked(event):  # ← pridaj event
+        if self.singleplayer_button.is_clicked(event): 
             self._click_cooldown = 30
             self.enter_single_player()
-        elif self.multiplayer_button.is_clicked(event):  # ← pridaj event
+        elif self.multiplayer_button.is_clicked(event):
             self._click_cooldown = 30
             self.state_manager.change_state("MultiplayerSelector")
-        elif self.settings_button.is_clicked(event):    # ← pridaj event
+        elif self.settings_button.is_clicked(event):
             self._click_cooldown = 30
             self.state_manager.change_state("Settings")
 

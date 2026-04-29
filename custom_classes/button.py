@@ -54,12 +54,6 @@ class Button:
         screen.blit(label,  (cx, cy))
 
     def is_clicked(self, event=None):
-        """
-        Volaj s eventom z handle_events():
-            if self.btn.is_clicked(event): ...
-
-        Reaguje na MOUSEBUTTONDOWN (myš / touchpad) aj FINGERDOWN (macOS touch).
-        """
         if not (self.visible and self.enabled):
             return False
 

@@ -5,10 +5,10 @@ from managers.music_manager import MusicManager
 
 
 class Bomb(pygame.sprite.Sprite):
-    def __init__(self, player, bomb_group, explosion_group, test_field, bomb_skin="Classic", explosion_skin="Classic"):
+    def __init__(self, player, bomb_group, explosion_group, test_field, bomb_skin=None, explosion_skin=None):
         super().__init__()
-        self.bomb_skin = bomb_skin
-        self.explosion_skin = explosion_skin
+        self.bomb_skin = bomb_skin if bomb_skin is not None else getattr(player, "bomb_skin", "Classic")
+        self.explosion_skin = explosion_skin if explosion_skin is not None else getattr(player, "explosion_skin", "Classic")
         self.test_field = test_field
         self.music_manager = MusicManager()
 

@@ -12,7 +12,7 @@ from managers.music_manager import MusicManager
 from managers.network_manager import NetworkManager
 from managers.state_manager import StateManager
 from maps.map_generator import generate_map
-from image_loader import load_images, load_hat_images
+from image_loader import load_images, load_game_hat_images
 from game_objects.general.bomb import Bomb
 from states.multiplayer.multiplayer_lobby import PlayerData
 
@@ -53,7 +53,7 @@ class MultiplayerTestField(State):
         
         # Load images
         self.images = load_images()
-        self.hat_images, self.hat_thumbs = load_hat_images()
+        self.hat_images = load_game_hat_images()
         
         # Feedback message
         self.powerup_message = ""
@@ -76,7 +76,15 @@ class MultiplayerTestField(State):
             
             for player in self.players_list.values():
                 spawn = "spawn1" if player.name == self.player_name else "spawn4"
-                self.players[player.name] = Player(spawn, self, player.name, player.final_color, player.final_hat)
+                self.players[player.name] = Player(
+                    spawn,
+                    self,
+                    player.name,
+                    player.final_color,
+                    player.final_hat,
+                    player.final_bomb,
+                    player.final_explosion,
+                )
             
             self.place_hidden_powerups()
             self.send_player_list()
@@ -126,7 +134,9 @@ class MultiplayerTestField(State):
             if player_name not in self.players:
                 player_color = self.players_list[player_name].final_color
                 player_hat = self.players_list[player_name].final_hat
-                self.players[player_name] = Player(spawn, self, player_name, player_color, player_hat)
+                player_bomb = self.players_list[player_name].final_bomb
+                player_explosion = self.players_list[player_name].final_explosion
+                self.players[player_name] = Player(spawn, self, player_name, player_color, player_hat, player_bomb, player_explosion)
 
     def _handle_player_update_packet(self, packet_data, addr):
         player_name = packet_data.get('player_name')
@@ -388,16 +398,28 @@ class MultiplayerTestField(State):
             return
         hat_name = player.get_player_hat()
         hat_image = self.hat_images[hat_name]
+        if hat_image is None:
+            return
         
         # Get the current player animation to calculate offset for drawing hat
         anim_offsets = config.HAT_ANIM_OFFSETS.get(player.current_animation, [0, 0, 0])
         frame_index = player.current_frame_index % len(anim_offsets)
         anim_offset_y = anim_offsets[frame_index]
         
-        going_left = pygame.K_a in player.held_down_keys
-        
+        if player.held_down_keys:
+            going_left = player.move_keys[1] in player.held_down_keys
+        else:
+            going_left = player.current_direction == "left"
+
         # Applying the offset to player rect
         ox, oy = config.GAME_HAT_OFFSETS.get(hat_name, (0, 0))
+
+        if hat_name == "Devil":
+            corner_spread = 0
+            ox -= corner_spread
+        if hat_name == "Devil" and going_left:
+            ox -= corner_spread + 2
+
         hx = player.rect.x + ox
         hy = player.rect.y + oy + anim_offset_y
         hat_to_draw = pygame.transform.flip(hat_image, True, False) if going_left else hat_image
