@@ -164,7 +164,7 @@ class PauseState(State):
 
     def exit_state(self):
         pause_duration = time.time() - self.pause_start
-        # Find TestField in the state stack beneath the pause state
+        # nájdi TestField v stacku a posuň jeho časovače o dobu pauzy
         for state in self.game.state_stack:
             if state.__class__.__name__ == "TestField":
                 state.offset_timers(pause_duration)

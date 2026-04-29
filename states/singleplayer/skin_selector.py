@@ -79,6 +79,12 @@ class SkinSelector(State):
         }
         self.active_tab = {1: config.TAB_COLORS, 2: config.TAB_COLORS}
 
+        # --- Mená hráčov & stav editovania ---
+        self.player_names = {1: "PLAYER 1", 2: "PLAYER 2"}
+        self.editing_name = {1: False, 2: False}
+        # Klávesy na aktiváciu editácie mena (Tab pre P1, backslash pre P2)
+        self.name_keys = {1: pygame.K_TAB, 2: pygame.K_BACKSLASH}
+
         # Fonty – zachovaný CaveatBrush
         self.font_lg   = pygame.font.Font("CaveatBrush-Regular.ttf", 30)
         self.font_md   = pygame.font.Font("CaveatBrush-Regular.ttf", 22)
@@ -95,10 +101,6 @@ class SkinSelector(State):
             2: pygame.Rect(config.SCREEN_WIDTH - 30 - panel_w, top_y, panel_w, panel_h),
         }
 
-        # Výška zón vo vnútri panelu (zhora):
-        #   [preview_zone]  130 px
-        #   [tab_bar]        36 px  (s 8px medzere nad/pod)
-        #   [list_area]      zvyšok – 48px pre hint + button
         self.preview_h   = config.PREVIEW_H
         self.tab_h       = config.TAB_H
         self.tab_pad     = config.TAB_PAD
@@ -214,6 +216,25 @@ class SkinSelector(State):
 
         prev_rect = self._preview_rect(panel)
 
+        # --- Meno hráča (editovateľné) – nad hráčom ---
+        name_display = self.player_names[player_id]
+        if self.editing_name[player_id]:
+            # Blikajúci kurzor
+            cursor = "|" if (pygame.time.get_ticks() // 500) % 2 == 0 else ""
+            name_display = name_display + cursor
+
+        name_y = prev_rect.y + 6
+        # Podkladový rámik pre meno
+        name_w = self.font_md.size(self.player_names[player_id] + "W")[0] + 20
+        name_h = 26
+        name_box = pygame.Rect(prev_rect.centerx - name_w // 2, name_y - 2, name_w, name_h)
+
+        if self.editing_name[player_id]:
+            self._draw_rrect(screen, (30, 30, 50), name_box, radius=8, alpha=200,
+                             border=1, border_color=chosen_color)
+        self._text(screen, name_display, self.font_md, chosen_color,
+                   (prev_rect.centerx, name_y), align="center")
+
         # Tintovaný kruh za hráčom – v živej farbe hráča
         circle_surf = pygame.Surface((90, 90), pygame.SRCALPHA)
         pygame.draw.circle(circle_surf, (*chosen_color, 35), (45, 45), 45)
@@ -245,18 +266,13 @@ class SkinSelector(State):
                     hat_img = pygame.transform.flip(hat_img, True, False)
                 screen.blit(hat_img, (px + ox, py + oy + hat_offset))
 
-        # Meno / "PLAYER X" label
-        label = f"PLAYER {player_id}"
-        self._text(screen, label, self.font_xs, chosen_color,
-                   (prev_rect.centerx, prev_rect.y + 8), align="center")
-
-        # "Ready!" badge
+        # "Ready!" badge 
         if self.players[player_id]["color"]:
             badge_text = "READY"
             bw = self.font_xs.size(badge_text)[0] + 16
             bh = 20
             bx = prev_rect.centerx - bw // 2
-            by = prev_rect.y + 26
+            by = prev_rect.bottom - bh - 4
             self._draw_rrect(screen, chosen_color, pygame.Rect(bx, by, bw, bh),
                              radius=10, alpha=30)
             border_s = pygame.Surface((bw, bh), pygame.SRCALPHA)
@@ -495,6 +511,7 @@ class SkinSelector(State):
 
         screen.set_clip(prev_clip)
         self._draw_scrollbar(screen, area, top, vis, total, acc)
+
     # ------------------------------------------------------------------ scrollbar
     def _draw_scrollbar(self, screen, area, top, vis, total, accent):
         if total <= vis:
@@ -515,10 +532,10 @@ class SkinSelector(State):
         acc = self._player_color(player_id)
 
         if player_id == 1:
-            nav_hint    = "A/D  tab    W/S  scroll"
+            nav_hint    = "A/D  tab    W/S  scroll    Tab  name"
             select_hint = "Shift  =  lock in"
         else:
-            nav_hint    = "LEFT/RIGHT  tab    UP/DOWN  scroll"
+            nav_hint    = "LEFT/RIGHT  tab    UP/DOWN  scroll    \\  name"
             select_hint = "Enter  =  lock in"
 
         self._text(screen, nav_hint, self.font_xs, config.TEXT_HINT,
@@ -607,10 +624,46 @@ class SkinSelector(State):
             self._text(screen, msg, self.font_md, config.BG_BASE, (config.SCREEN_WIDTH // 2, by + 8),
                        align="center")
 
-    # ------------------------------------------------------------------ events (nezmenené)
+    # ------------------------------------------------------------------ events
     def handle_events(self, event):
         color_keys = list(AVAILABLE_COLORS.keys())
+
+        # --- Textový vstup pre meno hráča ---
+        if event.type == pygame.KEYDOWN:
+            for pid in (1, 2):
+                if self.editing_name[pid]:
+                    if event.key == pygame.K_RETURN or event.key == pygame.K_ESCAPE:
+                        # Potvrdiť / zrušiť editáciu
+                        self.editing_name[pid] = False
+                        if not self.player_names[pid].strip():
+                            self.player_names[pid] = f"PLAYER {pid}"
+                        return
+                    elif event.key == pygame.K_BACKSPACE:
+                        self.player_names[pid] = self.player_names[pid][:-1]
+                        return
+                    elif event.unicode and event.unicode.isprintable():
+                        if len(self.player_names[pid]) < 12:
+                            self.player_names[pid] += event.unicode.upper()
+                        return
+
+        if event.type == pygame.KEYDOWN:
+            # Aktivácia editácie mena
+            if event.key == self.name_keys[1] and not self.editing_name[2]:
+                self.editing_name[1] = not self.editing_name[1]
+                if self.editing_name[1]:
+                    self.player_names[1] = ""
+                return
+            if event.key == self.name_keys[2] and not self.editing_name[1]:
+                self.editing_name[2] = not self.editing_name[2]
+                if self.editing_name[2]:
+                    self.player_names[2] = ""
+                return
+
         if event.type != pygame.KEYDOWN:
+            return
+
+        # Blokuj navigáciu keď niekto edituje meno
+        if self.editing_name[1] or self.editing_name[2]:
             return
 
         def total_count(tab):
@@ -671,9 +724,11 @@ class SkinSelector(State):
         if event.key == pygame.K_SPACE and self.players[1]["color"] and self.players[2]["color"]:
             payload = {
                 1: (self.players[1]["color"], self.players[1]["hat"],
-                    self.players[1]["bomb"],  self.players[1]["explosion"]),
+                    self.players[1]["bomb"],  self.players[1]["explosion"],
+                    self.player_names[1]),
                 2: (self.players[2]["color"], self.players[2]["hat"],
-                    self.players[2]["bomb"],  self.players[2]["explosion"]),
+                    self.players[2]["bomb"],  self.players[2]["explosion"],
+                    self.player_names[2]),
             }
             self.state_manager.change_state("MapSelector", payload)
     

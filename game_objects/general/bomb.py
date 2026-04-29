@@ -12,7 +12,7 @@ class Bomb(pygame.sprite.Sprite):
         self.test_field = test_field
         self.music_manager = MusicManager()
 
-        # Load and scale the bomb image
+        # najdi bombu v config.BOMBS podľa bomb_skin
         bomb_data = next((b for b in config.BOMBS if b["name"] == self.bomb_skin), None)
 
         if bomb_data:
@@ -22,16 +22,16 @@ class Bomb(pygame.sprite.Sprite):
 
         self.image = pygame.image.load(path).convert_alpha()
         self.image = pygame.transform.scale(self.image, (config.GRID_SIZE, config.GRID_SIZE))
-        # Set bomb position to player's current position
+        # nastav pozíciu bomby na pozíciu hráča
         self.rect = self.image.get_rect()
         self.rect.topleft = player.rect.topleft
 
-        # Bomb properties
-        self.range = player.power  # Explosion range
+        # vlastnosti bomby
+        self.range = player.power  # rozsah výbuchu 
         self.player = player
-        self.fuse_time = time.time() + 3  # Bomb explodes after 3 seconds
+        self.fuse_time = time.time() + 3  # bomba exploduje po 3 sekundách
         self.explosion_group = explosion_group
-        # Add the bomb to the bomb group
+        # pridaj bombu do skupiny bomb
         bomb_group.add(self)
         self.passable = False
 
@@ -44,12 +44,12 @@ class Bomb(pygame.sprite.Sprite):
         """Handles the bomb explosion and removes it from the game."""
         self.music_manager.play_sound("explosion", "explosion_volume")
 
-        # CENTER explosion (fix)
+        # CENTER explosion
         x = self.rect.x
         y = self.rect.y
         Explosion(x, y, explosion_group, 0, self.test_field, self.explosion_skin)
 
-        # Handle explosions in all four directions
+        # Nastavenie smerov výbuchu: vpravo, vľavo, hore, dole
         directions = [(1, 0), (-1, 0), (0, 1), (0, -1)]
 
         for dx, dy in directions:
@@ -87,10 +87,10 @@ class Bomb(pygame.sprite.Sprite):
                     Explosion(x, y, explosion_group, 0, self.test_field, self.explosion_skin)
                     break
         
-        # Allow the player to place another bomb
+        # povolí hráčovi položiť ďalšiu bombu
         self.player.currentBomb += 1
         
-        # Remove the bomb from the group
+        # odstráni bombu zo skupiny a z hry
         self.kill()
 
 
@@ -103,27 +103,27 @@ class Explosion(pygame.sprite.Sprite):
         self.image_a = pygame.image.load(f"assets/player_explosions/{skin}_a.png").convert_alpha()
         self.image_c = pygame.image.load(f"assets/player_explosions/{skin}_c.png").convert_alpha()
 
-        # Scale images
+        # zväčši obrázky výbuchu na veľkosť GRID_SIZE
         self.image_a = pygame.transform.scale(self.image_a, (config.GRID_SIZE, config.GRID_SIZE))
         self.image_c = pygame.transform.scale(self.image_c, (config.GRID_SIZE, config.GRID_SIZE))
 
-        # Set initial image
+        # nastav počiatočný obrázok výbuchu
         self.image = self.image_a
         self.rect = self.image.get_rect()
         self.rect.topleft = (x, y)
 
-        # Timing for switching images
+        # časovač pre zmenu obrázku výbuchu a jeho odstránenie
         self.start_time = time.time()
-        self.switch_time = self.start_time + 0.25  # Switch to explosion_c after 0.25s
-        self.lifetime = 0.5  # Remove after 0.5s
+        self.switch_time = self.start_time + 0.25  # prestup na image_c po 0.25s
+        self.lifetime = 0.5  # odstráni výbuch po 0.5s
 
-        explosion_group.add(self)  # Add explosion to group
+        explosion_group.add(self)
 
-        # Only create additional explosions if this is the center explosion
+        # vytvorí výbuchy v okolí bomby podľa explosion_range
         if explosion_range > 0:
             self.create_explosions(x, y, explosion_group, explosion_range)
     def create_explosions(self, x, y, explosion_group, explosion_range):
-        directions = [(1, 0), (-1, 0), (0, 1), (0, -1)]  # Right, Left, Down, Up
+        directions = [(1, 0), (-1, 0), (0, 1), (0, -1)]  # vlavo, vpravo, dole, hore
         for dx, dy in directions:
             for i in range(1, explosion_range + 1):
                 tile_x = (x + dx * config.GRID_SIZE * i) // config.GRID_SIZE
@@ -143,25 +143,25 @@ class Explosion(pygame.sprite.Sprite):
                     self.test_field.destroy_tile(tile_x, tile_y)
                     explosion = Explosion(new_x, new_y, explosion_group, 0, self.test_field, self.explosion_skin)
                     explosion_group.add(explosion)
-                    break  # Stop explosion in this direction
+                    break  # zastaví výbuch v tomto smere po zničení tehly
                 elif self.test_field.tile_map[tile_y][tile_x] == 4:
                     break
                 elif self.test_field.tile_map[tile_y][tile_x] == 5:
                     break
                 elif self.test_field.tile_map[tile_y][tile_x] == 1:  # Wall
-                    break  # Stop explosion in this direction
-                elif self.test_field.tile_map[tile_y][tile_x] in [6, 7]:  # Visible door or key
+                    break  # zastaví výbuch v tomto smere
+                elif self.test_field.tile_map[tile_y][tile_x] in [6, 7]:  
                     explosion = Explosion(new_x, new_y, explosion_group, 0, self.test_field, self.explosion_skin)
                     explosion_group.add(explosion)
-                    break  # Stop explosion in this direction
+                    break  # zastaví výbuch v tomto smere
 
     def update(self):
         """Remove explosion after lifetime expires."""
         current_time = time.time()
-        # Switch to explosion_c after 0.25s
+        # nastaví obrázok výbuchu na image_c po uplynutí switch_time
         if current_time >= self.switch_time and self.image != self.image_c:
             self.image = self.image_c
 
-        # Remove explosion after lifetime expires
+        # odstráni výbuch po uplynutí lifetime
         if current_time - self.start_time > self.lifetime:
             self.kill()

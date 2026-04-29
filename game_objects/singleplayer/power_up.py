@@ -11,69 +11,67 @@ class PowerUp(pygame.sprite.Sprite):
     def __init__(self, x, y, powerup_type=None):
         super().__init__()
 
-        # If no specific type is provided, randomly choose one
+        # ak obrázok nie je k dispozícií vyberie náhodný
         if powerup_type is None:
             self.type = random.choice([
-                "bomb_powerup",  # Increases max bombs
-                "range_powerup",  # Increases explosion range
-                "freeze_powerup",  # Freezes the other player
-                "live+_powerup",  # Adds an extra life
-                "shield_powerup",  # Temporary invincibility
-                "darkness_powerup"  # Reduces visibility for the other player
+                "bomb_powerup",  # zvýši počet bomb
+                "range_powerup",  # zvýši dosah výbuchu
+                "freeze_powerup",  # zmrazí/spomalí druhého hráča
+                "live+_powerup",  # pridá extra život
+                "shield_powerup",  # dočasná nezraniteľnosť
+                "darkness_powerup"  # zníži viditeľnosť druhého hráča
             ])
         else:
             self.type = powerup_type
 
-        # Load image based on powerup type or create a fallback
+        # načítaj obrázok pre každý typ power-upu, pokiaľ existuje, inak fallback
         try:
             image_path = f"assets/power_ups/{self.type}.png"
-            # Try to load the image, but if the file doesn't exist, create a fallback
             if os.path.exists(image_path):
                 self.image = pygame.image.load(image_path).convert_alpha()
                 self.image = pygame.transform.scale(self.image, (25, 25))
             else:
                 self.image = self.create_fallback_image()
         except (pygame.error, FileNotFoundError):
-            # If loading fails for any reason, use a fallback image
             self.image = self.create_fallback_image()
 
-        # Position the power-up
+        # pozícia pre power-up
         self.rect = self.image.get_rect()
         self.rect.x = x * config.GRID_SIZE
         self.rect.y = y * config.GRID_SIZE
 
-        # Set power-up properties
+        # nastav vlastnosti pre efekty a časovače
         self.reveal_time = time.time()
-        self.field_duration = config.FIELD_DURATION  # Power-up remains on the field for 30 seconds
+        self.field_duration = config.FIELD_DURATION  # power-up sa objaví na určitý čas po zničení tehly
         self.collected = False
-        self.effect_duration = config.EFFECT_DURATION  # Duration of effect in seconds after collection
+        self.effect_duration = config.EFFECT_DURATION
         self.hidden = True  
-        self.frozen_until = config.FROZEN_UNTIL  # Timestamp until which the player is frozen
+        self.frozen_until = config.FROZEN_UNTIL 
 
     def create_fallback_image(self):
         """Create a colored rectangle as fallback for missing images"""
         image = pygame.Surface((config.GRID_SIZE, config.GRID_SIZE))
 
-        # Different colors for different power-up types
+        # Fallback farby
         if self.type == "bomb_powerup":
-            image.fill((255, 0, 0))  # Red for bomb power
+            image.fill((255, 0, 0))  # Červená pro bomb power
         elif self.type == "range_powerup":
-            image.fill((0, 0, 255))  # Blue for speed/range
+            image.fill((0, 0, 255))  # Modrá pro range power
         elif self.type == "freeze_powerup":
-            image.fill((0, 255, 255))  # Cyan for freeze
+            image.fill((0, 255, 255))  # Tyrkysová pre freeze power
         elif self.type == "live+_powerup":
-            image.fill((0, 255, 0))  # Green for extra life
+            image.fill((0, 255, 0))  # Zelená pre live+ power
         elif self.type == "shield_powerup":
-            image.fill((255, 255, 0))  # Yellow for invincibility
+            image.fill((255, 255, 0))  # Žltá pre shield
         elif self.type == "darkness_powerup":
-            image.fill((255, 0, 255))  # Magenta for darkness
+            image.fill((255, 0, 255))  # Magenta pre darkness
         else:
-            image.fill((150, 150, 150))  # Gray for unknown types
+            image.fill((150, 150, 150))  # Sivá pre neznámé typy
 
-        # Draw a symbol on the surface to indicate the power-up type
+        # Nakresli symbol pre každý typ power-upu
         font = pygame.font.Font(None, 24)
 
-        # First letter of the power-up type as symbol
+        # Prvé písmeno typu power-up jak symbol
         symbol = self.type[0].upper()
         text = font.render(symbol, True, (0, 0, 0))
         text_rect = text.get_rect(center=(config.GRID_SIZE // 2, config.GRID_SIZE // 2))
@@ -90,13 +88,13 @@ class PowerUp(pygame.sprite.Sprite):
     def reveal(self):
         """Reveal the power-up when the brick hiding it is destroyed"""
         self.hidden = False
-        self.reveal_time = time.time()  # Reset timer when revealed
+        self.reveal_time = time.time()  # Reset časovač pre zobrazenie
 
     def apply_effect(self, player):
         """Apply the power-up effect to the player who collected it"""
         self.collected = True
         if self.type == "bomb_powerup":
-            if player.maxBombs < player.max_bomb_limit:  # optional limit if you want
+            if player.maxBombs < player.max_bomb_limit:  # optional limit
                 player.activate_powerup("bomb_powerup")
             return f"Player {player.player_id} can place more bombs permanently!"
 
@@ -105,7 +103,7 @@ class PowerUp(pygame.sprite.Sprite):
             return f"Player {player.player_id}'s explosion range increased permanently!"
 
         elif self.type == "freeze_powerup":
-            # Apply freeze effect to the other player
+            # nastav efekt zamrazenia na určitý čas
             freeze_duration = config.POWERUP_DURATIONS.get("freeze_powerup", 5)
             player.activate_powerup("freeze_powerup", freeze_duration)
             return f"Player {player.player_id} froze the opponent for {freeze_duration}s!"
@@ -115,7 +113,7 @@ class PowerUp(pygame.sprite.Sprite):
             return f"Player {player.player_id} gained an extra life!"
 
         elif self.type == "shield_powerup":
-            # Temporary invincibility
+            # čiastočná nezraniteľnosť na určitý čas
             shield_duration = config.POWERUP_DURATIONS.get("shield_powerup", 15)
             player.activate_powerup("shield_powerup", shield_duration)
             return f"Player {player.player_id} is invincible for {shield_duration}s!"

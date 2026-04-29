@@ -34,16 +34,13 @@ class TestField(State):
         self.player1 = Player(1, "spawn1", self, skin=self.selected_skins.get(1))
         self.player2 = Player(2, "spawn4", self, skin=self.selected_skins.get(2))
         self.players = [self.player1, self.player2]
-
+        self.font_md   = pygame.font.Font("CaveatBrush-Regular.ttf", 22)
         self.powerup_message = ""
         self.message_timer = config.MESSAGE_TIMER
         self.current_animation = "idle"
         self.current_frame_index = config.CURRENT_FRAME_INDEX
 
-        # --- Load images ---
         self.images = load_images()
-
-        # --- Load hat images ---
         self.hat_images = load_game_hat_images()
 
         self.tile_map = copy.deepcopy(selected_map)
@@ -55,6 +52,31 @@ class TestField(State):
         self.load_music()
         self.place_hidden_powerups()
 
+    # ------------------------------------------------------------------ skin helpers
+    def _skin_field(self, player_id: int, index: int, default=None):
+        skin = self.selected_skins.get(player_id)
+        if skin and len(skin) > index:
+            return skin[index]
+        return default
+
+    def get_player_name(self, player_id: int) -> str:
+        return self._skin_field(player_id, 4, default=f"P{player_id}")
+
+    def get_player_bomb_skin(self, player_id: int) -> str:
+        return self._skin_field(player_id, 2, default="Default")
+
+    def get_player_explosion_skin(self, player_id: int) -> str:
+        return self._skin_field(player_id, 3, default="Default")
+
+    def _get_player_color(self, player_id: int) -> tuple:
+        skin = self.selected_skins.get(player_id)
+        if skin and len(skin) > 0:
+            c = skin[0]
+            if isinstance(c, (tuple, list)) and len(c) >= 3:
+                return tuple(int(x) for x in c[:3])
+        return config.COLOR_BLACK
+
+    # ------------------------------------------------------------------ setup
     def place_hidden_powerups(self):
         brick_positions = []
         for y in range(len(self.tile_map)):
@@ -102,7 +124,7 @@ class TestField(State):
                     if not has_shield:
                         player.health = max(0, player.health - 1)
                         self.music_manager.play_sound("death", "death_volume")
-                        self.powerup_message = f"Player {player.player_id} hit! Lives left: {player.health}"
+                        self.powerup_message = f"{self.get_player_name(player.player_id)} hit! Lives left: {player.health}"
                         self.message_timer = pygame.time.get_ticks()
 
                         if player.health <= 0:
@@ -112,7 +134,7 @@ class TestField(State):
                             winner = self.player2.player_id if player.player_id == 1 else self.player1.player_id
                             self.game.state_manager.change_state("GameOver", winner, self.selected_map, self.map_name, selected_skins=self.selected_skins)
                     else:
-                        self.powerup_message = f"Player {player.player_id} has shield!"
+                        self.powerup_message = f"{self.get_player_name(player.player_id)} has shield!"
                         self.message_timer = pygame.time.get_ticks()
 
                     player.hit_this_frame = True
@@ -139,46 +161,78 @@ class TestField(State):
                     self.music_manager.play_sound("walk", "walk_volume")
                     powerup.kill()
 
-    # --- Draw methods ---
+    # ------------------------------------------------------------------ draw
     def draw_menu(self, screen):
-        player1_lives_text = self.game.font.render(f"x {self.player1.get_health()}", True, config.COLOR_BLACK)
-        player2_lives_text = self.game.font.render(f"x {self.player2.get_health()}", True, config.COLOR_BLACK)
-        screen.blit(player1_lives_text, (config.GRID_SIZE, 10))
-        screen.blit(player2_lives_text, (config.SCREEN_WIDTH - 3 * config.GRID_SIZE, 10))
-        screen.blit(self.images["heart_image"], (0, 0))
-        screen.blit(self.images["heart_image"], (config.SCREEN_WIDTH - 4 * config.GRID_SIZE, 0))
+        p1_color = self._get_player_color(1)
+        p2_color = self._get_player_color(2)
 
-        player1_bombs = self.game.font.render(f"x {self.player1.get_max_bombs()}", True, config.COLOR_BLACK)
-        player2_bombs = self.game.font.render(f"x {self.player2.get_max_bombs()}", True, config.COLOR_BLACK)
-        screen.blit(self.images["bomb_icon"], (config.GRID_SIZE * 2, 0))
-        screen.blit(self.images["bomb_icon"], (config.SCREEN_WIDTH - 2 * config.GRID_SIZE, 0))
-        screen.blit(player1_bombs, (config.GRID_SIZE * 3, 10))
-        screen.blit(player2_bombs, (config.SCREEN_WIDTH - config.GRID_SIZE, 10))
+        icon_y = 4
+        text_y = 8
 
-        self.draw_active_powerups(screen)
+        # --- Hráč 1 (ľavá strana) ---
+        p1_name_surf = self.font_md.render(self.get_player_name(1), True, p1_color)
+        p1_lives     = self.font_md.render(f"x {self.player1.get_health()}", True, config.COLOR_BLACK)
+        p1_bombs     = self.font_md.render(f"x {self.player1.get_max_bombs()}", True, config.COLOR_BLACK)
+
+        x = 4
+        screen.blit(p1_name_surf, (x, text_y))
+        x += p1_name_surf.get_width() + 8
+
+        screen.blit(self.images["heart_image"], (x, icon_y))
+        x += self.images["heart_image"].get_width() + 2
+        screen.blit(p1_lives, (x, text_y))
+        x += p1_lives.get_width() + 8
+
+        screen.blit(self.images["bomb_icon"], (x, icon_y))
+        x += self.images["bomb_icon"].get_width() + 2
+        screen.blit(p1_bombs, (x, text_y))
+
+        # --- Hráč 2 (pravá strana, sprava doľava) ---
+        p2_name_surf = self.font_md.render(self.get_player_name(2), True, p2_color)
+        p2_lives     = self.font_md.render(f"x {self.player2.get_health()}", True, config.COLOR_BLACK)
+        p2_bombs     = self.font_md.render(f"x {self.player2.get_max_bombs()}", True, config.COLOR_BLACK)
+
+        x = config.SCREEN_WIDTH - 4
+        x -= p2_name_surf.get_width()
+        screen.blit(p2_name_surf, (x, text_y))
+        x -= 8
+
+        x -= p2_bombs.get_width()
+        screen.blit(p2_bombs, (x, text_y))
+        x -= self.images["bomb_icon"].get_width() + 2
+        screen.blit(self.images["bomb_icon"], (x, icon_y))
+        x -= 8
+
+        x -= p2_lives.get_width()
+        screen.blit(p2_lives, (x, text_y))
+        x -= self.images["heart_image"].get_width() + 2
+        screen.blit(self.images["heart_image"], (x, icon_y))
+
+        # --- Správa v strede ---
+        self.draw_active_powerups(screen, 0)
 
         if self.powerup_message:
-            message_text = self.game.font.render(self.powerup_message, True, config.COLOR_BLACK)
-            screen.blit(message_text, (config.SCREEN_WIDTH // 2 - message_text.get_width() // 2, 10))
-
-    def draw_active_powerups(self, screen):
+            msg = self.game.font.render(self.powerup_message, True, config.COLOR_BLACK)
+            screen.blit(msg, (config.SCREEN_WIDTH // 2 - msg.get_width() // 2, text_y))
+            
+    def draw_active_powerups(self, screen, stats_y=40):
         p1_texts, p2_texts = [], []
         for powerup, expire in self.player1.active_powerups.items():
             remaining = int(expire - time.time()) + 1
             if remaining > 0:
-                if powerup == "shield_powerup": p1_texts.append(f"Shield: {remaining}s")
+                if powerup == "shield_powerup":   p1_texts.append(f"Shield: {remaining}s")
                 elif powerup == "freeze_powerup": p2_texts.append(f"Freeze: {remaining}s")
         for powerup, expire in self.player2.active_powerups.items():
             remaining = int(expire - time.time()) + 1
             if remaining > 0:
-                if powerup == "shield_powerup": p2_texts.append(f"Shield: {remaining}s")
+                if powerup == "shield_powerup":   p2_texts.append(f"Shield: {remaining}s")
                 elif powerup == "freeze_powerup": p1_texts.append(f"Freeze: {remaining}s")
 
-        y = 40
+        y = stats_y + 30
         for text in p1_texts:
             screen.blit(self.game.font.render(text, True, config.COLOR_BLACK), (10, y))
             y += 20
-        y = 40
+        y = stats_y + 30
         for text in p2_texts:
             rendered = self.game.font.render(text, True, config.COLOR_BLACK)
             screen.blit(rendered, (config.SCREEN_WIDTH - rendered.get_width() - 10, y))
@@ -208,18 +262,18 @@ class TestField(State):
                         color = config.COLOR_DARK_GREEN if (x + y) % 2 == 0 else config.COLOR_LIGHT_GREEN
                         pygame.draw.rect(screen, color, rect)
                 elif tile == 1:
-                    if self.map_name == "Crystal Caves":            screen.blit(self.images["unbreakable_stone"], (px, py))
+                    if self.map_name == "Crystal Caves":              screen.blit(self.images["unbreakable_stone"], (px, py))
                     elif self.map_name in ["Classic", "Desert Maze"]: screen.blit(self.images["unbreakable_box"], (px, py))
-                    elif self.map_name == "Ancient Ruins":           screen.blit(self.images["unbreakable_rock"], (px, py))
-                    else:                                            screen.blit(self.images["unbreakable_wall"], (px, py))
+                    elif self.map_name == "Ancient Ruins":            screen.blit(self.images["unbreakable_rock"], (px, py))
+                    else:                                             screen.blit(self.images["unbreakable_wall"], (px, py))
                 elif tile == 2:
-                    if self.map_name == "Desert Maze":    screen.blit(self.images["breakable_cactus"], (px, py))
-                    elif self.map_name == "Classic":      screen.blit(self.images["breakable_bush"], (px, py))
+                    if self.map_name == "Desert Maze":     screen.blit(self.images["breakable_cactus"], (px, py))
+                    elif self.map_name == "Classic":       screen.blit(self.images["breakable_bush"], (px, py))
                     elif self.map_name == "Crystal Caves": screen.blit(self.images["breakable_diamond"], (px, py))
                     elif self.map_name == "Ancient Ruins": screen.blit(self.images["breakable_rock"], (px, py))
                     else:                                  screen.blit(self.images["breakable_wall"], (px, py))
-                if tile == 4:            screen.blit(self.images["blue_cave"], (px, py))
-                if tile == 5:            screen.blit(self.images["red_cave"], (px, py))
+                if tile == 4:             screen.blit(self.images["blue_cave"], (px, py))
+                if tile == 5:             screen.blit(self.images["red_cave"], (px, py))
                 elif tile == config.TRAP: screen.blit(self.images["trap_image"], (px, py))
 
     def draw_players(self, screen):
@@ -256,7 +310,6 @@ class TestField(State):
                             hx = player.rect.x + ox
                             hy = player.rect.y + oy + anim_offset_y
                             hat_to_draw = pygame.transform.flip(hat_img, True, False) if going_right else hat_img
-
                             screen.blit(hat_to_draw, (hx, hy))
 
     def activate_darkness(self, duration):
@@ -307,7 +360,7 @@ class TestField(State):
                         winner = self.player2.player_id if player.player_id == 1 else self.player1.player_id
                         self.game.state_manager.change_state("GameOver", winner, self.selected_map, self.map_name, selected_skins=self.selected_skins)
                         self.music_manager.play_sound("death", "death_volume")
-                        self.powerup_message = f"Player {player.player_id} fell in a sewer!"
+                        self.powerup_message = f"{self.get_player_name(player.player_id)} fell in a sewer!"
                         self.message_timer = pygame.time.get_ticks()
 
     def _draw_darkness(self, screen):
@@ -324,9 +377,7 @@ class TestField(State):
         for player in self.players:
             cx = player.rect.centerx
             cy = player.rect.centery
-
             pygame.draw.circle(dark, (0, 0, 0, 0), (cx, cy), radius)
-
             for i in range(fade_steps):
                 progress = (i + 1) / fade_steps
                 alpha = int(250 * (progress ** 1.5))
@@ -338,23 +389,18 @@ class TestField(State):
     def offset_timers(self, pause_duration):
         for powerup in self.powerup_group.sprites():
             powerup.reveal_time += pause_duration
-
         for bomb in self.bomb_group.sprites():
             if hasattr(bomb, 'place_time'):
                 bomb.place_time += pause_duration
             if hasattr(bomb, 'explode_time'):
                 bomb.explode_time += pause_duration
-
         if self.darkness_timer > 0:
             self.darkness_timer += pause_duration
-
         for player in self.players:
             for key in player.active_powerups:
                 player.active_powerups[key] += pause_duration
-
             if hasattr(player, 'frozen_until') and player.frozen_until:
                 player.frozen_until += pause_duration
-
             if hasattr(player, 'last_trap_time') and player.last_trap_time:
                 player.last_trap_time += pause_duration
 

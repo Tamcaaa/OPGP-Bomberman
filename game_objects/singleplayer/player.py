@@ -29,7 +29,7 @@ class Player(pygame.sprite.Sprite):
         self.max_bomb_limit = config.MAX_BOMB_LIMIT
         self.currentBomb = config.CURRENTBOMB
         self.maxBombs = config.MAXBOMBS
-        self.power = config.POWER            # Explosion range
+        self.power = config.POWER
         self.queued_keys: List[int] = []
         self.held_down_keys: List[int] = []
         self.last_move_time = config.LAST_MOVE_TIME
@@ -82,84 +82,75 @@ class Player(pygame.sprite.Sprite):
         self.explosion: Optional[str] = "Classic"
 
         self.skin = self._normalize_skin(skin)
-
         self.apply_skin()
 
-    # Pomocné / Skin & Hat
+    # ------------------------------------------------------------------ skin
     def _normalize_skin(self, skin: SkinPayload):
         if skin is None:
             return None
 
-        # (color, hat, bomb, explosion) — nový 4-prvkový formát
-        if isinstance(skin, (tuple, list)) and len(skin) == 4:
+        # (color, hat, bomb, explosion, name) — formát zo SkinSelector
+        if isinstance(skin, (tuple, list)) and len(skin) == 5:
+            color_part, maybe_hat, maybe_bomb, maybe_explosion, _name = skin
+            self.hat       = str(maybe_hat)       if maybe_hat       is not None else None
+            self.bomb      = str(maybe_bomb)      if maybe_bomb      is not None else None
+            self.explosion = str(maybe_explosion) if maybe_explosion is not None else None
+            skin = color_part
+
+        # (color, hat, bomb, explosion) — 4-prvkový formát
+        elif isinstance(skin, (tuple, list)) and len(skin) == 4:
             color_part, maybe_hat, maybe_bomb, maybe_explosion = skin
             self.hat       = str(maybe_hat)       if maybe_hat       is not None else None
             self.bomb      = str(maybe_bomb)      if maybe_bomb      is not None else None
             self.explosion = str(maybe_explosion) if maybe_explosion is not None else None
             skin = color_part
 
-        # (color, hat) — starý 2-prvkový formát (zachovaná kompatibilita)
+        # (color, hat) — starý 2-prvkový formát
         elif isinstance(skin, (tuple, list)) and len(skin) == 2:
             color_part, maybe_hat = skin
             self.hat = str(maybe_hat) if maybe_hat is not None else None
             skin = color_part
 
-        # pygame.Color -> RGBA tuple
+        # pygame.Color -> RGB tuple
         if isinstance(skin, pygame.Color):
-            return (skin.r, skin.g, skin.b, skin.a)
+            return (skin.r, skin.g, skin.b)
 
         # (r,g,b) alebo (r,g,b,a)
         if isinstance(skin, (tuple, list)) and len(skin) in (3, 4):
             try:
                 comps = tuple(int(c) for c in skin)
-                if len(comps) == 3:
-                    r, g, b = comps
-                    return (max(0, min(255, r)),
-                            max(0, min(255, g)),
-                            max(0, min(255, b)))
-                else:
-                    r, g, b, a = comps
-                    return (max(0, min(255, r)),
-                            max(0, min(255, g)),
-                            max(0, min(255, b)),
-                            max(0, min(255, a)))
+                r, g, b = comps[0], comps[1], comps[2]
+                return (max(0, min(255, r)),
+                        max(0, min(255, g)),
+                        max(0, min(255, b)))
             except Exception:
                 return None
 
         return None
-        
 
     def apply_skin(self):
-        """Aplikuje farebný skin na všetky snímky hráča (bezpečne)."""
         if not self.skin:
-            return  # žiadny skin -> nič nefarbíme
+            return
 
-        # zabezpeč, že máme RGB(A)
         color = self.skin
-        # Pygame BLEND_MULT funguje s RGB(A) – ak príde len RGB, je OK
         for key, frames in self.player_config["images"].items():
             tinted_frames = []
             iterable = frames if isinstance(frames, list) else [frames]
             for frame in iterable:
                 base = pygame.transform.scale(frame.convert_alpha(), (config.GRID_SIZE, config.GRID_SIZE))
                 tinted = base.copy()
-                # fill vyžaduje validnú farbu -> tu už je validované
                 tinted.fill(color, special_flags=pygame.BLEND_MULT)
                 tinted_frames.append(tinted)
             self.images[key] = tinted_frames
 
-        # aktívny frame nech ostane konzistentný s aktuálnym smerom
         self.image = self.images[self.current_direction][self.frame_index]
 
-    # Gameplay logika
+    # ------------------------------------------------------------------ gameplay
     def check_hit(self):
-        """Check if player is hit by an explosion (s i-frame ochrannou)."""
         now = time.time()
-
-        # Invincibility frames check
         if not now - self.iframe_timer >= config.PLAYER_IFRAMES:
             return
-        if bool(pygame.sprite.spritecollide(self, self.explosion_group, False)):  # type: ignore[arg-type]
+        if bool(pygame.sprite.spritecollide(self, self.explosion_group, False)):
             self.iframe_timer = time.time()
             self.music_manager.play_sound("hit", "level_volume")
             self.health -= 1
@@ -167,9 +158,7 @@ class Player(pygame.sprite.Sprite):
         return False
 
     def activate_powerup(self, powerup_type, duration=10):
-        """Activate a power-up effect."""
         now = time.time()
-
         if powerup_type == "range_powerup":
             self.power += 1
         elif powerup_type == "bomb_powerup":
@@ -182,18 +171,13 @@ class Player(pygame.sprite.Sprite):
             self.health = min(self.health + 1, config.PLAYER_MAX_HEALTH)
         elif powerup_type == "shield_powerup":
             self.iframe_timer = now + duration
-
         self.active_powerups[powerup_type] = now + duration
 
     def update_powerups(self):
-        """Update active power-ups and remove expired ones."""
         now = time.time()
-        expired = []
-        for powerup, expire_time in self.active_powerups.items():
-            if now >= expire_time:
-                expired.append(powerup)
-        for powerup in expired:
-            del self.active_powerups[powerup]
+        expired = [p for p, t in self.active_powerups.items() if now >= t]
+        for p in expired:
+            del self.active_powerups[p]
 
     def get_player_location(self):
         return self.rect.x, self.rect.y
@@ -206,7 +190,7 @@ class Player(pygame.sprite.Sprite):
 
     def handle_queued_keys(self, now):
         now_ticks = pygame.time.get_ticks()
-        move_keys = self.move_keys  # ← toto chýbalo!
+        move_keys = self.move_keys
 
         is_frozen = time.time() < self.freeze_timer
         move_delay = config.MOVE_COOLDOWN * 2 if is_frozen else config.MOVE_COOLDOWN
@@ -223,31 +207,26 @@ class Player(pygame.sprite.Sprite):
                 self.move(1, 0, "right")
             elif key == move_keys[4]:
                 self.deploy_bomb(self.bomb_group, self.explosion_group)
-
             self.last_move_time = now_ticks
 
     def move(self, dx, dy, direction):
-        """Move the player in the specified direction."""
         new_x = self.rect.x + dx * config.GRID_SIZE
         new_y = self.rect.y + dy * config.GRID_SIZE
 
         bound_x = max(0, min(new_x, config.SCREEN_WIDTH - config.GRID_SIZE))
         bound_y = max(0, min(new_y, config.SCREEN_HEIGHT - config.GRID_SIZE))
 
-        # Kolízia s mapou
         tile_type = self.test_field.tile_map[bound_y // config.GRID_SIZE][bound_x // config.GRID_SIZE]
         if tile_type in [1, 2, 3]:
             self.moving = False
             self.current_direction = direction
             return
 
-        # Teleport
         if tile_type in [4, 5]:
             paired = self.find_paired_teleport(tile_type, bound_x, bound_y)
             if paired:
                 bound_x, bound_y = paired
 
-        # Kolízia s bombami
         future_rect = self.rect.copy()
         future_rect.topleft = (bound_x, bound_y)
         for bomb in self.bomb_group:
@@ -256,7 +235,6 @@ class Player(pygame.sprite.Sprite):
                 self.current_direction = direction
                 return
 
-        # Pohyb
         self.rect.topleft = (bound_x, bound_y)
         self.moving = True
         self.current_direction = direction
@@ -265,11 +243,9 @@ class Player(pygame.sprite.Sprite):
 
     def deploy_bomb(self, bomb_group, explosion_group):
         if self.currentBomb > 0:
-            # Skontroluj či na tejto pozícii už bomba leží
             for bomb in bomb_group:
                 if bomb.rect.topleft == self.rect.topleft:
-                    return  # Už tam je bomba, nič nepokladaj
-            
+                    return
             Bomb(self, bomb_group, explosion_group, self.test_field, self.bomb, self.explosion)
             self.currentBomb -= 1
 
@@ -281,19 +257,16 @@ class Player(pygame.sprite.Sprite):
                     tile_x = x * config.GRID_SIZE
                     tile_y = y * config.GRID_SIZE
                     if tile_x == current_x and tile_y == current_y:
-                        continue  # preskoč aktuálny tile
+                        continue
                     tiles.append((tile_x, tile_y))
         if tiles:
-            return tiles[0]  # jednoduché párovanie
+            return tiles[0]
         return None
 
     def update_animation(self):
-        """Aktualizuje animácie hráča (idle + walk) s použitím skinned snímok."""
-
         now = pygame.time.get_ticks()
         anim_key = self.current_direction if self.moving else "idle"
-
-        if anim_key not in self.images:  # bezpečnostný fallback
+        if anim_key not in self.images:
             anim_key = "idle"
 
         frames = self.images[anim_key]
@@ -307,18 +280,13 @@ class Player(pygame.sprite.Sprite):
         self.current_animation = anim_key
         self.current_frame_index = self.frame_index
 
-        
     def load_sprites(self):
-        # Idle frame
         self.idle_frames = []
         for i in range(3):
             frame = pygame.image.load(os.path.join("assets/player_animations", f"p_{self.player_id}_idle_{i}.png")).convert_alpha()
             self.idle_frames.append(pygame.transform.scale(frame, (frame.get_width()*8, frame.get_height()*8)))
-
-        # Farba z SkinSelector
-        if self.skin and self.skin[0]:  # self.skin = (color, hat_name)
+        if self.skin and self.skin[0]:
             self.idle_frames = [self.tint_image(f, self.skin[0]) for f in self.idle_frames]
-
         self.image = self.idle_frames[0]
         self.rect = self.image.get_rect()
 
@@ -326,11 +294,11 @@ class Player(pygame.sprite.Sprite):
         tinted = image.copy()
         tint = pygame.Surface(image.get_size(), pygame.SRCALPHA)
         tint.fill((*color, 255))
-        tinted.blit(tint, (0,0), special_flags=pygame.BLEND_MULT)
+        tinted.blit(tint, (0, 0), special_flags=pygame.BLEND_MULT)
         return tinted
+
     def update_movement_status(self):
         self.moving = False
-        
         if self.held_down_keys:
             if pygame.K_w in self.held_down_keys or pygame.K_UP in self.held_down_keys:
                 self.current_direction = "up"
