@@ -131,7 +131,7 @@ class GameOver(State):
             pygame.mixer_music.stop()
             self.music_manager.play_music('title', 'main_menu_volume', True)
             self.exit_state()
-            self.game.state_manager.change_state("MapSelector")
+            self.game.state_manager.change_state("MapSelector", selected_skins=self.selected_skins)
         elif self.main_menu_button.is_clicked():
             pygame.mixer_music.stop()
             self.music_manager.play_music('title', 'main_menu_volume', True)
