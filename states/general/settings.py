@@ -274,7 +274,7 @@ class Settings(State):
         if filled > 0:
             pygame.draw.rect(screen, config.SLIDER_FILL,
                              (sx, sy, filled, self.slider_height), border_radius=3)
-        # Handle
+
         hx = sx + filled
         hy = sy + self.slider_height // 2
         pygame.draw.circle(screen, config.BTN_BEIGE, (hx, hy), self.slider_handle_radius)

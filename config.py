@@ -81,7 +81,7 @@ PANEL_W = 340
 PANEL_H = 480
 TOP_Y   = 55
 # Výška zón vo vnútri panelu (zhora):
-PREVIEW_H   = 130
+PREVIEW_H   = 150
 TAB_H       = 36
 TAB_PAD     = 8       # medzera nad tabbar
 LIST_PAD    = 8       # medzera pod tabbar
