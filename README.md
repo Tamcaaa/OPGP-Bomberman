@@ -11,13 +11,13 @@ A simple Bomberman-style game developed as part of a school project. Players nav
 - Simple graphics and sound (optional based on your project)
 
 ## 🎮 Controls
-- Move: Arrow keys / WASD
-- Place bomb: Spacebar
+- Move: Arrow keys / WASD / settings customization
+- Place bomb: Spacebar / 0 / settings customization
 
 ## 🛠️ Installation
 1. Clone the repository:
     ```bash
-    git clone https://github.com/your-username/OPGP-Bomberman.git
+    git clone https://github.com/Tamcaaa/OPGP-Bomberman.git
     cd OPGP-Bomberman
     ```
 2. Install dependencies:
@@ -28,12 +28,6 @@ A simple Bomberman-style game developed as part of a school project. Players nav
     ```bash
     poetry run python main.py
     ```
-
-## 🚧 Future Improvements
-- Multiplayer support
-- Power-ups
-- Improved enemy
-- Levels
 
 ## 🙏 Contributions
 This is a school project and we are **not accepting public contributions** at this time.  
