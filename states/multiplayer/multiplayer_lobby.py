@@ -574,7 +574,7 @@ class MultiplayerLobby(State):
         print(f"[STATE_CHANGE] → {state} from {addr}")
         self.exit_state()
         self.state_manager.change_state(
-            MAP_SELECTOR_SCOPE, self.players_list, self.network_manager, self.player_name
+            MAP_SELECTOR_SCOPE, self.players_list, self.network_manager, self.player_name, self.lobby_name
         )
 
     def _on_skin_update(self, data: dict, addr: Addr) -> None:
@@ -603,7 +603,6 @@ class MultiplayerLobby(State):
         print(f"[LOBBY EXIT] {self.host_setup_error} Returning to MainMenu.")
         self.host_setup_failed = False
         self.exit_state()
-        self.state_manager.change_state("MainMenu")
         return True
 
     def _check_state_change_acks(self) -> None:
@@ -623,7 +622,6 @@ class MultiplayerLobby(State):
             print(f"[LEFT LOBBY] {self.my_player.name} has left the lobby.")
             self.network_manager.close_socket()
             self.exit_state()
-            self.state_manager.change_state("MainMenu")
 
     def _check_timed_out_peer(self) -> None:
         if not self.network_manager.peer_timedout:
@@ -706,7 +704,6 @@ class MultiplayerLobby(State):
             if not peer:
                 self.network_manager.close_socket()
                 self.exit_state()
-                self.state_manager.change_state("MainMenu")
                 return
             self.leave_target_addr = peer.addr
             self.leave_seq = self.network_manager.send_packet(
@@ -714,9 +711,6 @@ class MultiplayerLobby(State):
             )
         else:
             host = self._get_host_player()
-            if not host:
-                self._pop_to_input_popup()
-                return
             self.leave_target_addr = host.addr
             self.leave_seq = self.network_manager.send_packet(
                 host.addr, PKT_LEAVE, packet_data, LOBBY_SCOPE

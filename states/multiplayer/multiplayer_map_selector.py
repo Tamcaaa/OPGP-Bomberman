@@ -14,7 +14,7 @@ Addr = tuple[str, int]
 Packet = Dict[str, Any]
 
 class MultiplayerMapSelector(State):
-    def __init__(self, game, player_list, network_manger: NetworkManager, my_player_name: str):
+    def __init__(self, game, player_list, network_manger: NetworkManager, my_player_name: str, lobby_name: str = ""):
         super().__init__(game)
         pygame.display.set_caption("BomberMan: Map Selector")
         self.bg_image = pygame.image.load(os.path.join("assets","backgrounds", "menu", "battlefield-bg.png"))
@@ -23,6 +23,7 @@ class MultiplayerMapSelector(State):
         self.network_manager = network_manger
         self.players_list = player_list
         self.my_player = player_list.get(my_player_name)
+        self.lobby_name = lobby_name
 
         self.state_manager = StateManager(self.game)
 
@@ -94,8 +95,7 @@ class MultiplayerMapSelector(State):
     def handle_packet(self, poll_data):
         packet, addr = poll_data
         pkt_type = packet.get('type')
-        pkt_data = packet.get('data')
-        
+        pkt_data = packet.get('data')        
         if not packet.get('scope') == 'MultiplayerMapSelector':
             return
 
@@ -182,6 +182,14 @@ class MultiplayerMapSelector(State):
                 self.players_list,
                 self.my_player.name,
             )
+
+    def _return_to_main(self, reason: str) -> None:
+        print(f"[RETURN TO MAIN MENU] {reason}")
+        if not self.my_player:
+            return
+        self.network_manager.unregister_peer()
+        self.network_manager.close_socket()
+        self.exit_state()
 
     def broadcast_state_change(self, new_state) -> Dict[Addr, int]:
         if not self.my_player:
@@ -305,6 +313,10 @@ class MultiplayerMapSelector(State):
                 self.last_map_sync_time = now
 
         self.handle_network_packets()
+        if self.my_player and self.network_manager.peer_timedout:
+            self.network_manager.peer_timedout = False
+            self._return_to_main("Peer timed out")
+            return
         self.check_state_change_acks()
         self.network_manager.update()
 

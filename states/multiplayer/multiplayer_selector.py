@@ -56,7 +56,6 @@ class MultiplayerSelector(State):
             self.state_manager.change_state('InputPopup', self.network_manager, mode='join')
         elif self.goBack_button.is_clicked(event):
             self.exit_state()
-            self.state_manager.change_state("MainMenu")
 
     def update(self):
         pass

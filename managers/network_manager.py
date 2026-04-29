@@ -142,11 +142,15 @@ class NetworkManager:
         return self.broadcast_packet(addrs, packet_type, data, scope, reliable=False)
 
     def _send_raw_packet(self, addr: Addr, packet: Packet) -> None:
+        if self.socket is None:
+            return
         raw_packet = json.dumps(packet).encode('utf-8')
         self.socket.sendto(raw_packet, addr)
 
     # ---------------- Receiving ----------------
     def poll(self) -> None | Tuple[Packet, Addr]:
+        if self.socket is None:
+            return
         try:
             raw, addr = self.socket.recvfrom(65535)
         except (BlockingIOError, InterruptedError, OSError):
@@ -192,6 +196,8 @@ class NetworkManager:
 
     def update(self) -> None:
         """Resend un-ACKed packets"""
+        if self.socket is None:
+            return
         now = time.time()
 
         for seq, (addr, packet, last_time_sent, resend_try) in list(self._pending.items()):
@@ -232,18 +238,26 @@ class NetworkManager:
             self._completed_seq[addr] = set(sorted(seqs)[-20:])
 
     def close_connection(self) -> None:
-        self.socket.close()
+        if self.socket is None:
+            return
+        try:
+            self.socket.close()
+        finally:
+            self.socket = None
 
     # ----------------- HeartBeat System ----------------
 
     def register_peer(self, addr: Addr) -> None:
         self.peer = addr
+        self.last_recieved_heartbeat = time.time()
+        self.last_sent_heartbeat = 0.0
+        self.peer_timedout = False
 
     def unregister_peer(self) -> None:
         self.peer = None
     
     def send_heartbeat(self) -> None:
-        if self.peer:
+        if self.peer and self.socket is not None:
             print(f'[DEBUG] Sending HEARTBEAT to {self.peer}')
             self.send_unreliable(self.peer, 'HEARTBEAT', {'timestamp': time.time()})
     # ---------------- Getters and Setters ----------------
