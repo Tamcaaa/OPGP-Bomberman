@@ -51,8 +51,7 @@ class BomberManApp:
 
             if self.state_stack:
                 self.state_stack[-1].handle_events(event)
-            
-            print(f'State Stacks names after event: {[type(s).__name__ for s in self.state_stack]}')
+                
     def draw_text(self, screen: pygame.Surface, text: str, color: pygame.Color | tuple, x: int, y: int):
         text_surface = self.h1_font.render(text, True, color)
         text_rect = text_surface.get_rect()
