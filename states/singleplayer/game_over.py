@@ -2,7 +2,7 @@ import os
 import pygame
 import config
 
-from image_loader import load_images, load_hat_images
+from image_loader import load_images
 from states.general.state import State
 from managers.music_manager import MusicManager
 from custom_classes.button import Button
@@ -21,6 +21,11 @@ class GameOver(State):
             self.selected_skins[winner][0]
             if winner in self.selected_skins
             else config.BTN_BEIGE
+        )
+        self.winner_name = (
+            self.selected_skins[self.winner][4]
+            if self.winner in self.selected_skins and len(self.selected_skins[self.winner]) > 4
+            else f"Player {self.winner}"
         )
 
         self.images = load_images()
@@ -126,7 +131,7 @@ class GameOver(State):
             pygame.mixer_music.stop()
             self.music_manager.play_music('title', 'main_menu_volume', True)
             self.exit_state()
-            self.game.state_manager.change_state("MapSelector")
+            self.game.state_manager.change_state("MapSelector", selected_skins=self.selected_skins)
         elif self.main_menu_button.is_clicked():
             pygame.mixer_music.stop()
             self.music_manager.play_music('title', 'main_menu_volume', True)
@@ -135,8 +140,8 @@ class GameOver(State):
 
     def enter_single_player(self):
         self.exit_state()
-        self.game.state_manager.change_state("TestField", self.map_selected, self.map_name)
-
+        self.game.state_manager.change_state("TestField", self.map_selected, self.map_name, selected_skins=self.selected_skins)
+    
     # ------------------------------------------------------------------ render
     def render(self, screen):
         self.fade_alpha = min(self.fade_alpha + 8, 255)
@@ -175,9 +180,8 @@ class GameOver(State):
         screen.blit(sep, (cx - (pw - 40) // 2, panel.y + 62))
 
         # Winner text
-        winner_text = f"PLAYER {self.winner} WINS"
-        self._text(screen, winner_text, self.font_md, self.winner_color,
-                   (cx, panel.y + 76), align="center")
+        winner_text = f"{self.winner_name} WINS"
+        self._text(screen, winner_text, self.font_md, self.winner_color,(cx, panel.y + 76), align="center")
 
         # Mapa
         map_text = f"map: {self.map_name}"

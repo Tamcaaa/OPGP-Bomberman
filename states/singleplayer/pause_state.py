@@ -155,7 +155,13 @@ class PauseState(State):
             self.game.state_manager.change_state("TestField", self.map_selected, self.map_name)
         elif index == 2:  # Map Select
             self.exit_state()
-            self.game.state_manager.change_state("MapSelector")
+            # Vytiahni selected_skins z TestField stavu
+            selected_skins = {}
+            for state in self.game.state_stack:
+                if state.__class__.__name__ == "TestField":
+                    selected_skins = state.selected_skins
+                    break
+            self.game.state_manager.change_state("MapSelector", selected_skins=selected_skins)
         elif index == 3:  # Settings
             self.game.state_manager.change_state("Settings")
         elif index == 4:  # Main Menu
@@ -164,7 +170,7 @@ class PauseState(State):
 
     def exit_state(self):
         pause_duration = time.time() - self.pause_start
-        # Find TestField in the state stack beneath the pause state
+        # nájdi TestField v stacku a posuň jeho časovače o dobu pauzy
         for state in self.game.state_stack:
             if state.__class__.__name__ == "TestField":
                 state.offset_timers(pause_duration)
