@@ -1,7 +1,5 @@
-import os
 import config
 import pygame
-
 
 class MusicManager:
     def __init__(self):
