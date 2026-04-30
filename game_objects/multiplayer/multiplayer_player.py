@@ -10,7 +10,7 @@ ColorLike = Union[pygame.Color, Tuple[int, int, int], Tuple[int, int, int, int]]
 
 
 class Player(pygame.sprite.Sprite):
-    def __init__(self, starting_location: str | tuple, test_field, name: str, player_color: Tuple[int, int, int], player_hat: str):
+    def __init__(self, starting_location: str | tuple, test_field, name: str, player_color: Tuple[int, int, int], player_hat: str, player_bomb: str = "Classic", player_explosion: str = "Classic"):
         super().__init__()
         self.name = name 
         self.player_color = player_color
@@ -72,6 +72,8 @@ class Player(pygame.sprite.Sprite):
 
         # Skin & Hat 
         self._player_hat: str = player_hat
+        self.bomb_skin = player_bomb
+        self.explosion_skin = player_explosion
         self.current_animation = "idle"
         self.current_frame_index = 0
 
