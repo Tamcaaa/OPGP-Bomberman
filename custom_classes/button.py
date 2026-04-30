@@ -45,6 +45,8 @@ class Button:
         else:
             pygame.draw.rect(screen, (225, 200, 160), self.rect, width=1, border_radius=self.radius)
 
+        self.style = 'filled' if hovered else 'outline'
+
         # Text so shadow
         shadow = self.font.render(self.text, True, (0, 0, 0))
         label  = self.font.render(self.text, True, self.text_color)

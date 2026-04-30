@@ -42,6 +42,17 @@ class InputPopup(State):
         self._build_layout()
         self.request_lobby_discovery(force=True)
 
+    def _find_existing_lobby(self, host_name: str, lobby_name: str):
+        host_key = host_name.strip().casefold()
+        lobby_key = lobby_name.strip().casefold()
+        for addr_key, host_data in self.discovered_hosts.items():
+            if (
+                host_data.get('host_name', '').strip().casefold() == host_key
+                and host_data.get('lobby_name', '').strip().casefold() == lobby_key
+            ):
+                return addr_key
+        return None
+
     def _build_layout(self):
         popup_width = config.SCREEN_WIDTH // 2 + 20
         popup_height = 290 if self.is_host_mode else 520
@@ -236,6 +247,12 @@ class InputPopup(State):
             max_players = packet_data.get('max_players', 0)
 
             host_addr = (addr[0], config.SERVER_PORT)
+            existing_addr = self._find_existing_lobby(host_name, lobby_name)
+            if existing_addr and existing_addr != host_addr:
+                self.discovered_hosts.pop(existing_addr, None)
+                if self.selected_host_addr == existing_addr:
+                    self.selected_host_addr = host_addr
+
             self.discovered_hosts[host_addr] = {
                 'addr': host_addr,
                 'host_name': host_name,

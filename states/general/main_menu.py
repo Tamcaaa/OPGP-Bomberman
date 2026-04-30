@@ -40,7 +40,7 @@ class MainMenu(State):
             cx - btn_w // 2, by,
             btn_w, btn_h, "LOCAL",
             font="CaveatBrush-Regular.ttf",
-            style="filled",
+            style="outline",
         )
         self.multiplayer_button = Button(
             cx - btn_w // 2, by + btn_h + gap,
